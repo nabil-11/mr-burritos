@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch'
 import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
+import ImageUpload from '@/components/backoffice/ImageUpload'
 
 interface Category { _id: string; name: { fr: string; ar: string } }
 interface Supplement { _id: string; name: { fr: string }; price: number; type: string }
@@ -111,7 +112,10 @@ export default function ProductEditForm({
             </Select>
           </div>
         </div>
-        <div className="space-y-1"><Label>URL Image</Label><Input value={form.image} onChange={(e) => setForm({ ...form, image: e.target.value })} placeholder="https://..." /></div>
+        <div className="space-y-1">
+          <Label>Image du produit</Label>
+          <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
+        </div>
       </CardContent></Card>
 
       <Card><CardContent className="pt-4">

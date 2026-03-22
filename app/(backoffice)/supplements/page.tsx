@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Supplement } from '@/lib/models/Supplement'
 import { Badge } from '@/components/ui/badge'
 import SupplementForm from './SupplementForm'
+import StatusSwitch from '@/components/backoffice/StatusSwitch'
 
 const typeLabels: Record<string, string> = { sauce: 'Sauce', size: 'Taille', extra: 'Extra' }
 
@@ -19,7 +20,7 @@ export default async function SupplementsPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['Nom (FR)', 'Nom (AR)', 'Prix', 'Type', 'Statut'].map((h) => (
+              {['Nom (FR)', 'Nom (AR)', 'Prix', 'Type', 'Actif'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -36,9 +37,13 @@ export default async function SupplementsPage() {
                     <Badge variant="outline">{typeLabels[String(sup.type)] || String(sup.type)}</Badge>
                   </td>
                   <td className="px-4 py-3">
-                    <Badge variant={sup.isActive ? 'default' : 'secondary'}>
-                      {sup.isActive ? 'Actif' : 'Inactif'}
-                    </Badge>
+                    <StatusSwitch
+                      id={String(sup._id)}
+                      field="isActive"
+                      checked={Boolean(sup.isActive)}
+                      apiPath="/api/supplements"
+                      label="Actif"
+                    />
                   </td>
                 </tr>
               )

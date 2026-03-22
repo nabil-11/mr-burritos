@@ -1,7 +1,7 @@
 import { connectDB } from '@/lib/mongodb'
 import { Category } from '@/lib/models/Category'
 import CategoryForm from './CategoryForm'
-import { Badge } from '@/components/ui/badge'
+import StatusSwitch from '@/components/backoffice/StatusSwitch'
 
 export default async function CategoriesPage() {
   await connectDB()
@@ -17,7 +17,7 @@ export default async function CategoriesPage() {
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Statut'].map((h) => (
+              {['Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Actif'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -32,9 +32,13 @@ export default async function CategoriesPage() {
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{String(cat.slug)}</td>
                   <td className="px-4 py-3">{String(cat.order)}</td>
                   <td className="px-4 py-3">
-                    <Badge variant={cat.isActive ? 'default' : 'secondary'}>
-                      {cat.isActive ? 'Actif' : 'Inactif'}
-                    </Badge>
+                    <StatusSwitch
+                      id={String(cat._id)}
+                      field="isActive"
+                      checked={Boolean(cat.isActive)}
+                      apiPath="/api/categories"
+                      label="Actif"
+                    />
                   </td>
                 </tr>
               )
