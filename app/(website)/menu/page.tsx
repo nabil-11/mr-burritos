@@ -40,7 +40,7 @@ export default async function MenuPage({ searchParams }: PageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Page header */}
-      <div className="bg-[#1A1A1A] pt-28 pb-12 px-4 text-center">
+      <div className="bg-[#1A1A1A] pt-24 pb-12 px-4 text-center">
         <p className="text-[#F5A800] font-bold text-xs uppercase tracking-widest mb-2">Mr. Burritos</p>
         <h1 className="text-4xl md:text-5xl font-black text-white">Notre Menu</h1>
         <p className="text-white/50 mt-2">Crunch Makes Everything Better</p>

@@ -43,7 +43,7 @@ export default function HeroCarousel() {
   const plugin = useRef(Autoplay({ delay: 5000, stopOnInteraction: true }))
 
   return (
-    <div className="relative w-full pt-20">
+    <div className="relative w-full pt-17.5">
       <Carousel
         plugins={[plugin.current]}
         opts={{ loop: true }}
