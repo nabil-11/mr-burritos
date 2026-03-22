@@ -14,7 +14,8 @@ export default async function UsersPage() {
         <UserForm />
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-125">
           <thead className="bg-gray-50 border-b">
             <tr>
               {['Nom', 'Email', 'Rôle', 'Statut', 'Créé le'].map((h) => (
@@ -40,6 +41,7 @@ export default async function UsersPage() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

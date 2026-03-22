@@ -13,7 +13,7 @@ export default async function BackofficeLayout({ children }: { children: React.R
   return (
     <div className="flex h-screen overflow-hidden bg-gray-50" dir="ltr">
       <Sidebar />
-      <main className="flex-1 overflow-y-auto p-6">
+      <main className="flex-1 overflow-y-auto p-4 lg:p-6 pt-18 lg:pt-6">
         {children}
       </main>
     </div>

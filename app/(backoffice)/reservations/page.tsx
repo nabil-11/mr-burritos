@@ -17,7 +17,8 @@ export default async function ReservationsPage() {
     <div>
       <h1 className="text-2xl font-bold mb-6">Réservations</h1>
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-150">
           <thead className="bg-gray-50 border-b">
             <tr>
               {['Client', 'Date', 'Heure', 'Couverts', 'Statut', 'Actions'].map((h) => (
@@ -51,6 +52,7 @@ export default async function ReservationsPage() {
             })}
           </tbody>
         </table>
+        </div>
         {reservations.length === 0 && <p className="text-center text-muted-foreground py-10">Aucune réservation</p>}
       </div>
     </div>

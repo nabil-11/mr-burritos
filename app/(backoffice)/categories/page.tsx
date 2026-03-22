@@ -14,7 +14,8 @@ export default async function CategoriesPage() {
         <CategoryForm />
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-125">
           <thead className="bg-gray-50 border-b">
             <tr>
               {['Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Actif'].map((h) => (
@@ -45,6 +46,7 @@ export default async function CategoriesPage() {
             })}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

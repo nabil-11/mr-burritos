@@ -18,7 +18,8 @@ export default async function ProductsPage() {
         </Link>
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-175">
           <thead className="bg-gray-50 border-b">
             <tr>
               {['Image', 'Nom', 'Catégorie', 'Prix', 'Disponible', 'Actif', 'Actions'].map((h) => (
@@ -77,6 +78,7 @@ export default async function ProductsPage() {
             })}
           </tbody>
         </table>
+        </div>
         {products.length === 0 && <p className="text-center text-muted-foreground py-10">Aucun produit</p>}
       </div>
     </div>

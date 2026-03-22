@@ -32,7 +32,8 @@ export default async function OrdersPage() {
         </Link>
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-175">
           <thead className="bg-gray-50 border-b">
             <tr>
               {['N° Commande', 'Client', 'Type', 'Total', 'Statut', 'Date', 'Actions'].map((h) => (
@@ -71,6 +72,7 @@ export default async function OrdersPage() {
             })}
           </tbody>
         </table>
+        </div>
         {orders.length === 0 && (
           <p className="text-center text-muted-foreground py-10">Aucune commande</p>
         )}
