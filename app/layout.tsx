@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -8,26 +8,19 @@ const geistSans = Geist({
   subsets: ["latin"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
 export const metadata: Metadata = {
-  title: "Mr. Burritos",
-  description: "Restaurant Mr. Burritos - Tacos, Burritos & Snacks",
+  title: "Mr. Burritos — Tacos · Burritos · Snacks",
+  description: "Restaurant Mr. Burritos — Tacos, Burritos & Snacks à Tunis. Commandez en ligne, livraison ou à emporter.",
 };
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="ar" className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
-      <body className="min-h-full flex flex-col">
+    <html lang="fr" dir="ltr" className={`${geistSans.variable} h-full antialiased`}>
+      <body className="min-h-full flex flex-col bg-white">
         {children}
-        <Toaster />
+        <Toaster richColors position="top-right" />
       </body>
     </html>
   );

@@ -1,0 +1,8 @@
+// Import all models so Mongoose registers their schemas before any populate() call
+export { Category } from './Category'
+export { Product } from './Product'
+export { Supplement } from './Supplement'
+export { Order } from './Order'
+export { Reservation } from './Reservation'
+export { User } from './User'
+export { Configuration } from './Configuration'

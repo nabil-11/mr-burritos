@@ -1,5 +1,5 @@
 import { connectDB } from '@/lib/mongodb'
-import { Product } from '@/lib/models/Product'
+import { Product } from '@/lib/models/index'
 import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { Plus } from 'lucide-react'

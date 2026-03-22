@@ -1,7 +1,5 @@
 import { connectDB } from '@/lib/mongodb'
-import { Product } from '@/lib/models/Product'
-import { Category } from '@/lib/models/Category'
-import { Supplement } from '@/lib/models/Supplement'
+import { Product, Category, Supplement } from '@/lib/models/index'
 import ProductEditForm from './ProductEditForm'
 
 type Props = { params: Promise<{ id: string }> }

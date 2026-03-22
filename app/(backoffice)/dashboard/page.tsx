@@ -1,8 +1,5 @@
 import { connectDB } from '@/lib/mongodb'
-import { Order } from '@/lib/models/Order'
-import { Product } from '@/lib/models/Product'
-import { Category } from '@/lib/models/Category'
-import { Reservation } from '@/lib/models/Reservation'
+import { Order, Product, Category, Reservation } from '@/lib/models/index'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ShoppingBag, UtensilsCrossed, Tag, CalendarDays } from 'lucide-react'
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
-import { Product } from '@/lib/models/Product'
+import { Product } from '@/lib/models/index'
 import { requireAuth } from '@/lib/auth'
 
 type Ctx = { params: Promise<{ id: string }> }
