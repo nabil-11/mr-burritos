@@ -51,7 +51,19 @@ export default async function PrintOrderPage({ params }: Props) {
               <span className="text-gray-500">Type</span>
               <span className="font-bold">{o.type === 'delivery' ? '🛵 Livraison' : '🏪 À emporter'}</span>
             </div>
-            {customer.name && customer.name !== 'Comptoir' && (
+            {o.type === 'delivery' && (o.deliveryCompany as Record<string, unknown>)?.name && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Plateforme</span>
+                <span className="font-bold">{String((o.deliveryCompany as Record<string, unknown>).name)} ({String((o.deliveryCompany as Record<string, unknown>).commission)}%)</span>
+              </div>
+            )}
+            {o.reference && String(o.reference) && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Référence</span>
+                <span className="font-mono font-bold">{String(o.reference)}</span>
+              </div>
+            )}
+            {customer.name && customer.name !== 'Comptoir' && customer.name !== 'Livraison' && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Client</span>
                 <span>{customer.name}</span>
@@ -73,44 +85,55 @@ export default async function PrintOrderPage({ params }: Props) {
 
           {/* Items */}
           <div className="mb-4 border-b border-dashed border-gray-400 pb-4 space-y-2">
-            {items.map((item, i) => {
-              const name = item.productName as { fr: string } | string
-              const nameFr = typeof name === 'object' ? name.fr : String(name)
-              const qty = Number(item.quantity)
-              const unit = Number(item.unitPrice)
-              const supps = item.supplements as { name: { fr: string }; price: number }[]
-              const suppTotal = supps?.reduce((s, x) => s + x.price, 0) ?? 0
-              const lineTotal = (unit + suppTotal) * qty
+            {items.length === 0 ? (
+              <div className="flex justify-between font-semibold">
+                <span>Commande plateforme</span>
+                <span>{(o.total as number).toFixed(2)} DT</span>
+              </div>
+            ) : (
+              items.map((item, i) => {
+                const name = item.productName as { fr: string } | string
+                const nameFr = typeof name === 'object' ? name.fr : String(name)
+                const qty = Number(item.quantity)
+                const unit = Number(item.unitPrice)
+                const supps = item.supplements as { name: { fr: string }; price: number }[]
+                const suppTotal = supps?.reduce((s, x) => s + x.price, 0) ?? 0
+                const lineTotal = (unit + suppTotal) * qty
 
-              return (
-                <div key={i}>
-                  <div className="flex justify-between font-semibold">
-                    <span className="flex-1 truncate">{qty}× {nameFr}</span>
-                    <span className="ml-2 shrink-0">{lineTotal.toFixed(2)} DT</span>
-                  </div>
-                  {supps?.length > 0 && (
-                    <div className="text-[10px] text-gray-400 pl-4">
-                      + {supps.map((s) => s.name.fr).join(', ')}
+                return (
+                  <div key={i}>
+                    <div className="flex justify-between font-semibold">
+                      <span className="flex-1 truncate">{qty}× {nameFr}</span>
+                      <span className="ml-2 shrink-0">{lineTotal.toFixed(2)} DT</span>
                     </div>
-                  )}
-                  {String(item.notes) && (
-                    <div className="text-[10px] text-gray-400 pl-4 italic">{String(item.notes)}</div>
-                  )}
-                </div>
-              )
-            })}
+                    {supps?.length > 0 && (
+                      <div className="text-[10px] text-gray-400 pl-4">
+                        + {supps.map((s) => s.name.fr).join(', ')}
+                      </div>
+                    )}
+                    {String(item.notes) && (
+                      <div className="text-[10px] text-gray-400 pl-4 italic">{String(item.notes)}</div>
+                    )}
+                  </div>
+                )
+              })
+            )}
           </div>
 
           {/* Total */}
           <div className="space-y-1 mb-6">
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Sous-total</span>
-              <span>{(o.subtotal as number).toFixed(2)} DT</span>
-            </div>
-            <div className="flex justify-between text-xs text-gray-500">
-              <span>Livraison</span>
-              <span>{o.type === 'delivery' ? 'Gratuite' : '—'}</span>
-            </div>
+            {items.length > 0 && (
+              <>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Sous-total</span>
+                  <span>{(o.subtotal as number).toFixed(2)} DT</span>
+                </div>
+                <div className="flex justify-between text-xs text-gray-500">
+                  <span>Livraison</span>
+                  <span>—</span>
+                </div>
+              </>
+            )}
             <div className="flex justify-between font-black text-base border-t border-black pt-1 mt-1">
               <span>TOTAL</span>
               <span>{(o.total as number).toFixed(2)} DT</span>

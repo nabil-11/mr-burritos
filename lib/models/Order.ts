@@ -45,6 +45,7 @@ const OrderSchema = new Schema(
       name: { type: String, default: '' },
       commission: { type: Number, default: 0 },
     },
+    reference: { type: String, default: '' },
     notes: { type: String, default: '' },
   },
   { timestamps: true }
