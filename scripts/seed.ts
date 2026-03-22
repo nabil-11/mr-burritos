@@ -4,9 +4,9 @@
  *
  * Crée :
  *  - 1 utilisateur admin
- *  - 4 catégories  (Tacos, Burritos, Snacks, Boissons)
+ *  - 5 catégories  (Tacos, Burritos, Snacks, Boissons, Boxes)
  *  - 14 suppléments (7 sauces gratuites, 1 taille XL, 6 extras payants)
- *  - 18 produits   (5 Tacos + 5 Burritos + 6 Snacks + 2 Boissons)
+ *  - 21 produits   (5 Tacos + 5 Burritos + 6 Snacks + 2 Boissons + 3 Boxes)
  */
 
 import 'dotenv/config'
@@ -85,6 +85,7 @@ async function main() {
     { slug: 'burritos', name: { fr: 'Burritos', ar: 'بوريتوس' }, order: 2 },
     { slug: 'snacks',   name: { fr: 'Snacks',   ar: 'سناكس'   }, order: 3 },
     { slug: 'boissons', name: { fr: 'Boissons', ar: 'مشروبات' }, order: 4 },
+    { slug: 'boxes',    name: { fr: 'Boxes',    ar: 'بوكس'    }, order: 5 },
   ]
   const cats: Record<string, mongoose.Types.ObjectId> = {}
   for (const c of catData) {
@@ -249,6 +250,32 @@ async function main() {
       description: { fr: 'Eau minérale 0.5 L', ar: 'ماء معدني 0.5 لتر' },
       price: 1, category: cats.boissons, supplements: [],
     },
+
+    // ── BOXES ─────────────────────────────────────────────────────────────
+    {
+      name:        { fr: 'Box Hob',    ar: 'بوكس حب'    },
+      description: {
+        fr: '2 Tacos (grillée, pané, cordon bleu, nuggets) · Méga frites · 2 Boissons · Mix (2 Poppers, 2 Nuggets, 2 Fingers)',
+        ar: '2 تاكوس (مشوي، مقلي، كوردون بلو، نوجيتس) · فريت ميقا · 2 مشروبات · ميكس (2 بوبرز، 2 نوجيتس، 2 فينجرز)',
+      },
+      price: 32, category: cats.boxes, supplements: [],
+    },
+    {
+      name:        { fr: 'Box Chilla', ar: 'بوكس شيلا'  },
+      description: {
+        fr: '3 Tacos (grillée, pané, cordon bleu, nuggets) · Méga frites · 3 Boissons · Mix (3 Poppers, 3 Nuggets, 3 Fingers)',
+        ar: '3 تاكوس (مشوي، مقلي، كوردون بلو، نوجيتس) · فريت ميقا · 3 مشروبات · ميكس (3 بوبرز، 3 نوجيتس، 3 فينجرز)',
+      },
+      price: 49, category: cats.boxes, supplements: [],
+    },
+    {
+      name:        { fr: 'Box Famille', ar: 'بوكس فاميل' },
+      description: {
+        fr: '4 Tacos (grillée, pané, cordon bleu, nuggets) · Méga frites · 4 Boissons · Mix (4 Poppers, 4 Nuggets, 4 Fingers)',
+        ar: '4 تاكوس (مشوي، مقلي، كوردون بلو، نوجيتس) · فريت ميقا · 4 مشروبات · ميكس (4 بوبرز، 4 نوجيتس، 4 فينجرز)',
+      },
+      price: 69.9, category: cats.boxes, supplements: [],
+    },
   ]
 
   for (const p of products) {
@@ -260,7 +287,7 @@ async function main() {
   console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ✅ Seed terminé avec succès !
-   Catégories  : ${catData.length}
+   Catégories  : ${catData.length} (Tacos, Burritos, Snacks, Boissons, Boxes)
    Suppléments : ${supplementData.length}
    Produits    : ${products.length}
    Admin login : admin@mrburritos.tn / admin123

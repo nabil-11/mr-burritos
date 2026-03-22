@@ -7,7 +7,7 @@ import Link from 'next/link'
 type PageProps = { searchParams: Promise<{ category?: string }> }
 
 const categoryIcons: Record<string, string> = {
-  tacos: '🌮', burritos: '🌯', snacks: '🍟', boissons: '🥤',
+  tacos: '🌮', burritos: '🌯', snacks: '🍟', boissons: '🥤', boxes: '📦',
 }
 
 async function getData(category?: string) {

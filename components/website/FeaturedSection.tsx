@@ -40,6 +40,7 @@ const tabIcons: Record<string, string> = {
   burritos: '🌯',
   snacks: '🍟',
   boissons: '🥤',
+  boxes: '📦',
 }
 
 export default function FeaturedSection({

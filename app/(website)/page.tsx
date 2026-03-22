@@ -30,6 +30,7 @@ const categoryStyles: Record<string, { emoji: string; gradient: string; text: st
   burritos: { emoji: '🌯', gradient: 'from-emerald-600 to-green-700', text: 'text-white', border: 'border-emerald-400/30' },
   snacks:   { emoji: '🍟', gradient: 'from-yellow-400 to-orange-500', text: 'text-black', border: 'border-yellow-300/40' },
   boissons: { emoji: '🥤', gradient: 'from-blue-500 to-cyan-600',     text: 'text-white', border: 'border-blue-400/30' },
+  boxes:    { emoji: '📦', gradient: 'from-purple-600 to-violet-700', text: 'text-white', border: 'border-purple-400/30' },
 }
 
 export default async function HomePage() {

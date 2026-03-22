@@ -24,7 +24,8 @@ function getCardStyle(name: string): { emoji: string; gradient: string } {
   if (n.includes('popper'))     return { emoji: '🧀', gradient: 'from-yellow-600 via-orange-500 to-amber-500' }
   if (n.includes('finger') || n.includes('chicken')) return { emoji: '🍗', gradient: 'from-amber-700 via-yellow-600 to-orange-500' }
   if (n.includes('mix') || n.includes('box'))        return { emoji: '🍱', gradient: 'from-red-800 via-orange-700 to-red-600' }
-  if (n.includes('soda') || n.includes('eau') || n.includes('boisson')) return { emoji: '🥤', gradient: 'from-blue-700 via-cyan-600 to-blue-500' }
+  if (n.includes('soda') || n.includes('eau') || n.includes('boisson') || n.includes('canette')) return { emoji: '🥤', gradient: 'from-blue-700 via-cyan-600 to-blue-500' }
+  if (n.includes('box famille') || n.includes('box chilla') || n.includes('box hob')) return { emoji: '📦', gradient: 'from-purple-800 via-violet-700 to-purple-600' }
   return { emoji: '🍴', gradient: 'from-gray-800 via-gray-700 to-gray-600' }
 }
 

@@ -9,10 +9,11 @@ import CartDrawer from './CartDrawer'
 
 const navLinks = [
   { href: '/', label: 'Accueil' },
-  { href: '/menu', label: 'Notre Menu' },
+  { href: '/menu', label: 'Menu' },
   { href: '/menu?category=tacos', label: 'Tacos' },
   { href: '/menu?category=burritos', label: 'Burritos' },
   { href: '/menu?category=snacks', label: 'Snacks' },
+  { href: '/menu?category=boxes', label: '📦 Boxes' },
 ]
 
 export default function WebNavbar() {
