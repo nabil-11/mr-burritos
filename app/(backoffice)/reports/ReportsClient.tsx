@@ -25,24 +25,30 @@ type ReportData = {
   byStatus: { pending: number; confirmed: number; preparing: number; ready: number; delivered: number }
 }
 
-type Preset = 'today' | 'week' | 'month' | 'thisMonth'
+type Preset = 'today' | 'week' | 'month' | 'thisMonth' | 'custom'
 
-function getDateRange(preset: Preset): { from: string; to: string } {
+function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
+
+function getDateRange(preset: Preset, customFrom?: string, customTo?: string): { from: string; to: string } {
   const now = new Date()
-  const today = now.toISOString().slice(0, 10)
+  const today = todayStr()
   if (preset === 'today') return { from: today, to: today }
   if (preset === 'week') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - 6)
+    const d = new Date(now); d.setDate(d.getDate() - 6)
     return { from: d.toISOString().slice(0, 10), to: today }
   }
   if (preset === 'month') {
-    const d = new Date(now)
-    d.setDate(d.getDate() - 29)
+    const d = new Date(now); d.setDate(d.getDate() - 29)
     return { from: d.toISOString().slice(0, 10), to: today }
   }
-  const first = new Date(now.getFullYear(), now.getMonth(), 1)
-  return { from: first.toISOString().slice(0, 10), to: today }
+  if (preset === 'thisMonth') {
+    const first = new Date(now.getFullYear(), now.getMonth(), 1)
+    return { from: first.toISOString().slice(0, 10), to: today }
+  }
+  // custom
+  return { from: customFrom || today, to: customTo || today }
 }
 
 const PRESETS: { key: Preset; label: string }[] = [
@@ -50,6 +56,7 @@ const PRESETS: { key: Preset; label: string }[] = [
   { key: 'week',      label: '7 derniers jours' },
   { key: 'month',     label: '30 derniers jours' },
   { key: 'thisMonth', label: 'Ce mois-ci' },
+  { key: 'custom',    label: 'Personnalisé' },
 ]
 
 const STATUS_LABELS: { key: keyof ReportData['byStatus']; label: string; color: string }[] = [
@@ -130,21 +137,32 @@ function HourlyChart({ byHour }: { byHour: ReportData['byHour'] }) {
 
 export default function ReportsClient() {
   const [preset, setPreset] = useState<Preset>('today')
-  const [data, setData] = useState<ReportData | null>(null)
+  const [customFrom, setCustomFrom] = useState(todayStr())
+  const [customTo, setCustomTo]     = useState(todayStr())
+  const [data, setData]   = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetchReport = useCallback(async (p: Preset) => {
+  const fetchReport = useCallback(async (p: Preset, from?: string, to?: string) => {
     setLoading(true)
     try {
-      const { from, to } = getDateRange(p)
-      const res = await fetch(`/api/reports?from=${from}&to=${to}`)
+      const range = getDateRange(p, from, to)
+      const res = await fetch(`/api/reports?from=${range.from}&to=${range.to}`)
       setData(await res.json())
     } finally {
       setLoading(false)
     }
   }, [])
 
-  useEffect(() => { fetchReport(preset) }, [preset, fetchReport])
+  // Auto-fetch when preset changes (except custom — needs explicit submit)
+  useEffect(() => {
+    if (preset !== 'custom') fetchReport(preset)
+  }, [preset, fetchReport])
+
+  const handleCustomSubmit = () => {
+    if (customFrom && customTo && customFrom <= customTo) {
+      fetchReport('custom', customFrom, customTo)
+    }
+  }
 
   const fmt = (n: number) => n.toFixed(2)
   const fmtDate = (d: string) =>
@@ -154,20 +172,56 @@ export default function ReportsClient() {
     <div className="space-y-6">
 
       {/* Period selector */}
-      <div className="flex flex-wrap gap-2">
-        {PRESETS.map((p) => (
-          <button
-            key={p.key}
-            onClick={() => setPreset(p.key)}
-            className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
-              preset === p.key
-                ? 'bg-[#F5A800] text-black shadow-sm'
-                : 'bg-white border border-gray-200 hover:bg-gray-50 text-gray-700'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+        <div className="flex flex-wrap gap-2">
+          {PRESETS.map((p) => (
+            <button
+              key={p.key}
+              onClick={() => setPreset(p.key)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                preset === p.key
+                  ? 'bg-[#F5A800] text-black shadow-sm'
+                  : 'bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Custom date range inputs */}
+        {preset === 'custom' && (
+          <div className="flex flex-wrap items-end gap-3 pt-1 border-t border-gray-100">
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Du</label>
+              <input
+                type="date"
+                value={customFrom}
+                max={customTo}
+                onChange={(e) => setCustomFrom(e.target.value)}
+                className="block border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Au</label>
+              <input
+                type="date"
+                value={customTo}
+                min={customFrom}
+                max={todayStr()}
+                onChange={(e) => setCustomTo(e.target.value)}
+                className="block border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+              />
+            </div>
+            <button
+              onClick={handleCustomSubmit}
+              disabled={!customFrom || !customTo || customFrom > customTo}
+              className="px-5 py-2 bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black font-semibold rounded-lg text-sm transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              Générer
+            </button>
+          </div>
+        )}
       </div>
 
       {loading && (
