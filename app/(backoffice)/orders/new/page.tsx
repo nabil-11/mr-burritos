@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/mongodb'
 import { Category, Product } from '@/lib/models/index'
+import { DeliveryCompany } from '@/lib/models/DeliveryCompany'
 import NewOrderForm from './NewOrderForm'
 
 export default async function NewOrderPage() {
@@ -10,6 +11,7 @@ export default async function NewOrderPage() {
     .populate('supplements')
     .populate('category')
     .lean()
+  const deliveryCompanies = await DeliveryCompany.find({ isActive: true }).sort({ name: 1 }).lean()
 
   return (
     <div>
@@ -22,6 +24,7 @@ export default async function NewOrderPage() {
       <NewOrderForm
         products={JSON.parse(JSON.stringify(products))}
         categories={JSON.parse(JSON.stringify(categories))}
+        deliveryCompanies={JSON.parse(JSON.stringify(deliveryCompanies))}
       />
     </div>
   )

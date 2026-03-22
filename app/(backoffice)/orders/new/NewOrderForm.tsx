@@ -28,6 +28,12 @@ interface Category {
   slug: string
 }
 
+interface DeliveryCompany {
+  _id: string
+  name: string
+  commission: number
+}
+
 interface OrderItem {
   uid: string
   productId: string
@@ -40,9 +46,11 @@ interface OrderItem {
 export default function NewOrderForm({
   products,
   categories,
+  deliveryCompanies,
 }: {
   products: Product[]
   categories: Category[]
+  deliveryCompanies: DeliveryCompany[]
 }) {
   const router = useRouter()
 
@@ -52,7 +60,10 @@ export default function NewOrderForm({
   const [expandedProduct, setExpandedProduct] = useState<string | null>(null)
   const [pendingSupps, setPendingSupps] = useState<Record<string, Supplement[]>>({})
   const [type, setType] = useState<'delivery' | 'pickup'>('pickup')
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>('')
   const [loading, setLoading] = useState(false)
+
+  const selectedCompany = deliveryCompanies.find((c) => c._id === selectedCompanyId) ?? null
 
   // ── Filtered products ──────────────────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -102,9 +113,13 @@ export default function NewOrderForm({
     0
   )
 
+  const commissionAmount = selectedCompany ? total * (selectedCompany.commission / 100) : 0
+  const netAmount = total - commissionAmount
+
   // ── Submit ─────────────────────────────────────────────────────────────────
   const handleSubmit = async () => {
     if (items.length === 0) return toast.error('Aucun article dans la commande')
+    if (type === 'delivery' && !selectedCompanyId) return toast.error('Sélectionnez une société de livraison')
 
     setLoading(true)
     try {
@@ -127,6 +142,9 @@ export default function NewOrderForm({
           total,
           type,
           status: 'confirmed',
+          deliveryCompany: selectedCompany
+            ? { companyId: selectedCompany._id, name: selectedCompany.name, commission: selectedCompany.commission }
+            : { companyId: null, name: '', commission: 0 },
         }),
       })
       if (!res.ok) throw new Error()
@@ -257,13 +275,60 @@ export default function NewOrderForm({
           <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Type</p>
           <div className="grid grid-cols-2 gap-2">
             {(['pickup', 'delivery'] as const).map((t) => (
-              <button key={t} onClick={() => setType(t)}
+              <button key={t} onClick={() => { setType(t); if (t === 'pickup') setSelectedCompanyId('') }}
                 className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 font-semibold text-xs transition-all ${type === t ? 'border-[#F5A800] bg-[#F5A800]/5 text-[#1A1A1A]' : 'border-gray-200 text-gray-400 hover:border-gray-300'}`}>
                 <span className="text-xl">{t === 'pickup' ? '🏪' : '🛵'}</span>
                 {t === 'pickup' ? 'À emporter' : 'Livraison'}
               </button>
             ))}
           </div>
+
+          {/* Delivery company selector */}
+          {type === 'delivery' && (
+            <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">Société de livraison</p>
+              {deliveryCompanies.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Aucune société configurée</p>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {deliveryCompanies.map((company) => (
+                    <button
+                      key={company._id}
+                      onClick={() => setSelectedCompanyId(company._id)}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                        selectedCompanyId === company._id
+                          ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
+                          : 'border-gray-200 text-gray-600 hover:border-[#1A1A1A]'
+                      }`}
+                    >
+                      {company.name}
+                      <span className={`ml-1.5 font-black ${selectedCompanyId === company._id ? 'text-[#F5A800]' : 'text-orange-500'}`}>
+                        {company.commission}%
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Commission breakdown */}
+              {selectedCompany && items.length > 0 && (
+                <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-xs space-y-1">
+                  <div className="flex justify-between text-gray-600">
+                    <span>Total commande</span>
+                    <span className="font-bold">{total.toFixed(2)} DT</span>
+                  </div>
+                  <div className="flex justify-between text-orange-600">
+                    <span>Commission {selectedCompany.name} ({selectedCompany.commission}%)</span>
+                    <span className="font-bold">− {commissionAmount.toFixed(2)} DT</span>
+                  </div>
+                  <div className="flex justify-between text-green-700 font-black border-t border-orange-200 pt-1 mt-1">
+                    <span>Vous recevez</span>
+                    <span>{netAmount.toFixed(2)} DT</span>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Cart */}
@@ -320,6 +385,12 @@ export default function NewOrderForm({
                 <span>Total</span>
                 <span className="text-[#F5A800]">{total.toFixed(2)} DT</span>
               </div>
+              {selectedCompany && (
+                <div className="flex justify-between text-xs text-green-700 font-bold">
+                  <span>Net après commission</span>
+                  <span>{netAmount.toFixed(2)} DT</span>
+                </div>
+              )}
             </div>
           )}
 

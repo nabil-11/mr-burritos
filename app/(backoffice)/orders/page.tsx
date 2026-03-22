@@ -54,6 +54,16 @@ export default async function OrdersPage() {
                   </td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{order.type === 'delivery' ? '🛵 Livraison' : '🏠 À emporter'}</Badge>
+                    {(() => {
+                      const dc = order.deliveryCompany as Record<string, string | number> | null | undefined
+                      if (order.type === 'delivery' && dc?.name) {
+                        return (
+                          <p className="text-[10px] text-orange-600 font-bold mt-1">
+                            {String(dc.name)} ({String(dc.commission)}%)
+                          </p>
+                        )
+                      }
+                    })()}
                   </td>
                   <td className="px-4 py-3 font-bold text-[#F5A800]">{(order.total as number).toFixed(2)} DT</td>
                   <td className="px-4 py-3">

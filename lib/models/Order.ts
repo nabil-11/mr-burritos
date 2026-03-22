@@ -40,6 +40,11 @@ const OrderSchema = new Schema(
       enum: ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'],
       default: 'pending',
     },
+    deliveryCompany: {
+      companyId: { type: Schema.Types.ObjectId, ref: 'DeliveryCompany', default: null },
+      name: { type: String, default: '' },
+      commission: { type: Number, default: 0 },
+    },
     notes: { type: String, default: '' },
   },
   { timestamps: true }
