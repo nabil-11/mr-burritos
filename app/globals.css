@@ -48,15 +48,21 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
+/* Mr. Burritos brand colors */
 :root {
+  --brand-yellow: #F5A800;
+  --brand-dark: #1A1A1A;
+  --brand-orange: #FF6B00;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.145 0 0);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
+  /* Brand yellow as primary */
+  --primary: oklch(0.75 0.18 75);
+  --primary-foreground: oklch(0.1 0 0);
   --secondary: oklch(0.97 0 0);
   --secondary-foreground: oklch(0.205 0 0);
   --muted: oklch(0.97 0 0);
