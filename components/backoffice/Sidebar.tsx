@@ -2,18 +2,19 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, UtensilsCrossed, Tag, PlusCircle, ShoppingBag, CalendarDays, Users, Settings, LogOut } from 'lucide-react'
+import { LayoutDashboard, UtensilsCrossed, Tag, PlusCircle, ShoppingBag, CalendarDays, Users, Settings, LogOut, ClipboardPlus } from 'lucide-react'
 import { toast } from 'sonner'
 
 const nav = [
-  { href: '/dashboard', label: 'Tableau de bord', icon: LayoutDashboard },
-  { href: '/products', label: 'Produits', icon: UtensilsCrossed },
-  { href: '/categories', label: 'Catégories', icon: Tag },
-  { href: '/supplements', label: 'Suppléments', icon: PlusCircle },
-  { href: '/orders', label: 'Commandes', icon: ShoppingBag },
-  { href: '/reservations', label: 'Réservations', icon: CalendarDays },
-  { href: '/users', label: 'Utilisateurs', icon: Users },
-  { href: '/configuration', label: 'Configuration', icon: Settings },
+  { href: '/dashboard',    label: 'Tableau de bord', icon: LayoutDashboard },
+  { href: '/orders/new',   label: 'Nouvelle commande', icon: ClipboardPlus, highlight: true },
+  { href: '/orders',       label: 'Commandes',        icon: ShoppingBag },
+  { href: '/products',     label: 'Produits',         icon: UtensilsCrossed },
+  { href: '/categories',   label: 'Catégories',       icon: Tag },
+  { href: '/supplements',  label: 'Suppléments',      icon: PlusCircle },
+  { href: '/reservations', label: 'Réservations',     icon: CalendarDays },
+  { href: '/users',        label: 'Utilisateurs',     icon: Users },
+  { href: '/configuration',label: 'Configuration',    icon: Settings },
 ]
 
 export default function Sidebar() {
@@ -33,8 +34,20 @@ export default function Sidebar() {
         <p className="text-white/40 text-xs">Backoffice</p>
       </div>
       <nav className="flex-1 py-4 space-y-1 px-3 overflow-y-auto">
-        {nav.map(({ href, label, icon: Icon }) => {
-          const active = pathname === href || pathname.startsWith(href + '/')
+        {nav.map(({ href, label, icon: Icon, highlight }) => {
+          const active = pathname === href
+          if (highlight) {
+            return (
+              <Link
+                key={href}
+                href={href}
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${active ? 'bg-[#F5A800] text-black' : 'bg-[#F5A800]/15 text-[#F5A800] hover:bg-[#F5A800]/25'}`}
+              >
+                <Icon size={16} />
+                {label}
+              </Link>
+            )
+          }
           return (
             <Link
               key={href}

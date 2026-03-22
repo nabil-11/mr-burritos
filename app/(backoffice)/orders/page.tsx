@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { Badge } from '@/components/ui/badge'
 import OrderActions from './OrderActions'
+import Link from 'next/link'
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -23,7 +24,13 @@ export default async function OrdersPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold mb-6">Commandes</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold">Commandes</h1>
+        <Link href="/orders/new"
+          className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-all hover:scale-105">
+          + Nouvelle commande
+        </Link>
+      </div>
       <div className="bg-white rounded-xl border overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-gray-50 border-b">
