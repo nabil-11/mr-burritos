@@ -13,6 +13,8 @@ const navLinks = [
   { href: '/menu?category=tacos', label: 'Tacos' },
   { href: '/menu?category=burritos', label: 'Burritos' },
   { href: '/menu?category=snacks', label: 'Snacks' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/avis', label: '⭐ Avis' },
   { href: '/menu?category=boxes', label: '📦 Boxes' },
 ]
 
