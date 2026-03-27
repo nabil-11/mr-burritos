@@ -12,7 +12,8 @@ export default async function EditPostPage({ params }: Props) {
   if (!post) notFound()
 
   const p = post as {
-    _id: unknown; slug: string
+    _id: string
+    slug: string
     title: { fr: string; ar: string }
     excerpt: { fr: string; ar: string }
     content: { fr: string; ar: string }

@@ -57,25 +57,25 @@ export default async function PrintOrderPage({ params }: Props) {
                 <span className="font-bold">{String((o.deliveryCompany as Record<string, unknown>).name)} ({String((o.deliveryCompany as Record<string, unknown>).commission)}%)</span>
               </div>
             )}
-            {o.reference && String(o.reference) && (
+            {!!o.reference && !!String(o.reference) && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Référence</span>
                 <span className="font-mono font-bold">{String(o.reference)}</span>
               </div>
             )}
-            {customer.name && customer.name !== 'Comptoir' && customer.name !== 'Livraison' && (
+            {!!(customer.name && customer.name !== 'Comptoir' && customer.name !== 'Livraison') && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Client</span>
                 <span>{customer.name}</span>
               </div>
             )}
-            {customer.phone && customer.phone !== '—' && (
+            {!!(customer.phone && customer.phone !== '—') && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Tél.</span>
                 <span>{customer.phone}</span>
               </div>
             )}
-            {customer.address && (
+            {!!customer.address && (
               <div className="flex justify-between gap-4">
                 <span className="text-gray-500 shrink-0">Adresse</span>
                 <span className="text-right">{customer.address}</span>
@@ -111,7 +111,7 @@ export default async function PrintOrderPage({ params }: Props) {
                         + {supps.map((s) => s.name.fr).join(', ')}
                       </div>
                     )}
-                    {String(item.notes) && (
+                    {!!String(item.notes) && (
                       <div className="text-[10px] text-gray-400 pl-4 italic">{String(item.notes)}</div>
                     )}
                   </div>

@@ -200,7 +200,6 @@ export default async function HomePage() {
                 <DirectionButton 
                   lat={contactInfo.lat} 
                   lng={contactInfo.lng} 
-                  address={contactInfo.location}
                 />
               </div>
             </div>
