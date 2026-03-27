@@ -51,7 +51,7 @@ export default async function PrintOrderPage({ params }: Props) {
               <span className="text-gray-500">Type</span>
               <span className="font-bold">{o.type === 'delivery' ? '🛵 Livraison' : '🏪 À emporter'}</span>
             </div>
-            {o.type === 'delivery' && (o.deliveryCompany as Record<string, unknown>)?.name && (
+            {o.type === 'delivery' && !!((o.deliveryCompany as Record<string, unknown>)?.name) && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Plateforme</span>
                 <span className="font-bold">{String((o.deliveryCompany as Record<string, unknown>).name)} ({String((o.deliveryCompany as Record<string, unknown>).commission)}%)</span>
