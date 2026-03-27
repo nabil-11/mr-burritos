@@ -51,6 +51,7 @@ export default function FeaturedSection({
   categories: Category[]
 }) {
   const [active, setActive] = useState('all')
+  const [mounted, setMounted] = useState(false)
   const tabsRef = useRef<HTMLDivElement>(null)
   const [showLeftArrow, setShowLeftArrow] = useState(false)
   const [showRightArrow, setShowRightArrow] = useState(true)
@@ -82,6 +83,11 @@ export default function FeaturedSection({
       return () => tabs.removeEventListener('scroll', handleTabsScroll)
     }
   }, [categories])
+
+  // Set mounted state for hydration
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const scrollTabs = (direction: 'left' | 'right') => {
     if (!tabsRef.current) return
@@ -175,30 +181,47 @@ export default function FeaturedSection({
 
         {/* ── Horizontal carousel ────────────────────── */}
         <div className="relative">
-          <Carousel opts={{ align: 'start', loop: true }}>
-            <CarouselContent className="-ml-4">
+          {mounted ? (
+            <Carousel opts={{ align: 'start', loop: true }}>
+              <CarouselContent className="-ml-4">
+                {filtered.length === 0 ? (
+                  <CarouselItem className="pl-4">
+                    <div className="text-center py-16">
+                      <p className="text-gray-400 text-lg">Aucun produit dans cette catégorie.</p>
+                    </div>
+                  </CarouselItem>
+                ) : (
+                  filtered.map((p) => (
+                    <CarouselItem
+                      key={p._id}
+                      className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
+                    >
+                      <ProductCard product={p} />
+                    </CarouselItem>
+                  ))
+                )}
+              </CarouselContent>
+
+              {/* Navigation arrows — positioned at edges */}
+              <CarouselPrevious className="left-0 top-1/2 -translate-y-1/2 bg-white hover:bg-[#F5A800] border-2 border-gray-100 hover:border-[#F5A800] text-[#1A1A1A] hover:text-black shadow-xl transition-all z-10 w-12 h-12" />
+              <CarouselNext className="right-0 top-1/2 -translate-y-1/2 bg-white hover:bg-[#F5A800] border-2 border-gray-100 hover:border-[#F5A800] text-[#1A1A1A] hover:text-black shadow-xl transition-all z-10 w-12 h-12" />
+            </Carousel>
+          ) : (
+            /* Static fallback for SSR to prevent hydration mismatch */
+            <div className="flex gap-4 overflow-x-auto pb-4 -ml-4 px-4">
               {filtered.length === 0 ? (
-                <CarouselItem className="pl-4">
-                  <div className="text-center py-16">
-                    <p className="text-gray-400 text-lg">Aucun produit dans cette catégorie.</p>
-                  </div>
-                </CarouselItem>
+                <div className="text-center py-16">
+                  <p className="text-gray-400 text-lg">Aucun produit dans cette catégorie.</p>
+                </div>
               ) : (
                 filtered.map((p) => (
-                  <CarouselItem
-                    key={p._id}
-                    className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3 lg:basis-1/4"
-                  >
+                  <div key={p._id} className="pl-4 basis-4/5 sm:basis-1/2 md:basis-1/3 lg:basis-1/4">
                     <ProductCard product={p} />
-                  </CarouselItem>
+                  </div>
                 ))
               )}
-            </CarouselContent>
-
-            {/* Navigation arrows — positioned at edges */}
-            <CarouselPrevious className="left-0 top-1/2 -translate-y-1/2 bg-white hover:bg-[#F5A800] border-2 border-gray-100 hover:border-[#F5A800] text-[#1A1A1A] hover:text-black shadow-xl transition-all z-10 w-12 h-12" />
-            <CarouselNext className="right-0 top-1/2 -translate-y-1/2 bg-white hover:bg-[#F5A800] border-2 border-gray-100 hover:border-[#F5A800] text-[#1A1A1A] hover:text-black shadow-xl transition-all z-10 w-12 h-12" />
-          </Carousel>
+            </div>
+          )}
         </div>
 
         {/* Mobile "Voir tout" link */}
