@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useState } from 'react'
 import { useCart, CartSupplement } from '@/contexts/CartContext'
-import { Plus, Check, ChevronDown, Flame } from 'lucide-react'
+import { Plus, Check, ChevronDown, Flame, Heart } from 'lucide-react'
 import { toast } from 'sonner'
 
 interface Product {
@@ -34,6 +34,7 @@ export default function ProductCard({ product }: { product: Product }) {
   const [selected, setSelected] = useState<CartSupplement[]>([])
   const [added, setAdded] = useState(false)
   const [showSupps, setShowSupps] = useState(false)
+  const [isHovered, setIsHovered] = useState(false)
 
   const sauces = product.supplements?.filter((s) => (s as unknown as { type: string }).type === 'sauce') ?? []
   const extras = product.supplements?.filter((s) => (s as unknown as { type: string }).type !== 'sauce') ?? []
@@ -55,88 +56,112 @@ export default function ProductCard({ product }: { product: Product }) {
   const { emoji, gradient } = getCardStyle(product.name.fr)
 
   return (
-    <div className="group bg-white rounded-2xl shadow-sm hover:shadow-2xl border border-gray-100 hover:border-[#F5A800]/40 hover:-translate-y-1.5 transition-all duration-300 overflow-hidden flex flex-col">
+    <div 
+      className="group bg-white rounded-2xl shadow-sm hover:shadow-2xl border border-gray-100 hover:border-[#F5A800]/40 hover:-translate-y-2 transition-all duration-300 overflow-hidden flex flex-col"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
 
-      {/* ── Image / Placeholder ─────────────────────────── */}
-      <div className={`relative h-48 w-full overflow-hidden bg-linear-to-br ${gradient}`}>
+      {/* ── Cinematic Image Area ──────────────────────────── */}
+      <div className={`relative h-56 w-full overflow-hidden bg-linear-to-br ${gradient}`}>
         {product.image ? (
-          <Image
-            src={product.image}
-            alt={product.name.fr}
-            fill
-            sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-            className="object-cover group-hover:scale-110 transition-transform duration-500"
-          />
+          <>
+            <Image
+              src={product.image}
+              alt={product.name.fr}
+              fill
+              sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+              className={`object-cover transition-all duration-700 ${isHovered ? 'scale-110' : 'scale-100'}`}
+            />
+            {/* Cinematic gradient overlays */}
+            <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-b from-transparent via-black/10 to-black/40" />
+          </>
         ) : (
-          <div className="h-full w-full flex items-center justify-center">
-            <span className="text-7xl drop-shadow-xl select-none group-hover:scale-110 transition-transform duration-300">
-              {emoji}
-            </span>
-          </div>
+          <>
+            <div className="absolute inset-0 bg-linear-to-br" />
+            <div className="h-full w-full flex items-center justify-center">
+              <span className={`text-8xl drop-shadow-2xl transition-all duration-500 ${isHovered ? 'scale-125 rotate-3' : 'scale-100'}`}>
+                {emoji}
+              </span>
+            </div>
+          </>
         )}
 
-        {/* Gradient overlay */}
-        <div className="absolute inset-0 bg-linear-to-t from-black/60 via-black/10 to-transparent" />
-
-        {/* Popular chip */}
-        <div className="absolute top-2.5 left-2.5">
-          <span className="flex items-center gap-1 bg-black/50 backdrop-blur-sm text-white text-[10px] font-bold px-2.5 py-1 rounded-full border border-white/10">
-            <Flame size={9} className="text-[#F5A800]" /> Populaire
+        {/* Top badges - floating style */}
+        <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10">
+            <Flame size={10} className="text-[#F5A800]" /> Populaire
           </span>
         </div>
 
-        {/* Price badge */}
-        <div className="absolute bottom-2.5 right-2.5">
-          <span className="bg-[#F5A800] text-black text-xs font-black px-3 py-1.5 rounded-full shadow-lg shadow-black/30">
+        {/* Wishlist heart button */}
+        <button className="absolute top-3 right-3 w-9 h-9 rounded-full bg-white/20 backdrop-blur-md flex items-center justify-center hover:bg-[#F5A800] hover:scale-110 transition-all group/heart">
+          <Heart size={16} className="text-white group-hover/heart:text-black" />
+        </button>
+
+        {/* Price badge - cinematic bottom right */}
+        <div className="absolute bottom-4 right-4">
+          <span className="bg-[#F5A800] text-black text-xs font-black px-4 py-2 rounded-full shadow-xl shadow-black/30">
             {product.price.toFixed(2)} DT
           </span>
         </div>
+
+        {/* Animated shine effect on hover */}
+        <div className={`absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full transition-transform duration-1000 ${isHovered ? 'translate-x-full' : ''}`} />
       </div>
 
-      {/* ── Body ────────────────────────────────────────── */}
-      <div className="p-4 flex-1 flex flex-col gap-3">
+      {/* ── Refined Body ────────────────────────────────────── */}
+      <div className="p-5 flex-1 flex flex-col gap-4">
 
         {/* Name + description */}
         <div>
-          <h3 className="font-black text-sm text-[#1A1A1A] leading-snug">{product.name.fr}</h3>
+          <h3 className="font-black text-[#1A1A1A] text-base leading-tight group-hover:text-[#F5A800] transition-colors">
+            {product.name.fr}
+          </h3>
           {product.description?.fr && (
-            <p className="text-xs text-gray-400 mt-1 line-clamp-2 leading-relaxed">{product.description.fr}</p>
+            <p className="text-gray-400 text-xs mt-2 line-clamp-2 leading-relaxed">
+              {product.description.fr}
+            </p>
           )}
         </div>
 
-        {/* Supplements — collapsible */}
+        {/* Supplements — collapsible with smooth animation */}
         {hasSupps && (
           <div className="text-left">
             <button
               onClick={() => setShowSupps(!showSupps)}
-              className="flex items-center gap-1.5 text-[11px] font-bold text-gray-400 hover:text-[#F5A800] transition-colors w-full group/btn"
+              className="flex items-center gap-2 text-[11px] font-bold text-gray-400 hover:text-[#F5A800] transition-colors w-full group/btn"
             >
-              <ChevronDown size={13} className={`transition-transform duration-200 ${showSupps ? 'rotate-180' : ''}`} />
+              <ChevronDown size={14} className={`transition-transform duration-200 ${showSupps ? 'rotate-180' : ''}`} />
               <span>Personnaliser</span>
               {selected.length > 0 && (
-                <span className="ml-auto bg-[#F5A800] text-black text-[10px] font-black px-2 py-0.5 rounded-full">
+                <span className="ml-auto bg-[#F5A800] text-black text-[10px] font-black px-2.5 py-0.5 rounded-full">
                   {selected.length} choix
                 </span>
               )}
             </button>
 
             {showSupps && (
-              <div className="mt-2.5 space-y-3 border-t border-gray-100 pt-2.5">
+              <div className="mt-3 space-y-4 border-t border-gray-100 pt-4 animate-in slide-in-from-top-2 duration-300">
                 {sauces.length > 0 && (
                   <div>
-                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">
+                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2.5">
                       🥫 Sauces incluses
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {sauces.map((sup) => {
                         const active = !!selected.find((s) => s._id === sup._id)
                         return (
-                          <button key={sup._id} onClick={() => toggleSup(sup)}
-                            className={`text-[10px] px-2.5 py-1 rounded-full border font-semibold transition-all ${
+                          <button 
+                            key={sup._id} 
+                            onClick={() => toggleSup(sup)}
+                            className={`text-[10px] px-3 py-1.5 rounded-full border font-semibold transition-all duration-200 ${
                               active
-                                ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-sm scale-105'
-                                : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/60 hover:text-[#F5A800]'
-                            }`}>
+                                ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md scale-105'
+                                : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/60 hover:text-[#F5A800] hover:bg-gray-50'
+                            }`}
+                          >
                             {sup.name.fr}
                           </button>
                         )
@@ -147,22 +172,25 @@ export default function ProductCard({ product }: { product: Product }) {
 
                 {extras.length > 0 && (
                   <div>
-                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2">
+                    <p className="text-[9px] font-black text-gray-300 uppercase tracking-widest mb-2.5">
                       ✨ Extras
                     </p>
-                    <div className="flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5">
                       {extras.map((sup) => {
                         const active = !!selected.find((s) => s._id === sup._id)
                         return (
-                          <button key={sup._id} onClick={() => toggleSup(sup)}
-                            className={`text-[10px] px-2.5 py-1 rounded-full border font-semibold transition-all ${
+                          <button 
+                            key={sup._id} 
+                            onClick={() => toggleSup(sup)}
+                            className={`text-[10px] px-3 py-1.5 rounded-full border font-semibold transition-all duration-200 ${
                               active
-                                ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-sm scale-105'
-                                : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/60 hover:text-[#F5A800]'
-                            }`}>
+                                ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md scale-105'
+                                : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/60 hover:text-[#F5A800] hover:bg-gray-50'
+                            }`}
+                          >
                             {sup.name.fr}
                             {sup.price > 0 && (
-                              <span className={`ml-1 font-black ${active ? 'text-black/70' : 'text-[#F5A800]'}`}>
+                              <span className={`ml-1.5 font-black ${active ? 'text-black/70' : 'text-[#F5A800]'}`}>
                                 +{sup.price} DT
                               </span>
                             )}
@@ -177,25 +205,35 @@ export default function ProductCard({ product }: { product: Product }) {
           </div>
         )}
 
-        {/* ── Footer: price + add button ─────────────────── */}
-        <div className="flex items-center justify-between mt-auto pt-3 border-t border-gray-100">
+        {/* ── Footer: price + add button ──────────────────────── */}
+        <div className="flex items-center justify-between mt-auto pt-4 border-t border-gray-100">
           <div className="leading-none">
-            <p className="font-black text-[#F5A800] text-base">
+            <p className="font-black text-[#F5A800] text-lg">
               {(product.price + suppTotal).toFixed(2)} DT
             </p>
             {suppTotal > 0 && (
-              <p className="text-[9px] text-gray-400 mt-0.5">+{suppTotal.toFixed(2)} options</p>
+              <p className="text-[10px] text-gray-400 mt-1">+{suppTotal.toFixed(2)} options</p>
             )}
           </div>
           <button
             onClick={handleAdd}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-black transition-all shadow-sm ${
+            className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-black transition-all duration-300 shadow-md ${
               added
-                ? 'bg-green-500 text-white scale-95 shadow-green-200'
+                ? 'bg-green-500 text-white scale-95 shadow-green-300'
                 : 'bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black hover:scale-105 active:scale-95 shadow-black/10'
             }`}
           >
-            {added ? <><Check size={13} /> Ajouté !</> : <><Plus size={13} /> Ajouter</>}
+            {added ? (
+              <>
+                <Check size={14} /> 
+                <span>Ajouté !</span>
+              </>
+            ) : (
+              <>
+                <Plus size={14} /> 
+                <span>Ajouter</span>
+              </>
+            )}
           </button>
         </div>
       </div>

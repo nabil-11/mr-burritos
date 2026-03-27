@@ -4,7 +4,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Category, Product } from '@/lib/models/index'
 import HeroCarousel from '@/components/website/HeroCarousel'
 import FeaturedSection from '@/components/website/FeaturedSection'
-import { Flame, Clock, Star, Truck } from 'lucide-react'
+import { Flame, Clock, Star, Truck, Utensils, Shield, Heart, MapPin } from 'lucide-react'
 
 async function getData() {
   await connectDB()
@@ -18,11 +18,18 @@ async function getData() {
   return { categories, featured }
 }
 
-const badges = [
-  { icon: Flame, label: 'Fait Maison', sub: 'Chaque jour' },
-  { icon: Clock, label: 'Livraison Rapide', sub: '30 min' },
-  { icon: Star, label: 'Noté 5 ★', sub: 'Par nos clients' },
-  { icon: Truck, label: 'Livraison & Emporter', sub: 'Au choix' },
+const stats = [
+  { value: '10K+', label: 'Clients heureux', icon: Heart },
+  { value: '30min', label: 'Livraison', icon: Clock },
+  { value: '5★', label: 'Note moyenne', icon: Star },
+  { value: '100%', label: 'Fait maison', icon: Utensils },
+]
+
+const uspItems = [
+  { icon: Flame, title: 'Fait Maison', desc: 'Préparé chaque jour avec amour', color: 'text-orange-500' },
+  { icon: Clock, title: 'Rapide', desc: 'Livré en 30 minutes chrono', color: 'text-blue-500' },
+  { icon: Shield, title: 'Frais', desc: 'Ingrédients sélectionnés avec soin', color: 'text-green-500' },
+  { icon: Truck, title: 'Livraison', desc: 'Partout à Tunis et banlieue', color: 'text-purple-500' },
 ]
 
 const categoryStyles: Record<string, { emoji: string; gradient: string; text: string; border: string }> = {
@@ -44,22 +51,25 @@ export default async function HomePage() {
       {/* ── HERO CAROUSEL ───────────────────────────────────── */}
       <HeroCarousel />
 
-      {/* ── USP BADGES ──────────────────────────────────────── */}
-      <section className="bg-[#F5A800] border-b border-black/5">
-        <div className="max-w-6xl mx-auto px-4 py-4 grid grid-cols-2 md:grid-cols-4 gap-3">
-          {badges.map(({ icon: Icon, label, sub }) => (
-            <div key={label} className="flex items-center gap-3">
-              <div className="bg-black/10 rounded-full p-2.5 shrink-0">
-                <Icon size={16} className="text-black" />
+      {/* ── STATS SECTION ────────────────────────────────────── */}
+      <section className="bg-[#1A1A1A] py-8 px-4">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+            {stats.map(({ value, label, icon: Icon }) => (
+              <div key={label} className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-full bg-[#F5A800]/20 flex items-center justify-center shrink-0">
+                  <Icon size={22} className="text-[#F5A800]" />
+                </div>
+                <div>
+                  <p className="text-white font-black text-xl leading-none">{value}</p>
+                  <p className="text-white/50 text-xs mt-1">{label}</p>
+                </div>
               </div>
-              <div>
-                <p className="font-extrabold text-black text-sm leading-none">{label}</p>
-                <p className="text-black/60 text-xs mt-0.5">{sub}</p>
-              </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </section>
+
 
       {/* ── CATEGORIES ──────────────────────────────────────── */}
       {categories.length > 0 && (
@@ -106,24 +116,50 @@ export default async function HomePage() {
       <FeaturedSection products={serialized} categories={serializedCats} />
 
       {/* ── PROMO BANNER ────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-[#1A1A1A] py-16 px-4">
-        <div className="absolute inset-0 opacity-20">
+      <section className="relative overflow-hidden bg-[#1A1A1A] py-20 px-4">
+        <div className="absolute inset-0 opacity-30">
           <Image src="/banner.png" alt="" fill className="object-cover" sizes="100vw" />
         </div>
+        
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-[#F5A800] rounded-full blur-[100px] opacity-30" />
+        <div className="absolute bottom-0 right-0 w-40 h-40 bg-[#F5A800] rounded-full blur-[120px] opacity-20" />
+        
         <div className="relative z-10 max-w-3xl mx-auto text-center">
-          <p className="text-[#F5A800] font-bold text-xs uppercase tracking-widest mb-3">Offre Spéciale</p>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white mb-4 leading-tight">
+          <div className="inline-block bg-[#F5A800] text-black text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest mb-4">
+            Offre Spéciale
+          </div>
+          <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 leading-tight">
             Upgrade XL<br />
             <span className="text-[#F5A800]">+4.5 DT seulement</span>
           </h2>
-          <p className="text-white/60 mb-8 text-base">
-            Rendez votre Tacos encore plus grand. Parce que plus c&apos;est gros, mieux c&apos;est !
+          <p className="text-white/60 mb-10 text-lg max-w-md mx-auto">
+            Rendez votre Tacos encore plus grand. Parce que plus c'est gros, mieux c'est !
           </p>
           <Link
             href="/menu?category=tacos"
-            className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-extrabold px-8 py-4 rounded-full transition-all hover:scale-105 shadow-lg text-sm"
+            className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-8 py-4 rounded-full transition-all hover:scale-105 shadow-xl text-sm"
           >
             Commander un Tacos →
+          </Link>
+        </div>
+      </section>
+
+      {/* ── LOCATION CTA ────────────────────────────────────── */}
+      <section className="py-16 px-4 bg-white">
+        <div className="max-w-2xl mx-auto text-center">
+          <div className="w-16 h-16 rounded-full bg-[#F5A800]/20 flex items-center justify-center mx-auto mb-6">
+            <MapPin size={32} className="text-[#F5A800]" />
+          </div>
+          <h3 className="text-2xl font-black text-[#1A1A1A] mb-3">Nous trouver</h3>
+          <p className="text-gray-500 mb-8 text-sm">
+            Rendez-nous visite ou commandez en ligne — on livre dans tout Tunis !
+          </p>
+          <Link
+            href="/menu"
+            className="inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black font-black px-6 py-3 rounded-full transition-all text-sm"
+          >
+            Commander maintenant
           </Link>
         </div>
       </section>
