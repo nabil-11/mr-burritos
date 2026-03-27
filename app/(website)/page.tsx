@@ -4,7 +4,8 @@ import { connectDB } from '@/lib/mongodb'
 import { Category, Product } from '@/lib/models/index'
 import HeroCarousel from '@/components/website/HeroCarousel'
 import FeaturedSection from '@/components/website/FeaturedSection'
-import { Flame, Clock, Star, Truck, Utensils, Shield, Heart, MapPin } from 'lucide-react'
+import { Flame, Clock, Star, Truck, Utensils, Shield, Heart, MapPin, Phone, Mail } from 'lucide-react'
+import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 
 async function getData() {
   await connectDB()
@@ -32,6 +33,14 @@ const uspItems = [
   { icon: Truck, title: 'Livraison', desc: 'Partout à Tunis et banlieue', color: 'text-purple-500' },
 ]
 
+const contactInfo = {
+  phone: '+216 93822570',
+  email: 'mr.burritos.nasr@gmail.com',
+  location: 'V557+F6R, Ariana',
+  lat: 36.8588769779779,
+  lng: 10.16311086959374,
+}
+
 const categoryStyles: Record<string, { emoji: string; gradient: string; text: string; border: string }> = {
   tacos:    { emoji: '🌮', gradient: 'from-orange-500 to-amber-600',  text: 'text-white', border: 'border-orange-400/30' },
   burritos: { emoji: '🌯', gradient: 'from-emerald-600 to-green-700', text: 'text-white', border: 'border-emerald-400/30' },
@@ -51,24 +60,6 @@ export default async function HomePage() {
       {/* ── HERO CAROUSEL ───────────────────────────────────── */}
       <HeroCarousel />
 
-      {/* ── STATS SECTION ────────────────────────────────────── */}
-      <section className="bg-[#1A1A1A] py-8 px-4">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {stats.map(({ value, label, icon: Icon }) => (
-              <div key={label} className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#F5A800]/20 flex items-center justify-center shrink-0">
-                  <Icon size={22} className="text-[#F5A800]" />
-                </div>
-                <div>
-                  <p className="text-white font-black text-xl leading-none">{value}</p>
-                  <p className="text-white/50 text-xs mt-1">{label}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
 
       {/* ── CATEGORIES ──────────────────────────────────────── */}
@@ -145,22 +136,75 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── LOCATION CTA ────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-white">
-        <div className="max-w-2xl mx-auto text-center">
-          <div className="w-16 h-16 rounded-full bg-[#F5A800]/20 flex items-center justify-center mx-auto mb-6">
-            <MapPin size={32} className="text-[#F5A800]" />
+      {/* ── CONTACT CTA WITH MAP ───────────────────────────────── */}
+      <section className="py-16 px-4 bg-gray-50">
+        <div className="max-w-6xl mx-auto">
+          <div className="text-center mb-10">
+            <p className="text-[#F5A800] text-xs font-bold uppercase tracking-widest mb-2">Nous trouver</p>
+            <h2 className="text-3xl font-black text-[#1A1A1A]">Venez nous rendre visite</h2>
           </div>
-          <h3 className="text-2xl font-black text-[#1A1A1A] mb-3">Nous trouver</h3>
-          <p className="text-gray-500 mb-8 text-sm">
-            Rendez-nous visite ou commandez en ligne — on livre dans tout Tunis !
-          </p>
-          <Link
-            href="/menu"
-            className="inline-flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black font-black px-6 py-3 rounded-full transition-all text-sm"
-          >
-            Commander maintenant
-          </Link>
+
+          <div className="grid md:grid-cols-2 gap-8 items-start">
+            {/* Map */}
+            <div className="order-2 md:order-1">
+              <LocationMap 
+                lat={contactInfo.lat} 
+                lng={contactInfo.lng} 
+                popupText="Mr. Burritos - Ariana"
+              />
+            </div>
+
+            {/* Contact Info */}
+            <div className="order-1 md:order-2 space-y-6">
+              {/* Phone */}
+              <a 
+                href={`tel:${contactInfo.phone}`}
+                className="flex items-center gap-4 p-4 rounded-xl bg-white hover:bg-[#F5A800]/10 transition-all shadow-sm"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#F5A800]/20 flex items-center justify-center shrink-0">
+                  <Phone size={22} className="text-[#F5A800]" />
+                </div>
+                <div>
+                  <p className="font-bold text-[#1A1A1A]">{contactInfo.phone}</p>
+                  <p className="text-gray-400 text-sm">Appelez-nous</p>
+                </div>
+              </a>
+
+              {/* Email */}
+              <a 
+                href={`mailto:${contactInfo.email}`}
+                className="flex items-center gap-4 p-4 rounded-xl bg-white hover:bg-[#F5A800]/10 transition-all shadow-sm"
+              >
+                <div className="w-12 h-12 rounded-full bg-[#F5A800]/20 flex items-center justify-center shrink-0">
+                  <Mail size={22} className="text-[#F5A800]" />
+                </div>
+                <div>
+                  <p className="font-bold text-[#1A1A1A]">{contactInfo.email}</p>
+                  <p className="text-gray-400 text-sm">Envoyez un email</p>
+                </div>
+              </a>
+
+              {/* Location */}
+              <div className="flex items-center gap-4 p-4 rounded-xl bg-white shadow-sm">
+                <div className="w-12 h-12 rounded-full bg-[#F5A800]/20 flex items-center justify-center shrink-0">
+                  <MapPin size={22} className="text-[#F5A800]" />
+                </div>
+                <div>
+                  <p className="font-bold text-[#1A1A1A]">{contactInfo.location}</p>
+                  <p className="text-gray-400 text-sm">Ariana, Tunis</p>
+                </div>
+              </div>
+
+              {/* Direction Button */}
+              <div className="pt-4">
+                <DirectionButton 
+                  lat={contactInfo.lat} 
+                  lng={contactInfo.lng} 
+                  address={contactInfo.location}
+                />
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 

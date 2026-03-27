@@ -1,6 +1,12 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Phone, Clock } from 'lucide-react'
+import { MapPin, Phone, Mail, Clock } from 'lucide-react'
+
+const contactInfo = {
+  phone: '+216 93822570',
+  email: 'mr.burritos.nasr@gmail.com',
+  location: 'V557+F6R, Ariana, Tunis',
+}
 
 export default function Footer() {
   return (
@@ -31,11 +37,24 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-[#F5A800] font-bold mb-4 text-sm uppercase tracking-wider">Infos</p>
+          <p className="text-[#F5A800] font-bold mb-4 text-sm uppercase tracking-wider">Contact</p>
           <div className="space-y-3 text-sm text-white/50">
-            <div className="flex items-start gap-2"><MapPin size={14} className="text-[#F5A800] mt-0.5 shrink-0" /><span>Tunis, Tunisie</span></div>
-            <div className="flex items-center gap-2"><Phone size={14} className="text-[#F5A800] shrink-0" /><span>+216 XX XXX XXX</span></div>
-            <div className="flex items-start gap-2"><Clock size={14} className="text-[#F5A800] mt-0.5 shrink-0" /><span>Lun–Sam : 11h–23h<br />Dim : 12h–22h</span></div>
+            <a href={`tel:${contactInfo.phone}`} className="flex items-center gap-2 hover:text-[#F5A800] transition-colors">
+              <Phone size={14} className="text-[#F5A800] shrink-0" />
+              <span>{contactInfo.phone}</span>
+            </a>
+            <a href={`mailto:${contactInfo.email}`} className="flex items-center gap-2 hover:text-[#F5A800] transition-colors">
+              <Mail size={14} className="text-[#F5A800] shrink-0" />
+              <span>{contactInfo.email}</span>
+            </a>
+            <div className="flex items-start gap-2">
+              <MapPin size={14} className="text-[#F5A800] mt-0.5 shrink-0" />
+              <span>{contactInfo.location}</span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Clock size={14} className="text-[#F5A800] mt-0.5 shrink-0" />
+              <span>Tous les jours : 12h00 – 02h00</span>
+            </div>
           </div>
         </div>
       </div>
