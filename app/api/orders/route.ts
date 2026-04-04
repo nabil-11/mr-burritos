@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import { sendPushToAll } from '@/lib/fcm'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -25,6 +26,15 @@ export async function POST(req: NextRequest) {
     const body = await req.json()
     const orderNumber = generateOrderNumber()
     const order = await Order.create({ ...body, orderNumber })
+
+    // Fire-and-forget push — never blocks the order response
+    const typeLabel = body.type === 'delivery' ? 'Livraison' : 'À emporter'
+    sendPushToAll(
+      '🌯 Nouvelle commande !',
+      `#${orderNumber} — ${typeLabel} — ${body.total ?? '?'} DT`,
+      { orderId: String(order._id), orderNumber }
+    ).catch(() => {})
+
     return NextResponse.json(order, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur'
