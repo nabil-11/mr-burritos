@@ -12,6 +12,8 @@ type Order = {
   total: number
   type: string
   createdAt: string
+  confirmedAt?: string
+  preparationDuration?: number
 }
 
 type StatusInfo = { label: string; color: string; icon: LucideIcon }
@@ -142,6 +144,12 @@ export default function TrackOrderBar() {
                             <Icon size={10} />
                             {s.label}
                           </span>
+                          {order.status === 'confirmed' && order.preparationDuration && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+                              <Clock size={10} />
+                              {order.preparationDuration >= 60 ? '1h' : `${order.preparationDuration} min`}
+                            </span>
+                          )}
                           <p className="font-black text-[#F5A800] text-sm whitespace-nowrap">
                             {(order.total ?? 0).toFixed(2)} DT
                           </p>

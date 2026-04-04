@@ -50,7 +50,7 @@ const OrderSchema = new Schema(
     reference: { type: String, default: '' },
     notes: { type: String, default: '' },
     confirmedAt: { type: Date },
-    preparationDuration: { type: Number, default: 15 },
+    preparationDuration: { type: Number, default: 30 },
   },
   { timestamps: true }
 )

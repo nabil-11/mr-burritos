@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const orders = await Order.find({ 'customer.phone': phone })
     .sort({ createdAt: -1 })
     .limit(10)
-    .select('orderNumber status total type createdAt customer reference')
+    .select('orderNumber status total type createdAt customer reference confirmedAt preparationDuration')
     .lean()
 
   return NextResponse.json(orders)

@@ -81,7 +81,7 @@ export default async function MenuPage({ searchParams }: PageProps) {
             <Link href="/menu" className="text-[#F5A800] underline mt-2 inline-block">Voir tout le menu</Link>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
             {(products as Record<string, unknown>[]).map((p) => (
               <ProductCard key={String(p._id)} product={JSON.parse(JSON.stringify(p))} />
             ))}
