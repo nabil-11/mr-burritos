@@ -18,8 +18,18 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     requireAuth(req)
     await connectDB()
     const { id } = await params
-    const { status } = await req.json()
-    const order = await Order.findByIdAndUpdate(id, { status }, { new: true })
+    const { status, preparationDuration } = await req.json()
+    
+    const updateData: Record<string, unknown> = { status }
+    
+    if (status === 'confirmed') {
+      updateData.confirmedAt = new Date()
+      if (preparationDuration) {
+        updateData.preparationDuration = preparationDuration
+      }
+    }
+    
+    const order = await Order.findByIdAndUpdate(id, updateData, { new: true })
     if (!order) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
     return NextResponse.json(order)
   } catch (e: unknown) {

@@ -26,6 +26,8 @@ const OrderSchema = new Schema(
       phone: { type: String, required: true },
       email: { type: String, default: '' },
       address: { type: String, default: '' },
+      latitude: { type: Number },
+      longitude: { type: Number },
     },
     items: [OrderItemSchema],
     subtotal: { type: Number, required: true },
@@ -47,6 +49,8 @@ const OrderSchema = new Schema(
     },
     reference: { type: String, default: '' },
     notes: { type: String, default: '' },
+    confirmedAt: { type: Date },
+    preparationDuration: { type: Number, default: 15 },
   },
   { timestamps: true }
 )
