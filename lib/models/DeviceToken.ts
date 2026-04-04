@@ -4,6 +4,9 @@ const deviceTokenSchema = new Schema(
   {
     token: { type: String, required: true, unique: true },
     platform: { type: String, enum: ['android', 'ios', 'web'], default: 'android' },
+    phone: { type: String, index: true },
+    orderNotifications: { type: Boolean, default: true },
+    orderReadyNotifications: { type: Boolean, default: true },
   },
   { timestamps: true }
 )

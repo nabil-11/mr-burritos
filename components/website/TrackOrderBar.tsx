@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { Phone, Search, X, Clock, CheckCircle2, ChefHat, Package, XCircle } from 'lucide-react'
+import { Phone, Search, X, Clock, CheckCircle2, ChefHat, Package, XCircle, Timer } from 'lucide-react'
 import { toast } from 'sonner'
 import type { LucideIcon } from 'lucide-react'
 
@@ -28,11 +28,47 @@ const STATUS: Record<string, StatusInfo> = {
 }
 const FALLBACK_STATUS: StatusInfo = { label: 'En attente', color: 'bg-gray-100 text-gray-600', icon: Clock }
 
+function CountdownTimer({ confirmedAt, duration }: { confirmedAt: string; duration: number }) {
+  const [remaining, setRemaining] = useState<number>(0)
+
+  useEffect(() => {
+    const calcRemaining = () => {
+      const confirmed = new Date(confirmedAt).getTime()
+      const end = confirmed + duration * 60 * 1000
+      const now = Date.now()
+      return Math.max(0, Math.floor((end - now) / 1000))
+    }
+    setRemaining(calcRemaining())
+    const interval = setInterval(() => setRemaining(calcRemaining()), 1000)
+    return () => clearInterval(interval)
+  }, [confirmedAt, duration])
+
+  const mins = Math.floor(remaining / 60)
+  const secs = remaining % 60
+
+  if (remaining === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 animate-pulse">
+        <Timer size={10} />
+        En retard!
+      </span>
+    )
+  }
+
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
+      <Timer size={10} />
+      {mins}:{secs.toString().padStart(2, '0')}
+    </span>
+  )
+}
+
 export default function TrackOrderBar() {
   const [phone, setPhone]     = useState('')
   const [loading, setLoading] = useState(false)
   const [orders, setOrders]   = useState<Order[] | null>(null)
   const [open, setOpen]       = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
   const ref = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -42,6 +78,13 @@ export default function TrackOrderBar() {
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // Auto-refresh every 30 seconds when dropdown is open
+  useEffect(() => {
+    if (!open || !orders || orders.length === 0) return
+    const interval = setInterval(() => setRefreshKey(k => k + 1), 30000)
+    return () => clearInterval(interval)
+  }, [open, orders])
 
   const verify = async (e?: React.FormEvent) => {
     e?.preventDefault()
@@ -59,6 +102,15 @@ export default function TrackOrderBar() {
       setLoading(false)
     }
   }
+
+  // Refresh orders when refreshKey changes
+  useEffect(() => {
+    if (!open || !phone.trim()) return
+    fetch(`/api/orders/track?phone=${encodeURIComponent(phone.trim())}`)
+      .then(res => res.json())
+      .then((data: Order[]) => setOrders(Array.isArray(data) ? data : []))
+      .catch(() => {})
+  }, [refreshKey, open, phone])
 
   const fmtDate = (d: string) =>
     new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
@@ -119,9 +171,18 @@ export default function TrackOrderBar() {
                 <p className="text-xs font-black text-gray-500 uppercase tracking-widest">
                   {orders.length} commande{orders.length > 1 ? 's' : ''} trouvée{orders.length > 1 ? 's' : ''}
                 </p>
-                <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
-                  <X size={14} />
-                </button>
+                <div className="flex items-center gap-2">
+                  <button 
+                    type="button" 
+                    onClick={() => setRefreshKey(k => k + 1)}
+                    className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+                  >
+                    ↻ Actualiser
+                  </button>
+                  <button type="button" onClick={() => setOpen(false)} className="text-gray-400 hover:text-gray-600">
+                    <X size={14} />
+                  </button>
+                </div>
               </div>
               <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
                 {orders.map((order) => {
@@ -139,14 +200,17 @@ export default function TrackOrderBar() {
                             <p className="text-[10px] text-gray-400 mt-0.5">{fmtDate(order.createdAt)}</p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
+                        <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
                           <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full ${s.color}`}>
                             <Icon size={10} />
                             {s.label}
                           </span>
-                          {order.status === 'confirmed' && order.preparationDuration && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-                              <Clock size={10} />
+                          {order.status === 'confirmed' && order.confirmedAt && order.preparationDuration && (
+                            <CountdownTimer confirmedAt={order.confirmedAt} duration={order.preparationDuration} />
+                          )}
+                          {order.status === 'preparing' && order.preparationDuration && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
+                              <Timer size={10} />
                               {order.preparationDuration >= 60 ? '1h' : `${order.preparationDuration} min`}
                             </span>
                           )}
