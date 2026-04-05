@@ -19,20 +19,14 @@ export default function CartPage() {
   const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', notes: '' })
 
   const validatePhone = (phone: string) => {
-    const cleaned = phone.replace(/\D/g, '')
-    return cleaned.length === 8
-  }
-
-  const formatPhoneNumber = (value: string) => {
-    const digits = value.replace(/\D/g, '').slice(0, 8)
-    if (digits.length <= 2) return digits
-    if (digits.length <= 4) return `${digits.slice(0, 2)} ${digits.slice(2)}`
-    return `${digits.slice(0, 2)} ${digits.slice(2, 4)} ${digits.slice(4)}`
+    const digits = phone.replace(/[^0-9]/g, '')
+    return digits.length === 8
   }
 
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const formatted = formatPhoneNumber(e.target.value)
-    setForm({ ...form, phone: formatted })
+    // Only allow +, digits, and spaces
+    const value = e.target.value.replace(/[^0-9+ ]/g, '')
+    setForm({ ...form, phone: value })
   }
 
   const handleGetLocation = () => {
@@ -215,7 +209,7 @@ export default function CartPage() {
                     onChange={handlePhoneChange} 
                     required 
                     placeholder="+216 XX XXX XXX"
-                    maxLength={11}
+                    maxLength={14}
                     className={form.phone && !validatePhone(form.phone) ? 'border-red-500' : ''}
                   />
                   {form.phone && !validatePhone(form.phone) && (
