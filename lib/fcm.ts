@@ -17,6 +17,7 @@ function getApp() {
   })
 }
 
+
 /**
  * Send a push notification to all registered devices.
  * Silently removes tokens that FCM reports as invalid/unregistered.
