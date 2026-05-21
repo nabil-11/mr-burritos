@@ -118,6 +118,29 @@ export default function CartPage() {
       if (!res.ok) throw new Error()
       const order = await res.json()
       clearCart()
+
+      // Open WhatsApp with order details
+      const waPhone = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '').replace(/\D/g, '')
+      if (waPhone) {
+        const typeLabel = type === 'delivery' ? 'Livraison' : 'À emporter'
+        const itemLines = items.map((item) => {
+          const suppTotal = item.selectedSupplements.reduce((s, x) => s + x.price, 0)
+          const lineTotal = ((item.price + suppTotal) * item.quantity).toFixed(2)
+          const supps = item.selectedSupplements.length ? ` (${item.selectedSupplements.map((s) => s.name.fr).join(', ')})` : ''
+          return `- ${item.quantity}x ${item.name.fr}${supps} = ${lineTotal} DT`
+        }).join('\n')
+        const waText =
+          `🌯 Nouvelle commande!\n` +
+          `Numéro: ${order.orderNumber}\n` +
+          `Type: ${typeLabel}\n` +
+          `Client: ${form.name}${form.phone ? ` (${form.phone})` : ''}` +
+          (form.address ? `\nAdresse: ${form.address}` : '') +
+          `\n\nArticles:\n${itemLines}` +
+          (form.notes ? `\n\nNotes: ${form.notes}` : '') +
+          `\n\nTotal: ${total.toFixed(2)} DT`
+        window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`, '_blank')
+      }
+
       router.push(`/order/${order._id}`)
     } catch {
       toast.error('Une erreur est survenue, réessayez')
