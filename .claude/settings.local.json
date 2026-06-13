@@ -18,7 +18,12 @@
       "Bash(adb devices:*)",
       "Bash(npx ionic:*)",
       "Bash(npx cap:*)",
-      "Bash(adb:*)"
+      "Bash(adb:*)",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app//**)"
+    ],
+    "additionalDirectories": [
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\modules\\orders"
     ]
   }
 }
