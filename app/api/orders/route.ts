@@ -14,8 +14,12 @@ export async function GET(req: NextRequest) {
   await connectDB()
   const { searchParams } = new URL(req.url)
   const status = searchParams.get('status')
+  const type = searchParams.get('type')
+  const assignedDelivery = searchParams.get('assignedDelivery')
   const query: Record<string, unknown> = {}
   if (status) query.status = status
+  if (type) query.type = type
+  if (assignedDelivery) query.assignedDelivery = assignedDelivery
   const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
   return NextResponse.json(orders)
 }

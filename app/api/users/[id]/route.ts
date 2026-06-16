@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
 import { connectDB } from '@/lib/mongodb'
 import { User } from '@/lib/models/User'
 import { requireAuth } from '@/lib/auth'
@@ -11,8 +12,15 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     await connectDB()
     const { id } = await params
     const body = await req.json()
-    delete body.password
-    const user = await User.findByIdAndUpdate(id, body, { new: true }).select('-password')
+    const { newPassword, password: _pw, ...rest } = body
+    void _pw
+
+    const updateData: Record<string, unknown> = { ...rest }
+    if (newPassword) {
+      updateData.password = await bcrypt.hash(newPassword, 12)
+    }
+
+    const user = await User.findByIdAndUpdate(id, updateData, { new: true }).select('-password')
     if (!user) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
     return NextResponse.json(user)
   } catch (e: unknown) {
@@ -26,7 +34,7 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
     requireAuth(req)
     await connectDB()
     const { id } = await params
-    await User.findByIdAndUpdate(id, { isActive: false })
+    await User.findByIdAndDelete(id)
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur'

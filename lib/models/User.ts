@@ -5,9 +5,10 @@ const UserSchema = new Schema(
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true, lowercase: true },
     password: { type: String, required: true },
+    phone: { type: String, default: '' },
     role: {
       type: String,
-      enum: ['admin', 'manager', 'staff'],
+      enum: ['admin', 'manager', 'staff', 'delivery'],
       default: 'staff',
     },
     isActive: { type: Boolean, default: true },

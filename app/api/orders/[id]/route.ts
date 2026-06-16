@@ -16,20 +16,37 @@ export async function GET(_req: NextRequest, { params }: Ctx) {
 
 export async function PUT(req: NextRequest, { params }: Ctx) {
   try {
-    requireAuth(req)
+    const caller = requireAuth(req)
     await connectDB()
     const { id } = await params
-    const { status, preparationDuration } = await req.json()
-    
+    const body = await req.json()
+    const { status, preparationDuration, deliveryFee, acceptOrder } = body
+
+    // Delivery user accepts an order
+    if (acceptOrder && caller.role === 'delivery') {
+      const order = await Order.findById(id)
+      if (!order) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
+      if (order.status !== 'confirmed') {
+        return NextResponse.json({ error: 'Commande non disponible' }, { status: 400 })
+      }
+      const updated = await Order.findByIdAndUpdate(
+        id,
+        { status: 'preparing', assignedDelivery: caller.userId },
+        { new: true }
+      )
+      return NextResponse.json(updated)
+    }
+
     const updateData: Record<string, unknown> = { status }
-    
+
     if (status === 'confirmed') {
       updateData.confirmedAt = new Date()
-      if (preparationDuration) {
-        updateData.preparationDuration = preparationDuration
+      if (preparationDuration) updateData.preparationDuration = preparationDuration
+      if (typeof deliveryFee === 'number') {
+        updateData.deliveryFee = Math.max(0, Math.min(10, deliveryFee))
       }
     }
-    
+
     const order = await Order.findByIdAndUpdate(id, updateData, { new: true })
     if (!order) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
 

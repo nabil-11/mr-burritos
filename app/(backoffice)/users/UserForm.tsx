@@ -14,7 +14,7 @@ export default function UserForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'staff' })
+  const [form, setForm] = useState({ name: '', email: '', password: '', phone: '', role: 'staff' })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -28,7 +28,7 @@ export default function UserForm() {
       if (!res.ok) throw new Error()
       toast.success('Utilisateur créé')
       setOpen(false)
-      setForm({ name: '', email: '', password: '', role: 'staff' })
+      setForm({ name: '', email: '', password: '', phone: '', role: 'staff' })
       router.refresh()
     } catch {
       toast.error('Erreur lors de la création')
@@ -46,6 +46,7 @@ export default function UserForm() {
           <div className="space-y-1"><Label>Nom</Label><Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
           <div className="space-y-1"><Label>Email</Label><Input type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
           <div className="space-y-1"><Label>Mot de passe</Label><Input type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required /></div>
+          <div className="space-y-1"><Label>Téléphone</Label><Input type="tel" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} placeholder="+212..." /></div>
           <div className="space-y-1">
             <Label>Rôle</Label>
             <Select value={form.role} onValueChange={(v) => v && setForm({ ...form, role: v })}>
@@ -54,6 +55,7 @@ export default function UserForm() {
                 <SelectItem value="admin">Admin</SelectItem>
                 <SelectItem value="manager">Manager</SelectItem>
                 <SelectItem value="staff">Staff</SelectItem>
+                <SelectItem value="delivery">Delivery</SelectItem>
               </SelectContent>
             </Select>
           </div>

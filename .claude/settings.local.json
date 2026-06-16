@@ -19,11 +19,24 @@
       "Bash(npx ionic:*)",
       "Bash(npx cap:*)",
       "Bash(adb:*)",
-      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app//**)"
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app//**)",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/**)",
+      "Bash(node -e:*)",
+      "Bash(find:*)",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
-      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\modules\\orders"
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\modules\\orders",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\electron",
+      "C:\\Users\\Traveltodo\\Downloads",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\modules\\common",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\common",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\auth",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\orders",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\statistics",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\dashboard",
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src"
     ]
   }
 }

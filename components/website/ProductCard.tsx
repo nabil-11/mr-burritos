@@ -49,7 +49,7 @@ export default function ProductCard({ product }: { product: Product }) {
     addItem({ productId: product._id, name: product.name, price: product.price, image: product.image, quantity: 1, selectedSupplements: selected, notes: '' })
     setAdded(true)
     toast.success(`${product.name.fr} ajouté au panier !`)
-    setTimeout(() => { setAdded(false); setSelected([]) }, 1600)
+    setTimeout(() => { setAdded(false); setSelected([]) }, 100)
   }
 
   const suppTotal = selected.reduce((s, x) => s + x.price, 0)

@@ -47,6 +47,8 @@ const OrderSchema = new Schema(
       name: { type: String, default: '' },
       commission: { type: Number, default: 0 },
     },
+    deliveryFee: { type: Number, default: 0, min: 0, max: 10 },
+    assignedDelivery: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     reference: { type: String, default: '' },
     notes: { type: String, default: '' },
     confirmedAt: { type: Date },

@@ -23,8 +23,10 @@ export default function WebNavbar() {
   const [cartOpen, setCartOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const onScroll = () => setScrolled(window.scrollY > 20)
     window.addEventListener('scroll', onScroll)
     return () => window.removeEventListener('scroll', onScroll)
@@ -63,7 +65,7 @@ export default function WebNavbar() {
                 className="relative flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold px-3.5 py-2 rounded-full text-sm transition-all hover:scale-105 active:scale-95">
                 <ShoppingCart size={15} />
                 <span className="hidden sm:inline">Panier</span>
-                {itemCount > 0 && (
+                {mounted && itemCount > 0 && (
                   <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] w-4.5 h-4.5 min-w-4.5 min-h-4.5 rounded-full flex items-center justify-center font-black shadow">
                     {itemCount}
                   </span>
