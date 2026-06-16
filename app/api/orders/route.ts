@@ -21,6 +21,7 @@ export async function GET(req: NextRequest) {
   if (type) query.type = type
   if (assignedDelivery) query.assignedDelivery = assignedDelivery
   const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
+    .populate('assignedDelivery', 'name phone')
   return NextResponse.json(orders)
 }
 
