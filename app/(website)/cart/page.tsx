@@ -113,7 +113,7 @@ export default function CartPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, email: form.email, address: form.address }, items: orderItems, subtotal: total, total, type, notes: form.notes }),
+        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, email: form.email, address: form.address }, items: orderItems, subtotal: total, total, type, notes: form.notes, deliveryFee: 0 }),
       })
       if (!res.ok) throw new Error()
       const order = await res.json()
@@ -280,7 +280,13 @@ export default function CartPage() {
               </h2>
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between text-muted-foreground"><span>Sous-total</span><span>{total.toFixed(2)} DT</span></div>
-                <div className="flex justify-between text-muted-foreground"><span>Livraison</span><span>{type === 'delivery' ? 'Gratuite' : '—'}</span></div>
+                <div className="flex justify-between text-muted-foreground">
+                  <span>Livraison</span>
+                  <span>{type === 'delivery' ? 'Gratuite → 7 DT max' : '—'}</span>
+                </div>
+                {type === 'delivery' && (
+                  <p className="text-xs text-muted-foreground italic">Les frais de livraison seront confirmés par notre équipe.</p>
+                )}
                 <div className="flex justify-between font-black text-base border-t pt-2"><span>Total</span><span className="text-[#F5A800]">{total.toFixed(2)} DT</span></div>
               </div>
               <button type="submit" disabled={loading}

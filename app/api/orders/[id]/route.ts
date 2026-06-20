@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { requireAuth } from '@/lib/auth'
-import { sendPushToCustomer } from '@/lib/fcm'
+import { sendPushToCustomer, sendPushToDelivery } from '@/lib/fcm'
+import { orderBus } from '@/lib/orderBus'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -50,7 +51,22 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
     const order = await Order.findByIdAndUpdate(id, updateData, { new: true })
     if (!order) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
 
-    // Send push notification when order is ready
+    // ── Notify delivery users when a delivery order is confirmed ─────────────
+    if (status === 'confirmed' && order.type === 'delivery') {
+      const orderObj = order.toObject()
+
+      // Instant in-process push to delivery SSE streams on the same instance
+      orderBus.emit('confirmed-delivery', orderObj)
+
+      // FCM push for delivery-app devices on other instances / background
+      sendPushToDelivery(
+        '🛵 Nouvelle livraison disponible !',
+        `#${order.orderNumber} — ${order.total} DT${order.customer?.address ? ` • ${order.customer.address}` : ''}`,
+        { orderId: String(order._id), orderNumber: order.orderNumber, type: 'confirmed-delivery' }
+      ).catch(() => {})
+    }
+
+    // ── Notify customer when order is ready ──────────────────────────────────
     if (status === 'ready' && order.customer?.phone) {
       const typeLabel = order.type === 'delivery' ? 'Livraison' : 'À emporter'
       sendPushToCustomer(

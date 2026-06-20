@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { sendPushToAll } from '@/lib/fcm'
+import { orderBus } from '@/lib/orderBus'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -32,7 +33,12 @@ export async function POST(req: NextRequest) {
     const orderNumber = generateOrderNumber()
     const order = await Order.create({ ...body, orderNumber })
 
-    // Fire-and-forget push — never blocks the order response
+    // ── Instant in-process push to all connected SSE streams ──────────────
+    // Emitting synchronously here means any manager with an open SSE connection
+    // on the SAME server instance receives the notification in < 10 ms.
+    orderBus.emit('new-order', order.toObject())
+
+    // ── FCM push (fire-and-forget) — reaches managers on other instances ───
     const typeLabel = body.type === 'delivery' ? 'Livraison' : 'À emporter'
     sendPushToAll(
       '🌯 Nouvelle commande !',

@@ -1,3 +1,14 @@
+/**
+ * GET /api/delivery/stream
+ *
+ * Server-Sent Events stream for the delivery-app.
+ * Pushes 'confirmed-delivery' events instantly via the in-process orderBus
+ * when a manager confirms a delivery order.
+ * A 500 ms DB poll acts as fallback for cross-instance scenarios (Vercel).
+ *
+ * Requires delivery or admin JWT.
+ */
+
 import { NextRequest } from 'next/server'
 import { getTokenFromRequest } from '@/lib/auth'
 import { connectDB } from '@/lib/mongodb'
@@ -6,7 +17,6 @@ import { orderBus } from '@/lib/orderBus'
 
 export const dynamic = 'force-dynamic'
 
-/** Resolves after `ms` ms, or immediately when the AbortSignal fires. */
 function sleep(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise<void>((resolve) => {
     const t = setTimeout(resolve, ms)
@@ -16,7 +26,9 @@ function sleep(ms: number, signal: AbortSignal): Promise<void> {
 
 export async function GET(req: NextRequest) {
   const user = getTokenFromRequest(req)
-  if (!user) return new Response('Unauthorized', { status: 401 })
+  if (!user || (user.role !== 'delivery' && user.role !== 'admin')) {
+    return new Response('Unauthorized', { status: 401 })
+  }
 
   const { searchParams } = new URL(req.url)
   const sinceParam = searchParams.get('since')
@@ -27,23 +39,20 @@ export async function GET(req: NextRequest) {
 
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
-      // Acknowledge the connection immediately
       controller.enqueue(encoder.encode(': connected\n\n'))
 
       function send(order: Record<string, unknown>) {
         if (signal.aborted) return
         try {
-          // Advance cursor so polling fallback doesn't re-emit the same order
-          if (order.createdAt) lastChecked = new Date(order.createdAt as string)
-          const msg = `event: new-order\ndata: ${JSON.stringify(order)}\n\n`
+          if (order.confirmedAt) lastChecked = new Date(order.confirmedAt as string)
+          else if (order.createdAt) lastChecked = new Date(order.createdAt as string)
+          const msg = `event: confirmed-delivery\ndata: ${JSON.stringify(order)}\n\n`
           controller.enqueue(encoder.encode(msg))
         } catch { /* stream already closed */ }
       }
 
-      // ── Primary path: subscribe to the in-process event bus ──────────────
-      // When the POST /api/orders route runs on the SAME server instance this
-      // fires in < 10 ms with zero DB round-trips.
-      orderBus.on('new-order', send)
+      // Primary: instant push via in-process event bus
+      orderBus.on('confirmed-delivery', send)
 
       let heartbeatAt = Date.now()
 
@@ -51,21 +60,22 @@ export async function GET(req: NextRequest) {
         await connectDB()
 
         while (!signal.aborted) {
-          // ── Fallback poll (500 ms) ──────────────────────────────────────────
-          // Catches orders that arrived via a different server instance (e.g.
-          // separate Vercel lambda) where the in-process bus didn't fire.
+          // Fallback poll: catches orders confirmed on a different server instance
           const missed = await Order.find(
-            { createdAt: { $gt: lastChecked } },
-            { orderNumber: 1, type: 1, total: 1, customer: 1, status: 1, createdAt: 1, deliveryFee: 1 }
+            {
+              type: 'delivery',
+              status: 'confirmed',
+              confirmedAt: { $gt: lastChecked },
+            },
+            { orderNumber: 1, type: 1, total: 1, customer: 1, status: 1, confirmedAt: 1, deliveryFee: 1, preparationDuration: 1 }
           )
-            .sort({ createdAt: 1 })
+            .sort({ confirmedAt: 1 })
             .lean()
 
           for (const order of missed) {
             send(order as Record<string, unknown>)
           }
 
-          // ── Heartbeat every 20 s ────────────────────────────────────────────
           if (Date.now() - heartbeatAt >= 20_000) {
             controller.enqueue(encoder.encode(': ping\n\n'))
             heartbeatAt = Date.now()
@@ -74,9 +84,9 @@ export async function GET(req: NextRequest) {
           await sleep(500, signal)
         }
       } catch {
-        // DB error or abort — end the stream cleanly
+        // DB error or abort
       } finally {
-        orderBus.off('new-order', send)
+        orderBus.off('confirmed-delivery', send)
         try { controller.close() } catch { /* already closed */ }
       }
     },

@@ -23,7 +23,8 @@
       "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/**)",
       "Bash(node -e:*)",
       "Bash(find:*)",
-      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/**)"
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/**)",
+      "Bash(npx tsc:*)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
