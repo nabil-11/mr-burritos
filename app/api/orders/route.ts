@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 
@@ -12,18 +13,23 @@ function generateOrderNumber(): string {
 }
 
 export async function GET(req: NextRequest) {
-  await connectDB()
-  const { searchParams } = new URL(req.url)
-  const status = searchParams.get('status')
-  const type = searchParams.get('type')
-  const assignedDelivery = searchParams.get('assignedDelivery')
-  const query: Record<string, unknown> = {}
-  if (status) query.status = status
-  if (type) query.type = type
-  if (assignedDelivery) query.assignedDelivery = assignedDelivery
-  const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
-    .populate('assignedDelivery', 'name phone')
-  return NextResponse.json(orders)
+  try {
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+    const status = searchParams.get('status')
+    const type = searchParams.get('type')
+    const assignedDelivery = searchParams.get('assignedDelivery')
+    const query: Record<string, unknown> = {}
+    if (status) query.status = status
+    if (type) query.type = type
+    if (assignedDelivery) query.assignedDelivery = assignedDelivery
+    const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
+      .populate('assignedDelivery', 'name phone')
+    return NextResponse.json(orders)
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Erreur serveur'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 export async function POST(req: NextRequest) {

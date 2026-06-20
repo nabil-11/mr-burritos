@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import '@/lib/models/User' // register User schema for populate('assignedDelivery')
 import { requireAuth } from '@/lib/auth'
 import { sendPushToCustomer, sendPushToDelivery } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
