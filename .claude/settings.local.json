@@ -34,7 +34,8 @@
       "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && find src -type f \\\\\\( -name '*.ts' -o -name '*.tsx' \\\\\\) 2>/dev/null | head -60)",
       "Bash(echo \"BACKEND_EXIT=$?\")",
       "Bash(echo \"DELIVERY_EXIT=$?\")",
-      "Bash(echo \"MANAGER_EXIT=$?\")"
+      "Bash(echo \"MANAGER_EXIT=$?\")",
+      "Bash(echo \"BACKEND_TSC=$?\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
