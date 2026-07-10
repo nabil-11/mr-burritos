@@ -19,10 +19,18 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
     const type = searchParams.get('type')
     const assignedDelivery = searchParams.get('assignedDelivery')
+    const from = searchParams.get('from') // ISO date — filters createdAt >= from
+    const to = searchParams.get('to')     // ISO date — filters createdAt <= to
     const query: Record<string, unknown> = {}
     if (status) query.status = status
     if (type) query.type = type
     if (assignedDelivery) query.assignedDelivery = assignedDelivery
+    if (from || to) {
+      const createdAt: Record<string, Date> = {}
+      if (from) createdAt.$gte = new Date(from)
+      if (to) createdAt.$lte = new Date(to)
+      query.createdAt = createdAt
+    }
     const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
       .populate('assignedDelivery', 'name phone')
     return NextResponse.json(orders)

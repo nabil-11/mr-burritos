@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema for populate('assignedDelivery')
 import { requireAuth } from '@/lib/auth'
-import { sendPushToCustomer, sendPushToDelivery } from '@/lib/fcm'
+import { sendPushToCustomer, sendPushToDelivery, sendPushToDeliveryUser } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -76,6 +76,41 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
         `#${order.orderNumber} est prête pour ${typeLabel}`,
         { orderId: String(order._id), orderNumber: order.orderNumber }
       ).catch(() => {})
+    }
+
+    // ── Notify the assigned driver when their delivery order changes state ────
+    // (kitchen marks it "ready"/prête → go pick it up; or it gets "delivered")
+    if (
+      order.type === 'delivery' &&
+      order.assignedDelivery &&
+      (status === 'ready' || status === 'delivered' || status === 'preparing' || status === 'cancelled')
+    ) {
+      const driverId = String(order.assignedDelivery)
+      const orderObj = order.toObject()
+
+      // Instant in-process push to the driver's SSE stream on the same instance
+      orderBus.emit('order-status', orderObj)
+
+      const STATUS_PUSH: Record<string, { title: string; body: string }> = {
+        preparing: { title: '👨‍🍳 En préparation', body: `#${order.orderNumber} est en préparation` },
+        ready:     { title: '🍔 Commande prête à récupérer !', body: `#${order.orderNumber} est prête — allez la chercher` },
+        delivered: { title: '✅ Livraison terminée', body: `#${order.orderNumber} a été marquée livrée` },
+        cancelled: { title: '❌ Commande annulée', body: `#${order.orderNumber} a été annulée` },
+      }
+      const push = STATUS_PUSH[status]
+      if (push) {
+        sendPushToDeliveryUser(
+          driverId,
+          push.title,
+          push.body,
+          {
+            orderId: String(order._id),
+            orderNumber: order.orderNumber,
+            status,
+            type: 'order-status',
+          }
+        ).catch(() => {})
+      }
     }
 
     return NextResponse.json(order)

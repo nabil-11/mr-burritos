@@ -110,6 +110,53 @@ export async function sendPushToDelivery(
 }
 
 /**
+ * Send a push notification to one specific delivery user (by their user id).
+ * Used to notify the assigned driver when their order changes state
+ * (e.g. becomes "ready" / "prête" for pickup, or is marked "delivered").
+ */
+export async function sendPushToDeliveryUser(
+  userId: string,
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+): Promise<void> {
+  const app = getApp()
+  if (!app) return
+
+  await connectDB()
+  const docs = await DeviceToken.find({ userId, role: 'delivery' }, 'token').lean()
+  if (!docs.length) return
+
+  const tokens = docs.map((d) => d.token as string)
+
+  const response = await admin.messaging(app).sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data,
+    android: {
+      priority: 'high',
+      notification: { sound: 'default', channelId: 'orders' },
+    },
+  })
+
+  const toDelete: string[] = []
+  response.responses.forEach((res, idx) => {
+    if (!res.success) {
+      const code = res.error?.code
+      if (
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token'
+      ) {
+        toDelete.push(tokens[idx])
+      }
+    }
+  })
+  if (toDelete.length) {
+    await DeviceToken.deleteMany({ token: { $in: toDelete } })
+  }
+}
+
+/**
  * Send a push notification to a specific customer by phone number.
  */
 export async function sendPushToCustomer(

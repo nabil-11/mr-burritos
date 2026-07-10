@@ -24,7 +24,13 @@
       "Bash(node -e:*)",
       "Bash(find:*)",
       "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/**)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app\" && ls -la && echo \"---PACKAGE---\" && cat package.json)",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app/**)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app/src\" && find . -type f -not -path '*/node_modules/*' | head -100)",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app/src/**)",
+      "Bash(npx tsc *)",
+      "Bash(echo \"TSC_EXIT=$?\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
