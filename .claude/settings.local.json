@@ -43,7 +43,16 @@
       "Bash(mkdir -p mr-burritos/public/downloads)",
       "Bash(cp mr-burritos-mobile/manager-app/android/app/build/outputs/apk/debug/app-debug.apk \"mr-burritos/public/downloads/mr-burritos-manager.apk\")",
       "Bash(cp mr-burritos-mobile/delivery-app/android/app/build/outputs/apk/debug/app-debug.apk \"mr-burritos/public/downloads/mr-burritos-livreur.apk\")",
-      "Bash(echo \"TSC=$?\")"
+      "Bash(echo \"TSC=$?\")",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\(Object.keys\\(p.dependencies\\).join\\('\\\\n'\\)\\)\")",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && echo \"=== Statistics IonMenuButton context ===\" && grep -n \"IonMenuButton\\\\|IonHeader\\\\|IonToolbar\\\\|IonPage\\\\|IonContent\" src/modules/statistics/Statistics.tsx | head && echo \"=== Commander IonMenuButton context ===\" && grep -n \"IonMenuButton\\\\|IonHeader\\\\|IonToolbar\\\\|IonPage\\\\|IonContent\" src/modules/commander/Commander.tsx | head && echo \"=== alarm exports ===\" && grep -n \"export\" src/hooks/useAlarm.ts)",
+      "Bash(npm view *)",
+      "Bash(node -e \"console.log\\(require\\('@capacitor/core/package.json'\\).version\\)\")",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && head -20 src/index.css && echo \"... total lines:\" && wc -l < src/index.css)",
+      "Bash(find src *)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && wc -l src/theme/variables.css && echo \"---HEAD---\" && head -30 src/theme/variables.css && echo \"---ACTION SHEET / OVERLAY refs---\" && grep -in \"action-sheet\\\\|overlay\\\\|--ion-background\\\\|--ion-text-color\\\\|color-step\" src/theme/variables.css | head)",
+      "Bash(ls delivery-app/node_modules/@ionic/react/css/palettes/)",
+      "Bash(cp mr-burritos-mobile/manager-app/android/app/build/outputs/apk/debug/app-debug.apk mr-burritos/public/downloads/mr-burritos-manager.apk)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
