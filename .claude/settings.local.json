@@ -30,7 +30,11 @@
       "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app/src\" && find . -type f -not -path '*/node_modules/*' | head -100)",
       "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/delivery-app/src/**)",
       "Bash(npx tsc *)",
-      "Bash(echo \"TSC_EXIT=$?\")"
+      "Bash(echo \"TSC_EXIT=$?\")",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && find src -type f \\\\\\( -name '*.ts' -o -name '*.tsx' \\\\\\) 2>/dev/null | head -60)",
+      "Bash(echo \"BACKEND_EXIT=$?\")",
+      "Bash(echo \"DELIVERY_EXIT=$?\")",
+      "Bash(echo \"MANAGER_EXIT=$?\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",

@@ -3,7 +3,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema for populate('assignedDelivery')
 import { requireAuth } from '@/lib/auth'
-import { sendPushToCustomer, sendPushToDelivery, sendPushToDeliveryUser } from '@/lib/fcm'
+import { sendPushToCustomer, sendPushToDelivery, sendPushToDeliveryUser, sendPushToManagers } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -111,6 +111,25 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
           }
         ).catch(() => {})
       }
+    }
+
+    // ── Notify the manager-app when an order is delivered ────────────────────
+    if (status === 'delivered') {
+      const orderObj = order.toObject()
+
+      // Instant in-process push to any connected manager SSE stream
+      orderBus.emit('order-delivered', orderObj)
+
+      const typeLabel = order.type === 'delivery' ? 'Livraison' : 'À emporter'
+      sendPushToManagers(
+        '✅ Commande livrée',
+        `#${order.orderNumber} — ${typeLabel} — ${order.total} DT`,
+        {
+          orderId: String(order._id),
+          orderNumber: order.orderNumber,
+          type: 'order-delivered',
+        }
+      ).catch(() => {})
     }
 
     return NextResponse.json(order)

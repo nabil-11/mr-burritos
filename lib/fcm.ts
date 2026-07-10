@@ -157,6 +157,51 @@ export async function sendPushToDeliveryUser(
 }
 
 /**
+ * Send a push notification to all manager / admin devices.
+ * Used e.g. to notify the manager-app when a driver marks an order delivered.
+ */
+export async function sendPushToManagers(
+  title: string,
+  body: string,
+  data: Record<string, string> = {}
+): Promise<void> {
+  const app = getApp()
+  if (!app) return
+
+  await connectDB()
+  const docs = await DeviceToken.find({ role: { $in: ['manager', 'admin'] } }, 'token').lean()
+  if (!docs.length) return
+
+  const tokens = docs.map((d) => d.token as string)
+
+  const response = await admin.messaging(app).sendEachForMulticast({
+    tokens,
+    notification: { title, body },
+    data,
+    android: {
+      priority: 'high',
+      notification: { sound: 'default', channelId: 'orders' },
+    },
+  })
+
+  const toDelete: string[] = []
+  response.responses.forEach((res, idx) => {
+    if (!res.success) {
+      const code = res.error?.code
+      if (
+        code === 'messaging/registration-token-not-registered' ||
+        code === 'messaging/invalid-registration-token'
+      ) {
+        toDelete.push(tokens[idx])
+      }
+    }
+  })
+  if (toDelete.length) {
+    await DeviceToken.deleteMany({ token: { $in: toDelete } })
+  }
+}
+
+/**
  * Send a push notification to a specific customer by phone number.
  */
 export async function sendPushToCustomer(

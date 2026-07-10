@@ -40,10 +40,22 @@ export async function GET(req: NextRequest) {
         } catch { /* stream already closed */ }
       }
 
+      // Pushes an order-status change (e.g. delivered) WITHOUT advancing the
+      // new-order cursor — a delivered order has an old createdAt and must not
+      // rewind `lastChecked`, or old orders would be replayed as "new".
+      function sendDelivered(order: Record<string, unknown>) {
+        if (signal.aborted) return
+        try {
+          const msg = `event: order-delivered\ndata: ${JSON.stringify(order)}\n\n`
+          controller.enqueue(encoder.encode(msg))
+        } catch { /* stream already closed */ }
+      }
+
       // ── Primary path: subscribe to the in-process event bus ──────────────
       // When the POST /api/orders route runs on the SAME server instance this
       // fires in < 10 ms with zero DB round-trips.
       orderBus.on('new-order', send)
+      orderBus.on('order-delivered', sendDelivered)
 
       let heartbeatAt = Date.now()
 
@@ -77,6 +89,7 @@ export async function GET(req: NextRequest) {
         // DB error or abort — end the stream cleanly
       } finally {
         orderBus.off('new-order', send)
+        orderBus.off('order-delivered', sendDelivered)
         try { controller.close() } catch { /* already closed */ }
       }
     },
