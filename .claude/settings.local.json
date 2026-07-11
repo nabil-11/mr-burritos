@@ -52,7 +52,9 @@
       "Bash(find src *)",
       "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && wc -l src/theme/variables.css && echo \"---HEAD---\" && head -30 src/theme/variables.css && echo \"---ACTION SHEET / OVERLAY refs---\" && grep -in \"action-sheet\\\\|overlay\\\\|--ion-background\\\\|--ion-text-color\\\\|color-step\" src/theme/variables.css | head)",
       "Bash(ls delivery-app/node_modules/@ionic/react/css/palettes/)",
-      "Bash(cp mr-burritos-mobile/manager-app/android/app/build/outputs/apk/debug/app-debug.apk mr-burritos/public/downloads/mr-burritos-manager.apk)"
+      "Bash(cp mr-burritos-mobile/manager-app/android/app/build/outputs/apk/debug/app-debug.apk mr-burritos/public/downloads/mr-burritos-manager.apk)",
+      "Bash(node \"C:/Users/TRAVEL~1/AppData/Local/Temp/claude/c--Users-Traveltodo-Desktop-Nouveau-dossier-mr-burritos/a405fe46-8ded-4d54-bae2-98cf25383218/scratchpad/gen-icons.cjs\" \"C:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android/app/src/main/res\")",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android/app/src/main/res/mipmap-xxxhdpi/**)"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
