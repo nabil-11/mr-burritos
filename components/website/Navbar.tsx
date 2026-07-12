@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ShoppingCart, Menu, X } from 'lucide-react'
+import { ShoppingCart, Menu, X, PackageSearch } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { useState, useEffect } from 'react'
 import CartDrawer from './CartDrawer'
+import TrackOrderDrawer from './TrackOrderDrawer'
 
 const navLinks = [
   { href: '/', label: 'Accueil' },
@@ -21,6 +22,7 @@ const navLinks = [
 export default function WebNavbar() {
   const { itemCount } = useCart()
   const [cartOpen, setCartOpen] = useState(false)
+  const [trackOpen, setTrackOpen] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -61,6 +63,11 @@ export default function WebNavbar() {
 
             {/* Actions */}
             <div className="flex items-center gap-2">
+              <button onClick={() => setTrackOpen(true)}
+                className="flex items-center gap-2 text-white/85 hover:text-[#F5A800] border border-white/15 hover:border-[#F5A800]/50 font-bold px-3.5 py-2 rounded-full text-sm transition-all hover:scale-105 active:scale-95">
+                <PackageSearch size={15} />
+                <span className="hidden sm:inline">Suivre</span>
+              </button>
               <button onClick={() => setCartOpen(true)}
                 className="relative flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold px-3.5 py-2 rounded-full text-sm transition-all hover:scale-105 active:scale-95">
                 <ShoppingCart size={15} />
@@ -92,6 +99,7 @@ export default function WebNavbar() {
         )}
       </nav>
       <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <TrackOrderDrawer open={trackOpen} onClose={() => setTrackOpen(false)} />
     </>
   )
 }

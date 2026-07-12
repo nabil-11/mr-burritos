@@ -5,7 +5,6 @@ import Link from 'next/link'
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from '@/components/ui/carousel'
 import Autoplay from 'embla-carousel-autoplay'
 import { useRef, useState, useEffect } from 'react'
-import TrackOrderBar from './TrackOrderBar'
 
 const slides = [
   {
@@ -153,11 +152,6 @@ export default function HeroCarousel() {
         <CarouselPrevious className="left-4 sm:left-8 bg-white/10 backdrop-blur-sm border-0 text-white/80 hover:bg-white/20 hover:text-white transition-all" />
         <CarouselNext className="right-4 sm:right-8 bg-white/10 backdrop-blur-sm border-0 text-white/80 hover:bg-white/20 hover:text-white transition-all" />
       </Carousel>
-
-      {/* Track order bar - centered at bottom */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full max-w-2xl px-4 z-20">
-        <TrackOrderBar />
-      </div>
     </div>
   )
 }

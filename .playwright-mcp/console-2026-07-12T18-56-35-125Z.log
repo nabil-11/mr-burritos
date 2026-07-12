@@ -1,0 +1,17 @@
+[     413ms] [INFO] %cDownload the React DevTools for a better development experience: https://react.dev/link/react-devtools font-weight:bold @ http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:17803
+[  443936ms] ReferenceError: IconButton is not defined
+    at PageHeaderBar (http://localhost:5175/src/components/PageHeaderBar.tsx?t=1783883038933:44:32)
+    at react-stack-bottom-frame (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:16192:20)
+    at renderWithHooks (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:4306:24)
+    at updateFunctionComponent (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:5972:21)
+    at beginWork (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:7048:20)
+    at runWithFiberInDEV (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:726:18)
+    at performUnitOfWork (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:10831:98)
+    at workLoopSync (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:10692:43)
+    at renderRootSync (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:10675:13)
+    at performWorkOnRoot (http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:10323:46)
+[  443934ms] [WARNING] %s
+
+%s
+ An error occurred in the <PageHeaderBar> component. Consider adding an error boundary to your tree to customize error handling behavior.
+Visit https://react.dev/link/error-boundaries to learn more about error boundaries. @ http://localhost:5175/node_modules/.vite/deps/react-dom_client.js?v=71d20057:5588
