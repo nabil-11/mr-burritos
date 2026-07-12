@@ -1,0 +1,23 @@
+- generic [ref=f1e5]:
+  - main [ref=f1e9]:
+    - generic [ref=f1e11]:
+      - generic:
+        - generic [ref=f1e12]:
+          - generic [ref=f1e13]:
+            - heading "Statistiques" [level=6] [ref=f1e18]
+            - button [ref=f1e20] [cursor=pointer]
+          - group [ref=f1e24]:
+            - button "Aujourd'hui" [ref=f1e25] [cursor=pointer]
+            - button "7 jours" [pressed] [ref=f1e26] [cursor=pointer]
+            - button "30 jours" [ref=f1e27] [cursor=pointer]
+            - button "Tout" [ref=f1e28] [cursor=pointer]
+        - generic [ref=f1e29]:
+          - progressbar [ref=f1e30]
+          - paragraph [ref=f1e33]: Chargement…
+  - tablist [ref=f1e34]:
+    - generic:
+      - tab "Commandes" [ref=f1e36] [cursor=pointer]
+      - tab "Produits" [ref=f1e43] [cursor=pointer]
+      - tab "Catégories" [ref=f1e49] [cursor=pointer]
+      - tab "Suppléments" [ref=f1e55] [cursor=pointer]
+      - tab "Stats" [selected] [ref=f1e61] [cursor=pointer]

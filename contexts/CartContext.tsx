@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useReducer, useEffect, ReactNode } from 'react'
+import { createContext, useContext, useReducer, useEffect, useState, ReactNode } from 'react'
 
 export interface CartSupplement {
   _id: string
@@ -27,10 +27,13 @@ type CartAction =
   | { type: 'ADD_ITEM'; payload: CartItem }
   | { type: 'REMOVE_ITEM'; payload: string }
   | { type: 'UPDATE_QTY'; payload: { id: string; quantity: number } }
+  | { type: 'HYDRATE'; payload: CartState }
   | { type: 'CLEAR' }
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
+    case 'HYDRATE':
+      return action.payload
     case 'ADD_ITEM':
       return { items: [...state.items, action.payload] }
     case 'REMOVE_ITEM':
@@ -56,22 +59,35 @@ interface CartContextType {
   clearCart: () => void
   total: number
   itemCount: number
+  hydrated: boolean
 }
 
 const CartContext = createContext<CartContextType | null>(null)
 
 export function CartProvider({ children }: { children: ReactNode }) {
-  const [state, dispatch] = useReducer(cartReducer, { items: [] }, (init) => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('cart')
-      if (saved) return JSON.parse(saved) as CartState
-    }
-    return init
-  })
+  // Start empty so the server-rendered HTML matches the first client render,
+  // then load the saved cart from localStorage after mount to avoid a
+  // hydration mismatch.
+  const [state, dispatch] = useReducer(cartReducer, { items: [] })
+  const [hydrated, setHydrated] = useState(false)
 
   useEffect(() => {
-    localStorage.setItem('cart', JSON.stringify(state))
-  }, [state])
+    const saved = localStorage.getItem('cart')
+    if (saved) {
+      try {
+        dispatch({ type: 'HYDRATE', payload: JSON.parse(saved) as CartState })
+      } catch {
+        // ignore corrupted cart data
+      }
+    }
+    setHydrated(true)
+  }, [])
+
+  useEffect(() => {
+    // Only persist once we've loaded the saved cart, so the initial empty
+    // state doesn't overwrite it before hydration completes.
+    if (hydrated) localStorage.setItem('cart', JSON.stringify(state))
+  }, [state, hydrated])
 
   const addItem = (item: Omit<CartItem, 'id'>) => {
     const id = `${item.productId}-${Date.now()}`
@@ -91,7 +107,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   const itemCount = state.items.reduce((sum, item) => sum + item.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ items: state.items, addItem, removeItem, updateQty, clearCart, total, itemCount }}>
+    <CartContext.Provider value={{ items: state.items, addItem, removeItem, updateQty, clearCart, total, itemCount, hydrated }}>
       {children}
     </CartContext.Provider>
   )

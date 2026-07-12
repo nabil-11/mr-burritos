@@ -11,12 +11,12 @@ import { toast } from 'sonner'
 import Link from 'next/link'
 
 export default function CartPage() {
-  const { items, removeItem, updateQty, total, clearCart } = useCart()
+  const { items, removeItem, updateQty, total, clearCart, hydrated } = useCart()
   const router = useRouter()
   const [type, setType] = useState<'delivery' | 'pickup'>('delivery')
   const [loading, setLoading] = useState(false)
   const [locating, setLocating] = useState(false)
-  const [form, setForm] = useState({ name: '', phone: '', email: '', address: '', notes: '' })
+  const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' })
 
   const validatePhone = (phone: string) => {
     const digits = phone.replace(/[^0-9]/g, '')
@@ -113,7 +113,7 @@ export default function CartPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, email: form.email, address: form.address }, items: orderItems, subtotal: total, total, type, notes: form.notes, deliveryFee: 0 }),
+        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, total, type, notes: form.notes, deliveryFee: 0 }),
       })
       if (!res.ok) throw new Error()
       const order = await res.json()
@@ -147,6 +147,14 @@ export default function CartPage() {
     } finally {
       setLoading(false)
     }
+  }
+
+  if (!hydrated) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <ShoppingBag size={48} className="text-gray-200 animate-pulse" />
+      </div>
+    )
   }
 
   if (items.length === 0) {
@@ -229,10 +237,10 @@ export default function CartPage() {
                   <Label className="text-xs font-bold text-gray-500 uppercase">Téléphone *</Label>
                   <Input 
                     value={form.phone} 
-                    onChange={handlePhoneChange} 
-                    required 
-                    placeholder="+216 XX XXX XXX"
-                    maxLength={14}
+                    onChange={handlePhoneChange}
+                    required
+                    placeholder="Ex : 99 123 456"
+                    maxLength={11}
                     className={form.phone && !validatePhone(form.phone) ? 'border-red-500' : ''}
                   />
                   {form.phone && !validatePhone(form.phone) && (
@@ -287,7 +295,7 @@ export default function CartPage() {
                 {type === 'delivery' && (
                   <p className="text-xs text-muted-foreground italic">Les frais de livraison seront confirmés par notre équipe.</p>
                 )}
-                <div className="flex justify-between font-black text-base border-t pt-2"><span>Total</span><span className="text-[#F5A800]">{total.toFixed(2)} DT</span></div>
+                <div className="flex justify-between font-black text-base border-t pt-2"><span>{type === 'delivery' ? 'Total (hors livraison)' : 'Total'}</span><span className="text-[#F5A800]">{total.toFixed(2)} DT</span></div>
               </div>
               <button type="submit" disabled={loading}
                 className="w-full bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-60 text-black font-black py-4 rounded-xl transition-all text-sm hover:scale-[1.02] active:scale-[0.98]">

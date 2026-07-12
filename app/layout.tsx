@@ -22,7 +22,7 @@ export default function RootLayout({
     <html lang="fr" dir="ltr" className={`${jakarta.variable} h-full antialiased`}>
       <body className="min-h-full flex flex-col bg-white font-sans">
         {children}
-        <Toaster richColors position="top-right" />
+        <Toaster richColors position="top-center" />
       </body>
     </html>
   );

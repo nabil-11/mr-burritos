@@ -54,7 +54,39 @@
       "Bash(ls delivery-app/node_modules/@ionic/react/css/palettes/)",
       "Bash(cp mr-burritos-mobile/manager-app/android/app/build/outputs/apk/debug/app-debug.apk mr-burritos/public/downloads/mr-burritos-manager.apk)",
       "Bash(node \"C:/Users/TRAVEL~1/AppData/Local/Temp/claude/c--Users-Traveltodo-Desktop-Nouveau-dossier-mr-burritos/a405fe46-8ded-4d54-bae2-98cf25383218/scratchpad/gen-icons.cjs\" \"C:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android/app/src/main/res\")",
-      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android/app/src/main/res/mipmap-xxxhdpi/**)"
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android/app/src/main/res/mipmap-xxxhdpi/**)",
+      "Bash(ls -la mr-burritos-mobile/)",
+      "Bash(ls -la mr-burritos-mobile/manager-app/)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && cat .env 2>/dev/null && echo \"---CAPACITOR---\" && cat capacitor.config.ts && echo \"---PKG---\" && cat package.json && echo \"---SRC---\" && ls -R src | head -60)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" && echo \"===index.html===\" && cat index.html && echo \"===index.css \\(head\\)===\" && head -30 src/index.css && echo \"===theme dir===\" && ls -la src/theme/ && echo \"===types orders===\" && cat src/modules/orders/types.ts && echo \"===vite.config===\" && cat vite.config.ts)",
+      "Bash(rm -rf components context hooks lib modules pages theme App.test.tsx App.tsx firebase.ts index.css main.tsx setupTests.ts vite-env.d.ts)",
+      "Bash(mkdir -p lib context hooks pages theme)",
+      "PowerShell(cd \"c:\\\\Users\\\\Traveltodo\\\\Desktop\\\\Nouveau dossier\\\\mr-burritos-mobile\\\\manager-app\"; $env:BROWSER=\"none\"; npx vite --port 5199)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_console_messages",
+      "mcp__playwright__browser_take_screenshot",
+      "mcp__playwright__browser_fill_form",
+      "mcp__playwright__browser_click",
+      "mcp__playwright__browser_snapshot",
+      "mcp__playwright__browser_wait_for",
+      "mcp__playwright__browser_close",
+      "mcp__playwright__browser_evaluate",
+      "PowerShell(npm install -g @ionic/cli 2>&1)",
+      "PowerShell(ionic --version)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos\" && rm -f v5-*.png && rm -rf .playwright-mcp && echo \"cleaned\")",
+      "Bash(cat build.gradle)",
+      "Bash(cat variables.gradle)",
+      "Bash(cat gradle.properties)",
+      "Bash(head -40 app/build.gradle)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); const d={...p.dependencies,...p.devDependencies}; Object.keys\\(d\\).filter\\(k=>k.includes\\('capacitor'\\)\\).forEach\\(k=>console.log\\(k, d[k]\\)\\)\")",
+      "Bash(ls -la android/*.log hs_err*.log)",
+      "Bash(cd \"c:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/android\" && echo \"=== app/build.gradle \\(tail\\) ===\" && tail -20 app/build.gradle && echo \"=== google-services.json? ===\" && ls -la app/google-services.json 2>/dev/null || echo \"MISSING google-services.json\" && echo \"=== capacitor.settings / plugins ===\" && cat app/capacitor.build.gradle 2>/dev/null | head -30)",
+      "Bash(rm -f hs_err_pid*.log)",
+      "Bash(ls -la \"C:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app\" 2>/dev/null; echo \"---\"; find \"C:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile\" -name \"orders.tsx\" 2>/dev/null | head)",
+      "Bash(npm install *)",
+      "Bash(cd \"C:/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/src\" && find . -type f \\\\\\( -name \"*.tsx\" -o -name \"*.ts\" \\\\\\) | sort && echo \"---MAIN---\")",
+      "Read(//c/Users/Traveltodo/Desktop/Nouveau dossier/mr-burritos-mobile/manager-app/src/**)",
+      "Bash(node -e \"const p=require\\('./package.json'\\); console.log\\('react', p.dependencies.react\\); const g=n=>{try{return require\\(n+'/package.json'\\).version}catch{return 'MISSING'}}; ['@mui/material','@mui/system','@emotion/react','@emotion/styled','react','@types/react'].forEach\\(n=>console.log\\(n, g\\(n\\)\\)\\)\")"
     ],
     "additionalDirectories": [
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\manager-app\\src\\hooks",
@@ -68,7 +100,8 @@
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\statistics",
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src\\modules\\dashboard",
       "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app\\src",
-      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app"
+      "C:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos-mobile\\delivery-app",
+      "c:\\Users\\Traveltodo\\Desktop\\Nouveau dossier\\mr-burritos"
     ]
   }
 }

@@ -12,7 +12,7 @@ const slides = [
     id: 1,
     image: '/banner.png',
     title: 'Tacos Croustillants',
-    subtitle: 'Découvrez nos tacos incontournabes',
+    subtitle: 'Découvrez nos tacos incontournables',
     ctaPrimary: { label: 'Commander', href: '/menu?category=tacos' },
     ctaSecondary: { label: 'Voir le menu', href: '/menu' },
   },

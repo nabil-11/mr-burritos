@@ -117,6 +117,10 @@ export default function TrackOrderBar() {
 
   return (
     <div ref={ref} className="relative w-full">
+      {/* ── Label ──────────────────────────────────────────── */}
+      <p className="text-center sm:text-left text-white font-black text-sm mb-2 drop-shadow-lg">
+        📦 Suivre ma commande
+      </p>
       {/* ── Bar ────────────────────────────────────────────── */}
       <form
         onSubmit={verify}
