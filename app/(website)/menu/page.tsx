@@ -1,18 +1,21 @@
 import { connectDB } from '@/lib/mongodb'
-import { Category, Product } from '@/lib/models/index'
+import { Category, Product, Theme } from '@/lib/models/index'
 import ProductCard from '@/components/website/ProductCard'
 import mongoose from 'mongoose'
 import Link from 'next/link'
 
-type PageProps = { searchParams: Promise<{ category?: string }> }
+type PageProps = { searchParams: Promise<{ category?: string; theme?: string }> }
 
 const categoryIcons: Record<string, string> = {
   tacos: '🌮', burritos: '🌯', snacks: '🍟', boissons: '🥤', boxes: '📦',
 }
 
-async function getData(category?: string) {
+async function getData(category?: string, theme?: string) {
   await connectDB()
-  const categories = await Category.find({ isActive: true }).sort({ order: 1 }).lean()
+  const [categories, themes] = await Promise.all([
+    Category.find({ isActive: true }).sort({ order: 1 }).lean(),
+    Theme.find({ isActive: true }).sort({ order: 1 }).lean(),
+  ])
   const query: Record<string, unknown> = { isAvailable: true, isActive: true }
   if (category) {
     if (mongoose.isValidObjectId(category)) {
@@ -23,19 +26,32 @@ async function getData(category?: string) {
       if (cat) query.category = (cat as Record<string, unknown>)._id
     }
   }
-  const products = await Product.find(query).populate('supplements').lean()
-  return { categories, products }
+  if (theme) {
+    if (mongoose.isValidObjectId(theme)) {
+      query.themes = theme
+    } else {
+      const th = await Theme.findOne({ slug: theme, isActive: true }).lean()
+      if (th) query.themes = (th as Record<string, unknown>)._id
+    }
+  }
+  const products = await Product.find(query).populate('supplements').populate('themes').lean()
+  return { categories, themes, products }
 }
 
 export default async function MenuPage({ searchParams }: PageProps) {
-  const { category } = await searchParams
-  const { categories, products } = await getData(category)
+  const { category, theme } = await searchParams
+  const { categories, themes, products } = await getData(category, theme)
 
   // match by slug OR objectId
   const activeCat = (categories as Record<string, unknown>[]).find(
     (c) => String(c.slug) === category || String(c._id) === category
   )
-  const activeLabel = activeCat ? (activeCat.name as { fr: string }).fr : 'Tous nos plats'
+  const activeTheme = (themes as Record<string, unknown>[]).find(
+    (t) => String(t.slug) === theme || String(t._id) === theme
+  )
+  const activeLabel = activeTheme
+    ? (activeTheme.name as { fr: string }).fr
+    : activeCat ? (activeCat.name as { fr: string }).fr : 'Tous nos plats'
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -65,6 +81,28 @@ export default async function MenuPage({ searchParams }: PageProps) {
             )
           })}
         </div>
+
+        {/* Theme pills */}
+        {(themes as Record<string, unknown>[]).length > 0 && (
+          <div className="flex gap-2 flex-wrap justify-center mb-10 -mt-4">
+            {(themes as Record<string, unknown>[]).map((t) => {
+              const name = t.name as { fr: string }
+              const slug = String(t.slug ?? '')
+              const color = String(t.color ?? '#10B981')
+              const icon = String(t.icon ?? '')
+              const active = theme === slug || theme === String(t._id)
+              return (
+                <Link key={String(t._id)} href={active ? '/menu' : `/menu?theme=${slug}`}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-bold transition-all border"
+                  style={active
+                    ? { background: color, color: '#fff', borderColor: color }
+                    : { background: `${color}14`, color, borderColor: `${color}55` }}>
+                  {icon && <span>{icon}</span>} {name.fr}
+                </Link>
+              )
+            })}
+          </div>
+        )}
 
         {/* Section title */}
         <div className="mb-6">

@@ -2,6 +2,7 @@
 export { Category } from './Category'
 export { Product } from './Product'
 export { Supplement } from './Supplement'
+export { Theme } from './Theme'
 export { Order } from './Order'
 export { Reservation } from './Reservation'
 export { User } from './User'

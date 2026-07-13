@@ -14,6 +14,7 @@ const ProductSchema = new Schema(
     image: { type: String, default: '' },
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
     supplements: [{ type: Schema.Types.ObjectId, ref: 'Supplement' }],
+    themes: [{ type: Schema.Types.ObjectId, ref: 'Theme' }],
     isAvailable: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true },
   },

@@ -13,6 +13,13 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 
+interface ProductTheme {
+  _id: string
+  name: { ar: string; fr: string }
+  color?: string
+  icon?: string
+}
+
 interface Product {
   _id: string
   name: { ar: string; fr: string }
@@ -20,6 +27,7 @@ interface Product {
   price: number
   image: string
   supplements: CartSupplement[]
+  themes?: ProductTheme[]
 }
 
 // Emoji & gradient based on product name
@@ -141,10 +149,17 @@ export default function ProductCard({ product }: { product: Product }) {
           )}
 
           {/* Top badges - floating style */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <div className="absolute top-3 left-3 flex flex-col gap-2 items-start">
             <span className="flex items-center gap-1 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10">
               <Flame size={10} className="text-[#F5A800]" /> Populaire
             </span>
+            {product.themes?.slice(0, 3).map((t) => (
+              <span key={t._id}
+                className="flex items-center gap-1 backdrop-blur-md text-white text-[10px] font-bold px-3 py-1.5 rounded-full border border-white/10"
+                style={{ background: `${t.color ?? '#10B981'}cc` }}>
+                {t.icon && <span>{t.icon}</span>} {t.name.fr}
+              </span>
+            ))}
           </div>
 
           {/* Price badge - cinematic bottom right */}

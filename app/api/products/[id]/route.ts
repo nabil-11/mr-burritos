@@ -8,7 +8,7 @@ type Ctx = { params: Promise<{ id: string }> }
 export async function GET(_req: NextRequest, { params }: Ctx) {
   await connectDB()
   const { id } = await params
-  const product = await Product.findById(id).populate('category').populate('supplements')
+  const product = await Product.findById(id).populate('category').populate('supplements').populate('themes')
   if (!product) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
   return NextResponse.json(product)
 }

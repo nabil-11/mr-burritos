@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const category = searchParams.get('category')
   const query: Record<string, unknown> = { isActive: true }
   if (category) query.category = category
-  const products = await Product.find(query).populate('category').populate('supplements')
+  const products = await Product.find(query).populate('category').populate('supplements').populate('themes')
   return NextResponse.json(products)
 }
 
