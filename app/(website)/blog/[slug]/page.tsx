@@ -101,7 +101,7 @@ export default async function BlogPostPage({ params }: Props) {
         <div className="bg-gradient-to-br from-[#F5A800]/10 to-[#FF6B00]/5 rounded-2xl p-6 text-center border border-[#F5A800]/20">
           <p className="font-black text-[#1A1A1A] text-lg">Vous avez envie d&apos;un bon burrito ?</p>
           <p className="text-gray-500 text-sm mt-1">Commandez en ligne ou passez nous voir !</p>
-          <Link href="/menu"
+          <Link href="/#composer"
             className="inline-block mt-4 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-6 py-2.5 rounded-full text-sm transition-colors">
             Voir le menu →
           </Link>

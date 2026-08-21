@@ -109,7 +109,7 @@ export default async function OrderConfirmPage({ params }: Props) {
 
         {/* Actions */}
         <div className="flex flex-col sm:flex-row gap-3">
-          <Link href="/menu"
+          <Link href="/"
             className="flex-1 text-center bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black py-3 rounded-xl transition-all hover:scale-[1.02]">
             Commander à nouveau
           </Link>

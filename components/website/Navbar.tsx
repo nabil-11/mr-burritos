@@ -10,13 +10,9 @@ import TrackOrderDrawer from './TrackOrderDrawer'
 
 const navLinks = [
   { href: '/', label: 'Accueil' },
-  { href: '/menu', label: 'Menu' },
-  { href: '/menu?category=tacos', label: 'Tacos' },
-  { href: '/menu?category=burritos', label: 'Burritos' },
-  { href: '/menu?category=snacks', label: 'Snacks' },
+  { href: '/#composer', label: 'Commander' },
   { href: '/blog', label: 'Blog' },
   { href: '/avis', label: '⭐ Avis' },
-  { href: '/menu?category=boxes', label: '📦 Boxes' },
 ]
 
 export default function WebNavbar() {

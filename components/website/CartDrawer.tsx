@@ -21,7 +21,7 @@ export default function CartDrawer({ open, onClose }: { open: boolean; onClose: 
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
             <ShoppingBag size={48} className="text-gray-200" />
             <p className="font-medium">Votre panier est vide</p>
-            <Link href="/menu" onClick={onClose}
+            <Link href="/#composer" onClick={onClose}
               className="text-sm bg-[#F5A800] text-black font-bold px-4 py-2 rounded-full hover:bg-[#FF6B00] transition-colors">
               Voir le menu
             </Link>

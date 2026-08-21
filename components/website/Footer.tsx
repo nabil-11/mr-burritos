@@ -28,10 +28,11 @@ export default function Footer() {
         </div>
 
         <div>
-          <p className="text-[#F5A800] font-bold mb-4 text-sm uppercase tracking-wider">Menu</p>
+          <p className="text-[#F5A800] font-bold mb-4 text-sm uppercase tracking-wider">Navigation</p>
           <div className="space-y-2">
-            {[['Tacos', '/menu?category=tacos'], ['Burritos', '/menu?category=burritos'], ['Snacks', '/menu?category=snacks'], ['Boissons', '/menu?category=boissons']].map(([label, href]) => (
-              <Link key={href} href={href} className="block text-white/50 hover:text-[#F5A800] text-sm transition-colors">{label}</Link>
+            {/* Keyed by label: two entries may legitimately share an href. */}
+            {[['Commander', '/#composer'], ['Blog', '/blog'], ['Avis', '/avis'], ['Nous trouver', '/#contact']].map(([label, href]) => (
+              <Link key={label} href={href} className="block text-white/50 hover:text-[#F5A800] text-sm transition-colors">{label}</Link>
             ))}
           </div>
         </div>

@@ -1,20 +1,8 @@
-import Link from 'next/link'
-import { connectDB } from '@/lib/mongodb'
-import { Category, Product } from '@/lib/models/index'
 import { Flame, Clock, Shield, Truck, ChevronDown, MapPin, Phone, Mail, ArrowRight } from 'lucide-react'
 import Diaporama from '@/components/website/Diaporama'
-import ProductBuilder, { BuilderCategory } from '@/components/website/ProductBuilder'
+import WebsiteBuilder from '@/components/website/WebsiteBuilder'
 import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
-
-const CATEGORY_EMOJI: Record<string, string> = {
-  tacos: '🌮', burritos: '🌯', snacks: '🍟', boissons: '🥤', boxes: '📦',
-}
-
-const SIDE_STYLES: Record<string, string> = {
-  snacks: 'from-yellow-400 to-orange-500',
-  boissons: 'from-blue-500 to-cyan-600',
-  boxes: 'from-purple-600 to-violet-700',
-}
+import { getBuilderCategories } from '@/lib/builder'
 
 const USP = [
   { icon: Flame, title: 'Fait maison', desc: 'Préparé chaque jour' },
@@ -31,62 +19,12 @@ const CONTACT = {
   lng: 10.16311086959374,
 }
 
-type Doc = Record<string, unknown>
-
-async function getData() {
-  await connectDB()
-  const [categories, bases, dishes] = await Promise.all([
-    Category.find({ isActive: true }).sort({ order: 1 }).lean(),
-    Product.find({ isBase: true, isActive: true }).populate('supplements').lean(),
-    // Named dishes are never shown by name here — they are the picture reel.
-    Product.find({ isBase: { $ne: true }, isActive: true, isAvailable: true })
-      .select('image category')
-      .lean(),
-  ])
-  return JSON.parse(JSON.stringify({ categories, bases, dishes })) as {
-    categories: Doc[]
-    bases: Doc[]
-    dishes: Doc[]
-  }
-}
-
 export default async function HomePage() {
-  const { categories, bases, dishes } = await getData()
-
-  const galleryFor = (categoryId: string) =>
-    dishes
-      .filter((d) => String(d.category) === categoryId && d.image)
-      .map((d) => String(d.image))
-
-  // A category is composable when it has a base product behind it.
-  const composable: BuilderCategory[] = categories
-    .map((cat) => {
-      const base = bases.find((b) => String(b.category) === String(cat._id))
-      if (!base) return null
-      const slug = String(cat.slug)
-      return {
-        _id: String(cat._id),
-        slug,
-        name: cat.name as { fr: string },
-        emoji: CATEGORY_EMOJI[slug] ?? '🍽️',
-        gallery: galleryFor(String(cat._id)),
-        base: {
-          _id: String(base._id),
-          name: base.name as { ar: string; fr: string },
-          description: base.description as { fr: string },
-          price: base.price as number,
-          image: String(base.image ?? ''),
-          supplements: base.supplements as BuilderCategory['base']['supplements'],
-        },
-      } satisfies BuilderCategory
-    })
-    .filter((c): c is BuilderCategory => c !== null)
-
-  const sides = categories.filter(
-    (cat) => !bases.some((b) => String(b.category) === String(cat._id))
-  )
-
-  const heroShots = composable.flatMap((c) => c.gallery).slice(0, 8)
+  const categories = await getBuilderCategories()
+  const heroShots = categories
+    .filter((c) => c.base)
+    .flatMap((c) => c.gallery)
+    .slice(0, 8)
 
   return (
     <div className="bg-white">
@@ -133,7 +71,7 @@ export default async function HomePage() {
         </a>
       </section>
 
-      {/* ── LE COMPOSEUR ─────────────────────────────────────── */}
+      {/* ── LE COMPOSEUR — le seul chemin de commande ────────── */}
       <section id="composer" className="py-16 sm:py-24 px-4 bg-gray-50 scroll-mt-16">
         <div className="max-w-4xl mx-auto">
           <div className="text-center mb-10">
@@ -149,8 +87,8 @@ export default async function HomePage() {
             </p>
           </div>
 
-          {composable.length > 0 ? (
-            <ProductBuilder categories={composable} />
+          {categories.length > 0 ? (
+            <WebsiteBuilder categories={categories} />
           ) : (
             <div className="bg-white rounded-3xl border p-10 text-center">
               <p className="text-4xl mb-3">🌮</p>
@@ -163,66 +101,6 @@ export default async function HomePage() {
           )}
         </div>
       </section>
-
-      {/* ── À CÔTÉ ───────────────────────────────────────────── */}
-      {sides.length > 0 && (
-        <section className="py-16 px-4">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex items-end justify-between mb-8">
-              <div>
-                <p className="text-[#F5A800] text-xs font-black uppercase tracking-widest mb-1">
-                  Pour compléter
-                </p>
-                <h2 className="text-2xl sm:text-3xl font-black text-[#1A1A1A]">À côté</h2>
-              </div>
-              <Link
-                href="/menu"
-                className="text-sm font-bold text-gray-400 hover:text-[#F5A800] transition-colors"
-              >
-                Tout le menu →
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3 sm:gap-5">
-              {sides.map((cat) => {
-                const slug = String(cat.slug)
-                const name = cat.name as { fr: string }
-                const shots = galleryFor(String(cat._id))
-                return (
-                  <Link
-                    key={String(cat._id)}
-                    href={`/menu?category=${slug}`}
-                    className="group relative aspect-4/5 sm:aspect-square rounded-2xl overflow-hidden shadow-md hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
-                  >
-                    {shots.length > 0 ? (
-                      <Diaporama
-                        images={shots}
-                        alt={name.fr}
-                        interval={5000}
-                        sizes="(max-width: 640px) 33vw, 300px"
-                        className="absolute inset-0"
-                      />
-                    ) : (
-                      <div
-                        className={`absolute inset-0 bg-linear-to-br ${SIDE_STYLES[slug] ?? 'from-gray-700 to-gray-900'}`}
-                      />
-                    )}
-                    <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/25 to-transparent" />
-                    <div className="absolute inset-x-0 bottom-0 p-3 sm:p-4 text-center">
-                      <span className="block text-3xl sm:text-4xl mb-1 group-hover:scale-110 transition-transform duration-300">
-                        {CATEGORY_EMOJI[slug] ?? '🍽️'}
-                      </span>
-                      <p className="text-white font-black text-sm sm:text-base leading-none">
-                        {name.fr}
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </div>
-        </section>
-      )}
 
       {/* ── USP ──────────────────────────────────────────────── */}
       <section className="bg-[#1A1A1A] py-14 px-4">
@@ -240,7 +118,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── NOUS TROUVER ─────────────────────────────────────── */}
-      <section className="py-16 px-4 bg-gray-50">
+      <section id="contact" className="py-16 px-4 bg-gray-50 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
           <div className="text-center mb-10">
             <p className="text-[#F5A800] text-xs font-black uppercase tracking-widest mb-2">

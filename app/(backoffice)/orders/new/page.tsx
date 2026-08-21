@@ -1,17 +1,15 @@
 import { connectDB } from '@/lib/mongodb'
-import { Category, Product } from '@/lib/models/index'
 import { DeliveryCompany } from '@/lib/models/DeliveryCompany'
+import { getBuilderCategories } from '@/lib/builder'
 import NewOrderForm from './NewOrderForm'
 
 export default async function NewOrderPage() {
   await connectDB()
 
-  const categories = await Category.find({ isActive: true }).sort({ order: 1 }).lean()
-  const products = await Product.find({ isAvailable: true, isActive: true, isBase: { $ne: true } })
-    .populate('supplements')
-    .populate('category')
-    .lean()
-  const deliveryCompanies = await DeliveryCompany.find({ isActive: true }).sort({ name: 1 }).lean()
+  const [categories, deliveryCompanies] = await Promise.all([
+    getBuilderCategories(),
+    DeliveryCompany.find({ isActive: true }).sort({ name: 1 }).lean(),
+  ])
 
   return (
     <div>
@@ -22,8 +20,7 @@ export default async function NewOrderPage() {
         </div>
       </div>
       <NewOrderForm
-        products={JSON.parse(JSON.stringify(products))}
-        categories={JSON.parse(JSON.stringify(categories))}
+        categories={categories}
         deliveryCompanies={JSON.parse(JSON.stringify(deliveryCompanies))}
       />
     </div>

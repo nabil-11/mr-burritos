@@ -164,7 +164,7 @@ export default function CartPage() {
           <ShoppingBag size={64} className="text-gray-200 mx-auto mb-4" />
           <h2 className="text-2xl font-black text-[#1A1A1A] mb-2">Votre panier est vide</h2>
           <p className="text-muted-foreground mb-6">Parcourez notre menu et ajoutez vos plats préférés</p>
-          <Link href="/menu" className="bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-8 py-3 rounded-full transition-all">
+          <Link href="/#composer" className="bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-8 py-3 rounded-full transition-all">
             Voir le menu
           </Link>
         </div>
