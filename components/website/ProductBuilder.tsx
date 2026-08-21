@@ -58,8 +58,13 @@ const STEP_LABELS: Record<StepKey, string> = {
   recap: 'Panier',
 }
 
-/** "Taille XL" reads as clutter once it sits under a "Taille" heading. */
-const shortSize = (fr: string) => fr.replace(/^Taille\s+/i, '')
+/**
+ * "Taille XL" reads as clutter once it sits under a "Taille" heading, and the
+ * family suffix that keeps "Taille XL (Tacos)" apart from its Burrito twin is
+ * for the backoffice, not the customer — both fall away, leaving "XL".
+ */
+const shortSize = (fr: string) =>
+  fr.replace(/^Taille\s+/i, '').replace(/\s*\([^)]*\)\s*$/, '')
 
 const meatLabel = (n: number) =>
   n === 1 ? '1 viande' : n === 2 ? '2 viandes · double' : `${n} viandes · triple`

@@ -3,7 +3,8 @@ import { Category, Product } from './models/index'
 import type { BuilderCategory, BuilderProduct } from '@/components/website/ProductBuilder'
 
 export const CATEGORY_EMOJI: Record<string, string> = {
-  tacos: '🌮', burritos: '🌯', snacks: '🍟', boissons: '🥤', boxes: '📦',
+  tacos: '🌮', burritos: '🌯', burgers: '🍔', bowls: '🥣', healthy: '🥑',
+  snacks: '🍟', boxes: '📦', boissons: '🥤',
 }
 
 type Doc = Record<string, unknown>

@@ -1,6 +1,6 @@
 import { Flame, Clock, Shield, Truck, ChevronDown, MapPin, Phone, Mail, ArrowRight } from 'lucide-react'
 import Diaporama from '@/components/website/Diaporama'
-import HeroLayers from '@/components/website/HeroLayers'
+import ExplodedHero from '@/components/website/ExplodedHero'
 import WebsiteBuilder from '@/components/website/WebsiteBuilder'
 import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 import { getBuilderCategories } from '@/lib/builder'
@@ -45,7 +45,7 @@ export default async function HomePage() {
         {/* The stack sits behind the words on small screens, beside them on large */}
         <div className="absolute inset-0 flex items-center justify-center lg:hidden opacity-20 pointer-events-none">
           <div className="scale-90">
-            <HeroLayers width={220} />
+            <ExplodedHero width={200} />
           </div>
         </div>
 
@@ -72,7 +72,7 @@ export default async function HomePage() {
           </div>
 
           <div className="hidden lg:flex justify-center">
-            <HeroLayers width={260} />
+            <ExplodedHero width={240} />
           </div>
         </div>
 
@@ -108,7 +108,7 @@ export default async function HomePage() {
               <p className="text-4xl mb-3">🌮</p>
               <p className="font-bold text-[#1A1A1A]">Le composeur n&apos;est pas encore configuré</p>
               <p className="text-sm text-gray-400 mt-2">
-                Lancez <code className="bg-gray-100 px-1.5 py-0.5 rounded">npm run setup-builder</code> pour
+                Lancez <code className="bg-gray-100 px-1.5 py-0.5 rounded">npm run upgrade-menu</code> pour
                 créer les produits de base.
               </p>
             </div>

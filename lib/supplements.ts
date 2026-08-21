@@ -24,7 +24,7 @@ export function groupSupplements<T extends SupplementLike>(list: T[] | undefined
   const all = list ?? []
   return {
     sauces: all.filter((s) => s.type === 'sauce'),
-    // Cheapest first, so M (0 DT) → XL (+4.5) → XXL (+8).
+    // Cheapest first, so M (incluse) → XL → XXL, quel que soit l'écart de prix.
     sizes: all.filter((s) => s.type === 'size').sort((a, b) => a.price - b.price),
     viandes: all.filter((s) => s.type === 'viande'),
     extras: all.filter((s) => s.type === 'extra'),
