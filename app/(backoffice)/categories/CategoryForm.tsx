@@ -7,13 +7,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Plus } from 'lucide-react'
+import ImageUpload from '@/components/backoffice/ImageUpload'
 import { toast } from 'sonner'
 
 export default function CategoryForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ nameFr: '', nameAr: '', slug: '', order: '0' })
+  const [form, setForm] = useState({ nameFr: '', nameAr: '', slug: '', order: '0', image: '' })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,12 +23,12 @@ export default function CategoryForm() {
       const res = await fetch('/api/categories', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: { fr: form.nameFr, ar: form.nameAr }, slug: form.slug, order: Number(form.order) }),
+        body: JSON.stringify({ name: { fr: form.nameFr, ar: form.nameAr }, slug: form.slug, order: Number(form.order), image: form.image }),
       })
       if (!res.ok) throw new Error()
       toast.success('Catégorie créée')
       setOpen(false)
-      setForm({ nameFr: '', nameAr: '', slug: '', order: '0' })
+      setForm({ nameFr: '', nameAr: '', slug: '', order: '0', image: '' })
       router.refresh()
     } catch {
       toast.error('Erreur lors de la création')
@@ -63,6 +64,10 @@ export default function CategoryForm() {
               <Label>Ordre</Label>
               <Input type="number" value={form.order} onChange={(e) => setForm({ ...form, order: e.target.value })} />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Image de la catégorie</Label>
+            <ImageUpload value={form.image} onChange={(url) => setForm({ ...form, image: url })} />
           </div>
           <Button type="submit" disabled={loading} className="w-full bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold">
             {loading ? 'Création...' : 'Créer'}

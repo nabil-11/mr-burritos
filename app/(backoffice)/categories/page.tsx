@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/mongodb'
 import { Category } from '@/lib/models/Category'
 import CategoryForm from './CategoryForm'
+import CategoryImage from './CategoryImage'
 import StatusSwitch from '@/components/backoffice/StatusSwitch'
 
 export default async function CategoriesPage() {
@@ -18,7 +19,7 @@ export default async function CategoriesPage() {
         <table className="w-full text-sm min-w-125">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Actif'].map((h) => (
+              {['Image', 'Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Actif'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -28,6 +29,13 @@ export default async function CategoriesPage() {
               const name = cat.name as { ar: string; fr: string }
               return (
                 <tr key={String(cat._id)} className="hover:bg-gray-50">
+                  <td className="px-4 py-2">
+                    <CategoryImage
+                      id={String(cat._id)}
+                      name={name.fr}
+                      image={String(cat.image ?? '')}
+                    />
+                  </td>
                   <td className="px-4 py-3 font-medium">{name.fr}</td>
                   <td className="px-4 py-3">{name.ar}</td>
                   <td className="px-4 py-3 font-mono text-xs text-muted-foreground">{String(cat.slug)}</td>

@@ -37,11 +37,15 @@ export default function Diaporama({
     return <div className={`bg-linear-to-br from-gray-800 to-gray-900 ${className}`} />
   }
 
+  // No `relative` on the root: Tailwind emits `.relative` after `.absolute`, so
+  // it would beat the `absolute inset-0` callers pass in and collapse this box
+  // to zero height — every child is absolutely positioned. Positioning is the
+  // caller's job.
   return (
-    <div className={`relative overflow-hidden ${className}`}>
+    <div className={`overflow-hidden ${className}`}>
       {shots.map((src, i) => (
         <Image
-          key={src}
+          key={`${src}-${i}`}
           src={src}
           alt={alt}
           fill
@@ -56,7 +60,7 @@ export default function Diaporama({
         <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
           {shots.map((src, i) => (
             <span
-              key={src}
+              key={`${src}-${i}`}
               className={`h-1.5 rounded-full transition-all duration-500 ${
                 i === index ? 'w-5 bg-[#F5A800]' : 'w-1.5 bg-white/50'
               }`}

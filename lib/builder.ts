@@ -51,7 +51,21 @@ export async function getBuilderCategories(): Promise<BuilderCategory[]> {
       const slug = String(cat.slug)
       const baseDoc = raw.bases.find((b) => String(b.category) === id)
       const catDishes = raw.dishes.filter((d) => String(d.category) === id)
-      const gallery = catDishes.map((d) => String(d.image ?? '')).filter(Boolean)
+
+      // Picture sources, best first: the category's own shot (set in
+      // backoffice), then its dishes, then the base product. A category whose
+      // dishes have no photos still shows something.
+      // Deduped: the base product's photo is copied from one of the dishes, so
+      // it would otherwise show twice in the same slideshow.
+      const gallery = [
+        ...new Set(
+          [
+            String(cat.image ?? ''),
+            ...catDishes.map((d) => String(d.image ?? '')),
+            String(baseDoc?.image ?? ''),
+          ].filter(Boolean)
+        ),
+      ]
 
       // A composable category has nothing to offer without its base product,
       // and a plain one has nothing to offer without dishes.
@@ -62,7 +76,7 @@ export async function getBuilderCategories(): Promise<BuilderCategory[]> {
         slug,
         name: cat.name as { fr: string },
         emoji: CATEGORY_EMOJI[slug] ?? '🍽️',
-        gallery: gallery.length > 0 ? gallery : [String(baseDoc?.image ?? '')].filter(Boolean),
+        gallery,
         base: baseDoc ? toProduct(baseDoc) : null,
         // Composable categories never expose their dish names.
         products: baseDoc ? [] : catDishes.map(toProduct),
