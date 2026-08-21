@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { Check, Plus, Minus, ArrowLeft, ShoppingBag, Sparkles } from 'lucide-react'
 import { groupSupplements, meatQuotaFor, configuredPrice } from '@/lib/supplements'
 import Diaporama from './Diaporama'
+import IngredientStack from './IngredientStack'
 
 export interface BuilderSupplement {
   _id: string
@@ -12,6 +13,7 @@ export interface BuilderSupplement {
   price: number
   type: string
   image?: string
+  layerImage?: string
   meatCount?: number
 }
 
@@ -209,6 +211,8 @@ export default function ProductBuilder({
 
   const pad = compact ? 'p-4' : 'p-5 sm:p-8'
   const padX = compact ? 'px-4' : 'px-5 sm:px-8'
+  // Only a composed wrap has a cross-section worth drawing; a canette does not.
+  const showStack = !!category?.base && groups.viandes.length > 0
 
   // ── Layer 0 — pick a category ─────────────────────────────────────────────
   if (!category) {
@@ -340,7 +344,30 @@ export default function ProductBuilder({
       </div>
 
       {/* Layer body */}
-      <div className={`${pad} ${compact ? 'min-h-56' : 'min-h-72'}`}>
+      <div className={`${pad} ${compact ? 'min-h-56' : 'min-h-72'} ${
+        showStack ? 'grid gap-6 sm:grid-cols-[1fr_auto] items-start' : ''
+      }`}>
+
+        {/* Live cross-section — above the options on mobile, beside on desktop */}
+        {showStack && (
+          <aside className="order-first sm:order-last sm:sticky sm:top-4 flex justify-center scale-90 sm:scale-100 origin-top">
+            <div>
+              <IngredientStack
+                shape={category.slug === 'burritos' ? 'burrito' : 'tacos'}
+                meats={chosenMeats}
+                sauces={sauces}
+                extras={extras}
+                compact={compact}
+              />
+              <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3">
+                {size ? shortSize(size.name.fr) : ''} · {chosenMeats.length}/{quota} viande
+                {quota > 1 ? 's' : ''}
+              </p>
+            </div>
+          </aside>
+        )}
+
+        <div className={showStack ? 'min-w-0' : ''}>
 
         {step === 'product' && (
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -599,6 +626,7 @@ export default function ProductBuilder({
             </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Footer: running total + navigation */}

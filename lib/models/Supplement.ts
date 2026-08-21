@@ -14,6 +14,9 @@ const SupplementSchema = new Schema(
     },
     // Viandes are pictured in the builder, so they carry their own image.
     image: { type: String, default: '' },
+    // Optional transparent PNG used as one slice of the ingredient stack.
+    // Empty falls back to a tinted placeholder bar.
+    layerImage: { type: String, default: '' },
     // Sizes only: how many viandes the customer picks (M 1, XL 2, XXL 3).
     meatCount: { type: Number, default: 1, min: 1 },
     isActive: { type: Boolean, default: true },

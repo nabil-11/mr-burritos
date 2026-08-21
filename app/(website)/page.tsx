@@ -1,5 +1,6 @@
 import { Flame, Clock, Shield, Truck, ChevronDown, MapPin, Phone, Mail, ArrowRight } from 'lucide-react'
 import Diaporama from '@/components/website/Diaporama'
+import HeroLayers from '@/components/website/HeroLayers'
 import WebsiteBuilder from '@/components/website/WebsiteBuilder'
 import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 import { getBuilderCategories } from '@/lib/builder'
@@ -39,27 +40,40 @@ export default async function HomePage() {
           className="absolute inset-0"
           preload
         />
-        <div className="absolute inset-0 bg-linear-to-b from-black/80 via-black/60 to-black/90" />
+        <div className="absolute inset-0 bg-linear-to-b from-black/85 via-black/70 to-black/95" />
 
-        <div className="relative z-10 text-center px-4 max-w-3xl">
-          <p className="text-[#F5A800] text-xs font-black uppercase tracking-[0.3em] mb-5">
-            Crunch makes everything better
-          </p>
-          <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-white leading-[0.95]">
-            Composez
-            <br />
-            <span className="text-[#F5A800]">votre tacos.</span>
-          </h1>
-          <p className="text-white/60 mt-6 text-base sm:text-lg max-w-md mx-auto leading-relaxed">
-            Choisissez la taille, vos viandes, vos sauces. M, XL double viande ou
-            XXL triple viande — c&apos;est vous qui décidez.
-          </p>
-          <a
-            href="#composer"
-            className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-9 py-4 rounded-full transition-all hover:scale-105 shadow-2xl text-sm mt-9"
-          >
-            Commencer <ArrowRight size={16} />
-          </a>
+        {/* The stack sits behind the words on small screens, beside them on large */}
+        <div className="absolute inset-0 flex items-center justify-center lg:hidden opacity-20 pointer-events-none">
+          <div className="scale-90">
+            <HeroLayers width={220} />
+          </div>
+        </div>
+
+        <div className="relative z-10 w-full max-w-6xl px-4 grid lg:grid-cols-2 gap-12 items-center">
+          <div className="text-center lg:text-left">
+            <p className="text-[#F5A800] text-xs font-black uppercase tracking-[0.3em] mb-5">
+              Crunch makes everything better
+            </p>
+            <h1 className="text-5xl sm:text-6xl md:text-7xl font-black text-white leading-[0.95]">
+              Composez
+              <br />
+              <span className="text-[#F5A800]">couche par couche.</span>
+            </h1>
+            <p className="text-white/60 mt-6 text-base sm:text-lg max-w-md mx-auto lg:mx-0 leading-relaxed">
+              Choisissez la taille, vos viandes, vos sauces. M, XL double viande ou
+              XXL triple viande — c&apos;est vous qui décidez.
+            </p>
+            <a
+              href="#composer"
+              className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-9 py-4 rounded-full transition-all hover:scale-105 shadow-2xl text-sm mt-9"
+            >
+              Commencer <ArrowRight size={16} />
+            </a>
+          </div>
+
+          <div className="hidden lg:flex justify-center">
+            <HeroLayers width={260} />
+          </div>
         </div>
 
         <a
