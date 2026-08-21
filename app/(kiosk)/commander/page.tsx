@@ -6,7 +6,7 @@ export default async function CommanderPage() {
   await connectDB()
 
   const categories = await Category.find({ isActive: true }).sort({ order: 1 }).lean()
-  const products = await Product.find({ isAvailable: true, isActive: true })
+  const products = await Product.find({ isAvailable: true, isActive: true, isBase: { $ne: true } })
     .populate('supplements')
     .populate('category')
     .lean()

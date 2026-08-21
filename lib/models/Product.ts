@@ -17,6 +17,9 @@ const ProductSchema = new Schema(
     themes: [{ type: Schema.Types.ObjectId, ref: 'Theme' }],
     isAvailable: { type: Boolean, default: true },
     isActive: { type: Boolean, default: true },
+    // A base product is the category's entry point in the builder ("Tacos",
+    // "Burrito") rather than a dish you order by name. Hidden from the menu grid.
+    isBase: { type: Boolean, default: false },
   },
   { timestamps: true }
 )

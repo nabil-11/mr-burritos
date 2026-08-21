@@ -14,7 +14,7 @@ export default function SupplementForm() {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [form, setForm] = useState({ nameFr: '', nameAr: '', price: '0', type: 'extra' })
+  const [form, setForm] = useState({ nameFr: '', nameAr: '', price: '0', type: 'extra', meatCount: '1' })
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -23,12 +23,18 @@ export default function SupplementForm() {
       const res = await fetch('/api/supplements', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: { fr: form.nameFr, ar: form.nameAr }, price: Number(form.price), type: form.type }),
+        body: JSON.stringify({
+          name: { fr: form.nameFr, ar: form.nameAr },
+          price: Number(form.price),
+          type: form.type,
+          // Only a size decides how many viandes the customer gets.
+          meatCount: form.type === 'size' ? Number(form.meatCount) : 1,
+        }),
       })
       if (!res.ok) throw new Error()
       toast.success('Supplément créé')
       setOpen(false)
-      setForm({ nameFr: '', nameAr: '', price: '0', type: 'extra' })
+      setForm({ nameFr: '', nameAr: '', price: '0', type: 'extra', meatCount: '1' })
       router.refresh()
     } catch {
       toast.error('Erreur lors de la création')
@@ -65,11 +71,26 @@ export default function SupplementForm() {
                 <SelectContent>
                   <SelectItem value="sauce">Sauce</SelectItem>
                   <SelectItem value="size">Taille</SelectItem>
+                  <SelectItem value="viande">Viande</SelectItem>
                   <SelectItem value="extra">Extra</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
+          {form.type === 'size' && (
+            <div className="space-y-1">
+              <Label>Nombre de viandes</Label>
+              <Input
+                type="number"
+                min="1"
+                value={form.meatCount}
+                onChange={(e) => setForm({ ...form, meatCount: e.target.value })}
+              />
+              <p className="text-xs text-muted-foreground">
+                Combien de viandes le client choisit pour cette taille — M 1, XL 2, XXL 3.
+              </p>
+            </div>
+          )}
           <Button type="submit" disabled={loading} className="w-full bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold">
             {loading ? 'Création...' : 'Créer'}
           </Button>

@@ -16,7 +16,7 @@ async function getData(category?: string, theme?: string) {
     Category.find({ isActive: true }).sort({ order: 1 }).lean(),
     Theme.find({ isActive: true }).sort({ order: 1 }).lean(),
   ])
-  const query: Record<string, unknown> = { isAvailable: true, isActive: true }
+  const query: Record<string, unknown> = { isAvailable: true, isActive: true, isBase: { $ne: true } }
   if (category) {
     if (mongoose.isValidObjectId(category)) {
       query.category = category

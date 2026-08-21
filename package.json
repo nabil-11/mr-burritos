@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "add-sizes": "tsx scripts/add-sizes.ts"
+    "add-sizes": "tsx scripts/add-sizes.ts",
+    "setup-builder": "tsx scripts/setup-builder.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

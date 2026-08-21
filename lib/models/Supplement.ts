@@ -9,9 +9,13 @@ const SupplementSchema = new Schema(
     price: { type: Number, required: true, min: 0 },
     type: {
       type: String,
-      enum: ['sauce', 'size', 'extra'],
+      enum: ['sauce', 'size', 'viande', 'extra'],
       default: 'extra',
     },
+    // Viandes are pictured in the builder, so they carry their own image.
+    image: { type: String, default: '' },
+    // Sizes only: how many viandes the customer picks (M 1, XL 2, XXL 3).
+    meatCount: { type: Number, default: 1, min: 1 },
     isActive: { type: Boolean, default: true },
   },
   { timestamps: true }

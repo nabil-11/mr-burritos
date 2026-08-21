@@ -4,7 +4,7 @@ import { Badge } from '@/components/ui/badge'
 import SupplementForm from './SupplementForm'
 import StatusSwitch from '@/components/backoffice/StatusSwitch'
 
-const typeLabels: Record<string, string> = { sauce: 'Sauce', size: 'Taille', extra: 'Extra' }
+const typeLabels: Record<string, string> = { sauce: 'Sauce', size: 'Taille', viande: 'Viande', extra: 'Extra' }
 
 export default async function SupplementsPage() {
   await connectDB()
@@ -36,6 +36,11 @@ export default async function SupplementsPage() {
                   <td className="px-4 py-3 text-[#F5A800] font-bold">{(sup.price as number).toFixed(2)} DT</td>
                   <td className="px-4 py-3">
                     <Badge variant="outline">{typeLabels[String(sup.type)] || String(sup.type)}</Badge>
+                    {sup.type === 'size' && (
+                      <span className="ml-2 text-xs text-muted-foreground">
+                        {Number(sup.meatCount ?? 1)} viande{Number(sup.meatCount ?? 1) > 1 ? 's' : ''}
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     <StatusSwitch
