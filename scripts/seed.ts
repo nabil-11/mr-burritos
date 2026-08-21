@@ -5,7 +5,7 @@
  * Crée :
  *  - 1 utilisateur admin
  *  - 5 catégories  (Tacos, Burritos, Snacks, Boissons, Boxes)
- *  - 14 suppléments (7 sauces gratuites, 1 taille XL, 6 extras payants)
+ *  - 16 suppléments (7 sauces gratuites, 3 tailles M/XL/XXL, 6 extras payants)
  *  - 21 produits   (5 Tacos + 5 Burritos + 6 Snacks + 2 Boissons + 3 Boxes)
  */
 
@@ -105,8 +105,10 @@ async function main() {
     { nameFr: 'BBQ',              nameAr: 'BBQ',          price: 0,   type: 'sauce' },
     { nameFr: 'Ketchup',          nameAr: 'كاتشب',        price: 0,   type: 'sauce' },
     { nameFr: 'Harissa',          nameAr: 'هريسة',        price: 0,   type: 'sauce' },
-    // TAILLE
+    // TAILLES — exclusives entre elles, M est la taille de base incluse
+    { nameFr: 'Taille M',         nameAr: 'حجم M',        price: 0,   type: 'size'  },
     { nameFr: 'Taille XL',        nameAr: 'حجم XL',       price: 4.5, type: 'size'  },
+    { nameFr: 'Taille XXL',       nameAr: 'حجم XXL',      price: 8,   type: 'size'  },
     // EXTRAS payants
     { nameFr: 'Oeuf',             nameAr: 'بيض',          price: 1,   type: 'extra' },
     { nameFr: 'Fromage Slice',    nameAr: 'جبنة شريحة',   price: 1,   type: 'extra' },
@@ -132,9 +134,9 @@ async function main() {
   // Groupes de suppléments
   const SAUCES = ['Olive','Algérienne','Mayonnaise','Ail','BBQ','Ketchup','Harissa'].map(n => supIds[n])
   const EXTRAS  = ['Oeuf','Fromage Slice','Mozzarella','Fromage Gruyère','Fromage Raclette','Bacon'].map(n => supIds[n])
-  const XL      = [supIds['Taille XL']]
-  const ALL     = [...SAUCES, ...XL, ...EXTRAS]   // Tacos : sauces + XL + extras
-  const BURR    = [...SAUCES, ...EXTRAS]            // Burritos : sauces + extras (sans XL)
+  const SIZES   = ['Taille M','Taille XL','Taille XXL'].map(n => supIds[n])
+  const ALL     = [...SAUCES, ...SIZES, ...EXTRAS]  // Tacos : sauces + tailles + extras
+  const BURR    = [...SAUCES, ...SIZES, ...EXTRAS]  // Burritos : sauces + tailles + extras
   const SNACK   = [...EXTRAS]                       // Snacks : extras seulement
 
   // ── 4. Produits ─────────────────────────────────────────────────────────────

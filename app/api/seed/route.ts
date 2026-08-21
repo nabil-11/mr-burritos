@@ -51,7 +51,9 @@ export async function POST() {
     { name: { ar: 'BBQ', fr: 'BBQ' }, price: 0, type: 'sauce' },
     { name: { ar: 'كاتشب', fr: 'Ketchup' }, price: 0, type: 'sauce' },
     { name: { ar: 'هريسة', fr: 'Harissa' }, price: 0, type: 'sauce' },
+    { name: { ar: 'حجم M', fr: 'Taille M' }, price: 0, type: 'size' },
     { name: { ar: 'حجم XL', fr: 'Taille XL' }, price: 4.5, type: 'size' },
+    { name: { ar: 'حجم XXL', fr: 'Taille XXL' }, price: 8, type: 'size' },
     { name: { ar: 'بيض', fr: 'Oeuf' }, price: 1, type: 'extra' },
     { name: { ar: 'جبنة شريحة', fr: 'Fromage Slice' }, price: 1, type: 'extra' },
     { name: { ar: 'موزاريلا', fr: 'Mozzarella' }, price: 2.5, type: 'extra' },
@@ -69,7 +71,8 @@ export async function POST() {
     )
   )
   const sauces = supDocs.filter((s) => s.type === 'sauce').map((s) => s._id)
-  const extras = supDocs.filter((s) => s.type !== 'sauce').map((s) => s._id)
+  const sizes = supDocs.filter((s) => s.type === 'size').map((s) => s._id)
+  const extras = supDocs.filter((s) => s.type === 'extra').map((s) => s._id)
   const allSupps = supDocs.map((s) => s._id)
 
   // Products — Tacos
@@ -83,11 +86,11 @@ export async function POST() {
 
   // Products — Burritos
   const burritosProducts = [
-    { name: { ar: 'بوريتو كريسبي', fr: 'Burrito Crispy' }, description: { ar: 'إسكالوب مقلي، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Escalope panée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...extras] },
-    { name: { ar: 'بوريتو سبايسي تشيكن', fr: 'Burrito Spicy Chicken' }, description: { ar: 'إسكالوب مشوية، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Escalope grillée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...extras] },
-    { name: { ar: 'بوريتو كوردون بلو', fr: 'Burrito Cordon Bleu' }, description: { ar: 'كوردون بلو، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Cordon bleu, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...extras] },
-    { name: { ar: 'بوريتو نوجيتس', fr: 'Burrito Nuggettes' }, description: { ar: 'نوجيتس، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Nuggettes, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...extras] },
-    { name: { ar: 'بوريتو بيف', fr: 'Burrito Beef' }, description: { ar: 'لحم مفروم، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Viande hachée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 13.9, category: burritos._id, supplements: [...sauces, ...extras] },
+    { name: { ar: 'بوريتو كريسبي', fr: 'Burrito Crispy' }, description: { ar: 'إسكالوب مقلي، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Escalope panée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...sizes, ...extras] },
+    { name: { ar: 'بوريتو سبايسي تشيكن', fr: 'Burrito Spicy Chicken' }, description: { ar: 'إسكالوب مشوية، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Escalope grillée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...sizes, ...extras] },
+    { name: { ar: 'بوريتو كوردون بلو', fr: 'Burrito Cordon Bleu' }, description: { ar: 'كوردون بلو، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Cordon bleu, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...sizes, ...extras] },
+    { name: { ar: 'بوريتو نوجيتس', fr: 'Burrito Nuggettes' }, description: { ar: 'نوجيتس، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Nuggettes, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 11.9, category: burritos._id, supplements: [...sauces, ...sizes, ...extras] },
+    { name: { ar: 'بوريتو بيف', fr: 'Burrito Beef' }, description: { ar: 'لحم مفروم، أرز، ذرة، صوص بوريتو، فلفل، بطاطس، صوص فروماجير، صوص اختياري', fr: 'Viande hachée, riz, maïs, sauce burrito, poivron, frites, Sauce fromagère, sauce au choix' }, price: 13.9, category: burritos._id, supplements: [...sauces, ...sizes, ...extras] },
   ]
 
   // Products — Snacks

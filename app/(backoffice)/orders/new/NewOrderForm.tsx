@@ -7,6 +7,7 @@ import { Plus, Minus, Trash2, ShoppingCart, ChevronDown, ChevronUp, Search } fro
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
+import { groupSupplements, defaultSizeSelection, toggleSupplement } from '@/lib/supplements'
 
 interface Supplement {
   _id: string
@@ -72,11 +73,13 @@ function PickupForm({
     return list
   }, [products, activeCat, search])
 
+  const initialSupps = (product: Product) => defaultSizeSelection(groupSupplements(product.supplements).sizes)
+
   const addItem = (product: Product) => {
-    const supps = pendingSupps[product._id] ?? []
+    const supps = pendingSupps[product._id] ?? initialSupps(product)
     const uid = `${product._id}-${Date.now()}`
     setItems((prev) => [...prev, { uid, productId: product._id, name: product.name, price: product.price, quantity: 1, selectedSupplements: supps }])
-    setPendingSupps((prev) => ({ ...prev, [product._id]: [] }))
+    setPendingSupps((prev) => ({ ...prev, [product._id]: initialSupps(product) }))
     setExpandedProduct(null)
     toast.success(`${product.name.fr} ajouté`)
   }
@@ -86,12 +89,11 @@ function PickupForm({
     else setItems((prev) => prev.map((it) => it.uid === uid ? { ...it, quantity: qty } : it))
   }
 
-  const toggleSupp = (productId: string, supp: Supplement) => {
-    setPendingSupps((prev) => {
-      const current = prev[productId] ?? []
-      const exists = current.find((s) => s._id === supp._id)
-      return { ...prev, [productId]: exists ? current.filter((s) => s._id !== supp._id) : [...current, supp] }
-    })
+  const toggleSupp = (product: Product, supp: Supplement) => {
+    setPendingSupps((prev) => ({
+      ...prev,
+      [product._id]: toggleSupplement(prev[product._id] ?? initialSupps(product), supp),
+    }))
   }
 
   const total = items.reduce((sum, it) => sum + (it.price + it.selectedSupplements.reduce((s, x) => s + x.price, 0)) * it.quantity, 0)
@@ -113,12 +115,10 @@ function PickupForm({
         <div className="bg-white rounded-xl border overflow-hidden divide-y">
           {filtered.length === 0 && <p className="text-center text-muted-foreground py-10 text-sm">Aucun produit trouvé</p>}
           {filtered.map((product) => {
-            const sauces = product.supplements.filter((s) => s.type === 'sauce')
-            const sizes  = product.supplements.filter((s) => s.type === 'size')
-            const extras = product.supplements.filter((s) => s.type === 'extra')
+            const { sauces, sizes, extras } = groupSupplements(product.supplements)
             const hasSupps = product.supplements.length > 0
             const isExpanded = expandedProduct === product._id
-            const selected = pendingSupps[product._id] ?? []
+            const selected = pendingSupps[product._id] ?? initialSupps(product)
             return (
               <div key={product._id} className="p-3.5">
                 <div className="flex items-center gap-3">
@@ -130,7 +130,7 @@ function PickupForm({
                   {hasSupps && (
                     <button onClick={() => setExpandedProduct(isExpanded ? null : product._id)} className="flex items-center gap-1 text-xs text-gray-500 hover:text-[#1A1A1A] border border-gray-200 rounded-lg px-2.5 py-1.5 transition-colors">
                       Options {isExpanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
-                      {selected.length > 0 && <span className="bg-[#F5A800] text-black text-[10px] font-black px-1.5 py-0.5 rounded-full">{selected.length}</span>}
+                      {selected.filter((s) => s.type !== 'size').length > 0 && <span className="bg-[#F5A800] text-black text-[10px] font-black px-1.5 py-0.5 rounded-full">{selected.filter((s) => s.type !== 'size').length}</span>}
                     </button>
                   )}
                   <button onClick={() => addItem(product)} className="flex items-center gap-1.5 bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black text-xs font-bold px-3.5 py-2 rounded-lg transition-all">
@@ -139,14 +139,14 @@ function PickupForm({
                 </div>
                 {isExpanded && (
                   <div className="mt-3 pt-3 border-t border-gray-100 space-y-2.5">
-                    {[{ label: '🥫 Sauces', list: sauces }, { label: '📐 Taille', list: sizes }, { label: '✨ Extras', list: extras }].filter(({ list }) => list.length > 0).map(({ label, list }) => (
+                    {[{ label: '📐 Taille', list: sizes }, { label: '🥫 Sauces', list: sauces }, { label: '✨ Extras', list: extras }].filter(({ list }) => list.length > 0).map(({ label, list }) => (
                       <div key={label}>
                         <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1.5">{label}</p>
                         <div className="flex flex-wrap gap-1.5">
                           {list.map((s) => {
                             const active = !!selected.find((x) => x._id === s._id)
                             return (
-                              <button key={s._id} onClick={() => toggleSupp(product._id, s)} className={`text-xs px-3 py-1 rounded-full border font-medium transition-all ${active ? 'bg-[#F5A800] border-[#F5A800] text-black' : 'border-gray-200 text-gray-500 hover:border-[#F5A800]'}`}>
+                              <button key={s._id} onClick={() => toggleSupp(product, s)} className={`text-xs px-3 py-1 rounded-full border font-medium transition-all ${active ? 'bg-[#F5A800] border-[#F5A800] text-black' : 'border-gray-200 text-gray-500 hover:border-[#F5A800]'}`}>
                                 {s.name.fr}{s.price > 0 ? ` +${s.price} DT` : ''}
                               </button>
                             )

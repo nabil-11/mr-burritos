@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { toast } from 'sonner'
 import { Plus, Minus, ShoppingCart, X, Check, ChevronRight, Trash2 } from 'lucide-react'
+import { groupSupplements, defaultSizeSelection, toggleSupplement } from '@/lib/supplements'
 
 interface Supplement {
   _id: string
@@ -96,7 +97,7 @@ export default function KioskForm({
   const handleProductTap = (product: Product) => {
     if (product.supplements.length > 0) {
       setConfigProduct(product)
-      setPendingSupps([])
+      setPendingSupps(defaultSizeSelection(groupSupplements(product.supplements).sizes))
     } else {
       addToCart(product, [])
     }
@@ -110,11 +111,7 @@ export default function KioskForm({
   }
 
   const togglePendingSupp = (supp: Supplement) => {
-    setPendingSupps((prev) =>
-      prev.find((s) => s._id === supp._id)
-        ? prev.filter((s) => s._id !== supp._id)
-        : [...prev, supp]
-    )
+    setPendingSupps((prev) => toggleSupplement(prev, supp))
   }
 
   const updateQty = (uid: string, qty: number) => {
@@ -312,9 +309,9 @@ export default function KioskForm({
             {/* Supplement groups */}
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {[
-                { label: '🥫 Sauces', list: configProduct.supplements.filter((s) => s.type === 'sauce') },
-                { label: '📐 Taille', list: configProduct.supplements.filter((s) => s.type === 'size') },
-                { label: '✨ Extras', list: configProduct.supplements.filter((s) => s.type === 'extra') },
+                { label: '📐 Taille', list: groupSupplements(configProduct.supplements).sizes },
+                { label: '🥫 Sauces', list: groupSupplements(configProduct.supplements).sauces },
+                { label: '✨ Extras', list: groupSupplements(configProduct.supplements).extras },
               ].filter(({ list }) => list.length > 0).map(({ label, list }) => (
                 <div key={label}>
                   <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-3">{label}</p>
@@ -331,7 +328,7 @@ export default function KioskForm({
                               : 'border-gray-200 text-gray-600 hover:border-[#F5A800]/50 bg-white'
                           }`}
                         >
-                          {active && <Check size={13} />}
+                          {active && s.type !== 'size' && <Check size={13} />}
                           <span>{s.name.fr}</span>
                           {s.price > 0 && (
                             <span className={`font-black text-xs ${active ? 'text-black/60' : 'text-[#F5A800]'}`}>

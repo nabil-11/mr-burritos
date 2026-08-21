@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "seed": "tsx scripts/seed.ts"
+    "seed": "tsx scripts/seed.ts",
+    "add-sizes": "tsx scripts/add-sizes.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",

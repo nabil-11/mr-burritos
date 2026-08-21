@@ -12,6 +12,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { toast } from 'sonner'
 import { Card, CardContent } from '@/components/ui/card'
 import ImageUpload from '@/components/backoffice/ImageUpload'
+import { groupSupplements } from '@/lib/supplements'
 
 interface Category { _id: string; name: { fr: string; ar: string } }
 interface Supplement { _id: string; name: { fr: string }; price: number; type: string }
@@ -83,8 +84,7 @@ export default function ProductEditForm({
     }
   }
 
-  const sauces = supplements.filter((s) => s.type === 'sauce')
-  const extras = supplements.filter((s) => s.type !== 'sauce')
+  const { sauces, sizes, extras } = groupSupplements(supplements)
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -120,7 +120,7 @@ export default function ProductEditForm({
 
       <Card><CardContent className="pt-4">
         <Label className="text-base font-semibold mb-3 block">Suppléments disponibles</Label>
-        {[{ label: 'Sauces', items: sauces }, { label: 'Extras', items: extras }].map(({ label, items }) => (
+        {[{ label: 'Sauces', items: sauces }, { label: 'Tailles', items: sizes }, { label: 'Extras', items: extras }].map(({ label, items }) => (
           <div key={label} className="mb-3">
             <p className="text-sm font-medium text-muted-foreground mb-2">{label}</p>
             <div className="grid grid-cols-2 gap-2">

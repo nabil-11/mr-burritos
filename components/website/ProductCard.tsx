@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { groupSupplements, defaultSizeSelection, toggleSupplement } from '@/lib/supplements'
 
 interface ProductTheme {
   _id: string
@@ -52,14 +53,10 @@ export default function ProductCard({ product }: { product: Product }) {
   const [modalOpen, setModalOpen] = useState(false)
   const [isHovered, setIsHovered] = useState(false)
 
-  const sauces = product.supplements?.filter((s) => (s as unknown as { type: string }).type === 'sauce') ?? []
-  const extras = product.supplements?.filter((s) => (s as unknown as { type: string }).type !== 'sauce') ?? []
-  const hasSupps = sauces.length > 0 || extras.length > 0
+  const { sauces, sizes, extras } = groupSupplements(product.supplements)
+  const hasSupps = sauces.length > 0 || sizes.length > 0 || extras.length > 0
 
-  const toggleSup = (sup: CartSupplement) =>
-    setSelected((prev) =>
-      prev.find((s) => s._id === sup._id) ? prev.filter((s) => s._id !== sup._id) : [...prev, sup]
-    )
+  const toggleSup = (sup: CartSupplement) => setSelected((prev) => toggleSupplement(prev, sup))
 
   const flashAdded = () => {
     setAdded(true)
@@ -69,7 +66,7 @@ export default function ProductCard({ product }: { product: Product }) {
   // Simple products: one-click add. Products with options: open the modal.
   const handleAddClick = () => {
     if (hasSupps) {
-      setSelected([])
+      setSelected(defaultSizeSelection(sizes))
       setQuantity(1)
       setModalOpen(true)
       return
@@ -91,6 +88,28 @@ export default function ProductCard({ product }: { product: Product }) {
   const modalSuppTotal = selected.reduce((s, x) => s + x.price, 0)
   const modalTotal = (product.price + modalSuppTotal) * quantity
   const { emoji, gradient } = getCardStyle(product.name.fr)
+
+  const sizeChip = (sup: CartSupplement) => {
+    const active = !!selected.find((s) => s._id === sup._id)
+    return (
+      <button
+        key={sup._id}
+        type="button"
+        onClick={() => toggleSup(sup)}
+        aria-pressed={active}
+        className={`flex-1 min-w-20 px-3 py-2.5 rounded-xl border-2 font-black transition-all duration-200 flex flex-col items-center gap-0.5 ${
+          active
+            ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md'
+            : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/60 hover:text-[#F5A800] bg-white'
+        }`}
+      >
+        <span className="text-sm">{sup.name.fr.replace(/^Tailles+/i, '')}</span>
+        <span className={`text-[10px] font-bold ${active ? 'text-black/60' : 'text-gray-400'}`}>
+          {sup.price > 0 ? `+${sup.price} DT` : 'Inclus'}
+        </span>
+      </button>
+    )
+  }
 
   const optionChip = (sup: CartSupplement, withPrice: boolean) => {
     const active = !!selected.find((s) => s._id === sup._id)
@@ -234,6 +253,14 @@ export default function ProductCard({ product }: { product: Product }) {
             </DialogHeader>
 
             <div className="space-y-5 max-h-[50vh] overflow-y-auto pr-1">
+              {sizes.length > 0 && (
+                <div>
+                  <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2.5">📐 Taille</p>
+                  <div className="flex gap-2">
+                    {sizes.map((sup) => sizeChip(sup))}
+                  </div>
+                </div>
+              )}
               {sauces.length > 0 && (
                 <div>
                   <p className="text-[11px] font-black text-gray-500 uppercase tracking-widest mb-2.5">🥫 Sauces</p>
