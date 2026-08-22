@@ -131,6 +131,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     body{font-family:Arial,Helvetica,sans-serif;font-size:${S.body}px;padding:10px 10px 28px;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;max-width:${screenMax}px;margin:0 auto;overflow-wrap:anywhere}
     .brand{font-size:${S.brand}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin-bottom:2px}.tagline{font-size:${S.tiny}px;text-align:center;font-weight:600}
     .dash{border:none;border-top:1.5px dashed #000;margin:7px 0}.ordnum{font-size:${S.ord}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin:5px 0 2px}
+    .ordlbl{font-size:${S.micro}px;font-weight:700;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-top:5px}
     .datetime{font-size:${S.small}px;text-align:center;font-weight:600;margin-bottom:5px}.mode{font-size:${S.mode}px;font-weight:900;text-align:center;border:2px solid #000;padding:5px 0;margin:7px 0;letter-spacing:${S.track}px}
     .info-table{width:100%;border-collapse:collapse;margin:3px 0;table-layout:fixed}.lbl{font-size:${S.micro}px;padding-bottom:1px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
     .val{font-size:${S.body}px;font-weight:700;padding-bottom:5px}.addr{font-size:${S.small}px;font-weight:600;line-height:1.45;word-break:break-word}
@@ -141,14 +142,18 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     .supp{font-size:${S.tiny}px;font-weight:600;line-height:1.5}.note{font-size:${S.tiny}px;font-weight:600;font-style:italic;line-height:1.5}
     .tot-label{font-size:${S.tot}px;font-weight:900;padding-top:4px}.tot-val{font-size:${S.tot}px;font-weight:900;text-align:right;padding-top:4px;white-space:nowrap}
     .notesbox{border:1.5px dashed #000;padding:6px 8px;font-size:${S.small}px;font-weight:600;font-style:italic;line-height:1.5;margin:5px 0;word-break:break-word}
-    .thanks{font-size:${S.small}px;font-weight:600;text-align:center;margin-top:10px;letter-spacing:.5px}
+    .thanks{font-size:${S.small}px;font-weight:600;text-align:center;margin-top:10px;letter-spacing:${narrow ? 0 : 0.5}px}
     .prep-row{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1.5px solid #000;border-radius:3px;padding:5px 8px;margin:6px 0}.prep-lbl{font-size:${S.small}px;font-weight:700}.prep-val{font-size:${S.mode}px;font-weight:900;white-space:nowrap}
     .printbtn{display:block;width:100%;margin:16px 0 0;padding:14px;border:none;border-radius:10px;background:#F5A800;color:#1C1200;font-size:16px;font-weight:800;cursor:pointer}
     @media print{@page{size:${paperMm}mm auto;margin:0}html,body{width:100%;max-width:none;margin:0;padding:${S.pad}}.printbtn{display:none}}
   </style></head><body>
     <div class="brand">MR. BURRITOS</div><div class="tagline">Gestionnaire de commandes</div><hr class="dash">
-    <div class="ordnum">COMMANDE #${esc(orderNumber)}</div><div class="datetime">${dateStr} a ${timeStr}</div>
-    <div class="mode">&gt;&gt;&gt; ${typeLabel} &gt;&gt;&gt;</div>${prepHtml}<hr class="dash">
+    <!-- "COMMANDE #MB-20260822-0082" runs to 26 characters and wraps mid-number
+         on any roll; the half that wraps is the half you actually read. Split
+         into a label and the number, it stays on one line at every width. -->
+    <div class="ordlbl">Commande</div><div class="ordnum">${esc(orderNumber)}</div>
+    <div class="datetime">${dateStr} a ${timeStr}</div>
+    <div class="mode">${narrow ? typeLabel : `&gt;&gt;&gt; ${typeLabel} &gt;&gt;&gt;`}</div>${prepHtml}<hr class="dash">
     <table class="info-table"><tbody><tr><td><div class="lbl">CLIENT</div><div class="val">${esc(customer.name)}</div></td>
     <td style="text-align:right"><div class="lbl">TEL</div><div class="val">${esc(customer.phone)}</div></td></tr>${addrHtml}</tbody></table><hr class="dash">
     <div class="section-head">Articles commandes</div><table class="items"><tbody>${rows}</tbody></table><hr class="dash">
