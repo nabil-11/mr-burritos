@@ -3,6 +3,8 @@
 import Image from 'next/image'
 import { useEffect, useRef, useState } from 'react'
 import Autoplay from 'embla-carousel-autoplay'
+import { BadgePercent } from 'lucide-react'
+import { WEB_PROMO } from '@/lib/promo'
 import {
   Carousel,
   CarouselApi,
@@ -90,6 +92,22 @@ export default function BannerCarousel() {
 
   return (
     <div className="relative group">
+      {/* Sits outside the Carousel, which clips its own overflow — as a child
+          it would be cut off by the rounded corner. */}
+      <div className="absolute top-3 right-3 z-20 pointer-events-none">
+        <div className="flex items-center gap-2 rounded-full bg-red-600 text-white pl-3 pr-4 py-2 shadow-lg shadow-red-900/30 ring-2 ring-white/20">
+          <span className="grid place-items-center w-8 h-8 rounded-full bg-white/15 shrink-0">
+            <BadgePercent size={17} />
+          </span>
+          <span className="leading-none">
+            <span className="block font-black text-base tracking-tight">{WEB_PROMO.badge}</span>
+            <span className="block text-[10px] font-bold uppercase tracking-wider opacity-90 mt-0.5">
+              Commande en ligne
+            </span>
+          </span>
+        </div>
+      </div>
+
       <Carousel
         setApi={setApi}
         opts={{ loop: true }}

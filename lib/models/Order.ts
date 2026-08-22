@@ -31,6 +31,13 @@ const OrderSchema = new Schema(
     },
     items: [OrderItemSchema],
     subtotal: { type: Number, required: true },
+    // What came off the subtotal, and why. Stored on the order rather than
+    // recomputed, so changing the promo later never rewrites past receipts.
+    discount: {
+      label: { type: String, default: '' },
+      rate: { type: Number, default: 0 },
+      amount: { type: Number, default: 0 },
+    },
     total: { type: Number, required: true },
     type: {
       type: String,

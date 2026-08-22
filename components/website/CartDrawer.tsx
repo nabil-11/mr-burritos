@@ -4,9 +4,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useCart } from '@/contexts/CartContext'
 import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
 import Link from 'next/link'
+import { WEB_PROMO, applyWebPromo } from '@/lib/promo'
 
 export default function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { items, removeItem, updateQty, total } = useCart()
+  const { discount, total: payable } = applyWebPromo(total)
 
   return (
     <Sheet open={open} onOpenChange={onClose}>
@@ -64,9 +66,13 @@ export default function CartDrawer({ open, onClose }: { open: boolean; onClose: 
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Sous-total</span><span>{total.toFixed(2)} DT</span>
               </div>
+              <div className="flex justify-between text-sm font-semibold text-emerald-600 dark:text-emerald-400">
+                <span>{WEB_PROMO.label} ({WEB_PROMO.badge})</span>
+                <span>− {discount.amount.toFixed(2)} DT</span>
+              </div>
               <div className="flex justify-between font-black text-lg">
                 <span>Total</span>
-                <span className="text-[#F5A800]">{total.toFixed(2)} DT</span>
+                <span className="text-[#F5A800]">{payable.toFixed(2)} DT</span>
               </div>
               <Link href="/cart" onClick={onClose}
                 className="block w-full text-center bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold py-3 rounded-xl transition-colors text-sm">

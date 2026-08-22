@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Phone, Clock, ArrowRight } from 'lucide-react'
+import { MapPin, Phone, Clock, ArrowRight, BadgePercent } from 'lucide-react'
 import BannerCarousel from '@/components/website/BannerCarousel'
 import WebsiteBuilder from '@/components/website/WebsiteBuilder'
 import OpenStatus from '@/components/website/OpenStatus'
@@ -7,6 +7,7 @@ import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 import { getBuilderCategories } from '@/lib/builder'
 import { getHomeStats } from '@/lib/stats'
 import { OPENING_HOURS } from '@/lib/hours'
+import { WEB_PROMO } from '@/lib/promo'
 
 /**
  * Regenerate every 5 minutes. Prerendered once, this page would serve the order
@@ -63,6 +64,22 @@ export default async function HomePage() {
             <h1 className="text-4xl sm:text-5xl font-black text-foreground leading-[1.05] tracking-tight">
               Composez votre tacos.
             </h1>
+
+            {/* The discount is only granted to orders placed here, so it is
+                worth saying before anyone starts composing. */}
+            <div className="mt-5 inline-flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3">
+              <span className="grid place-items-center w-9 h-9 rounded-xl bg-emerald-500/15 shrink-0">
+                <BadgePercent size={18} className="text-emerald-600 dark:text-emerald-400" />
+              </span>
+              <span className="text-sm leading-tight">
+                <span className="font-black text-emerald-700 dark:text-emerald-300">
+                  {WEB_PROMO.badge} sur toute commande en ligne
+                </span>
+                <span className="block text-muted-foreground text-xs mt-0.5">
+                  Remise appliquée automatiquement au panier.
+                </span>
+              </span>
+            </div>
             <p className="text-muted-foreground mt-3 text-base max-w-lg leading-relaxed">
               Une taille, vos viandes, vos sauces. Le prix se met à jour à chaque
               étape — pas de surprise à la fin.

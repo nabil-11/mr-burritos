@@ -59,6 +59,10 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const type = order.type as string
   const orderNumber = String(order.orderNumber ?? '')
   const total = Number(order.total ?? 0)
+  const subtotal = Number(order.subtotal ?? total)
+  // Absent on orders taken before the online promo existed.
+  const discount = (order.discount ?? {}) as { label?: string; rate?: number; amount?: number }
+  const discountAmount = Number(discount.amount ?? 0)
   const notes = order.notes as string | undefined
   const prepMinutes = prepParam ? Number(prepParam) : Number(order.preparationDuration ?? 0)
 
@@ -137,7 +141,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     <table class="info-table"><tbody><tr><td><div class="lbl">CLIENT</div><div class="val">${esc(customer.name)}</div></td>
     <td style="text-align:right"><div class="lbl">TEL</div><div class="val">${esc(customer.phone)}</div></td></tr>${addrHtml}</tbody></table><hr class="dash">
     <div class="section-head">Articles commandes</div><table class="items"><tbody>${rows}</tbody></table><hr class="dash">
-    <table style="width:100%"><tbody><tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr></tbody></table>
+    <table style="width:100%"><tbody>${discountAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">SOUS-TOTAL</td><td class="tot-val" style="font-weight:400">${subtotal.toFixed(2)} DT</td></tr><tr><td class="tot-label" style="font-weight:400">${esc(discount.label || 'REMISE')}${discount.rate ? ` (-${Math.round(discount.rate * 100)}%)` : ''}</td><td class="tot-val" style="font-weight:400">-${discountAmount.toFixed(2)} DT</td></tr>` : ''}<tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr></tbody></table>
     ${notesHtml}<hr class="dash"><div class="thanks">Merci pour votre commande !</div>
     <button class="printbtn" onclick="window.print()">🖨️ Imprimer</button>
     ${autoprint ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},350)})</script>' : ''}

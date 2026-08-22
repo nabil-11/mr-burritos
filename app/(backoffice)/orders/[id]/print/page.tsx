@@ -14,6 +14,9 @@ export default async function PrintOrderPage({ params }: Props) {
   const o = order as Record<string, unknown>
   const customer = o.customer as Record<string, string>
   const items = o.items as Record<string, unknown>[]
+  // Absent on orders taken before the online promo existed.
+  const discount = (o.discount ?? {}) as { label?: string; rate?: number; amount?: number }
+  const discountAmount = Number(discount.amount ?? 0)
   const now = new Date(o.createdAt as string)
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -128,6 +131,15 @@ export default async function PrintOrderPage({ params }: Props) {
                   <span>Sous-total</span>
                   <span>{(o.subtotal as number).toFixed(2)} DT</span>
                 </div>
+                {discountAmount > 0 && (
+                  <div className="flex justify-between text-xs font-semibold">
+                    <span>
+                      {discount.label || 'Remise'}
+                      {discount.rate ? ` (−${Math.round(discount.rate * 100)}%)` : ''}
+                    </span>
+                    <span>− {discountAmount.toFixed(2)} DT</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-xs text-gray-500">
                   <span>Livraison</span>
                   <span>—</span>

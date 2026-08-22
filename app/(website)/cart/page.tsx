@@ -4,14 +4,18 @@ import { useCart } from '@/contexts/CartContext'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Trash2, Minus, Plus, ShoppingBag, MapPin, Package, Navigation } from 'lucide-react'
+import { Trash2, Minus, Plus, ShoppingBag, MapPin, Package, Navigation, BadgePercent } from 'lucide-react'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import Link from 'next/link'
+import { WEB_PROMO, applyWebPromo } from '@/lib/promo'
 
 export default function CartPage() {
   const { items, removeItem, updateQty, total, clearCart, hydrated } = useCart()
+  // `total` is the food; `payable` is what the customer owes after the
+  // online-ordering discount.
+  const { discount, total: payable } = applyWebPromo(total)
   const router = useRouter()
   const [type, setType] = useState<'delivery' | 'pickup'>('delivery')
   const [loading, setLoading] = useState(false)
@@ -113,7 +117,9 @@ export default function CartPage() {
       const res = await fetch('/api/orders', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, total, type, notes: form.notes, deliveryFee: 0 }),
+        // subtotal is what the food costs; total is what the customer owes
+        // after the online discount.
+        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, discount, total: payable, type, notes: form.notes, deliveryFee: 0 }),
       })
       if (!res.ok) throw new Error()
       const order = await res.json()
@@ -137,7 +143,9 @@ export default function CartPage() {
           (form.address ? `\nAdresse: ${form.address}` : '') +
           `\n\nArticles:\n${itemLines}` +
           (form.notes ? `\n\nNotes: ${form.notes}` : '') +
-          `\n\nTotal: ${total.toFixed(2)} DT`
+          `\n\nSous-total: ${total.toFixed(2)} DT` +
+          `\n${WEB_PROMO.label} (${WEB_PROMO.badge}): -${discount.amount.toFixed(2)} DT` +
+          `\nTotal: ${payable.toFixed(2)} DT`
         window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`, '_blank')
       }
 
@@ -288,6 +296,13 @@ export default function CartPage() {
               </h2>
               <div className="space-y-2 text-sm mb-4">
                 <div className="flex justify-between text-muted-foreground"><span>Sous-total</span><span>{total.toFixed(2)} DT</span></div>
+                <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                  <span className="flex items-center gap-1.5">
+                    <BadgePercent size={14} />
+                    {WEB_PROMO.label} ({WEB_PROMO.badge})
+                  </span>
+                  <span>− {discount.amount.toFixed(2)} DT</span>
+                </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Livraison</span>
                   <span>{type === 'delivery' ? 'Gratuite → 7 DT max' : '—'}</span>
@@ -295,7 +310,10 @@ export default function CartPage() {
                 {type === 'delivery' && (
                   <p className="text-xs text-muted-foreground italic">Les frais de livraison seront confirmés par notre équipe.</p>
                 )}
-                <div className="flex justify-between font-black text-base border-t pt-2"><span>{type === 'delivery' ? 'Total (hors livraison)' : 'Total'}</span><span className="text-[#F5A800]">{total.toFixed(2)} DT</span></div>
+                <div className="flex justify-between font-black text-base border-t pt-2"><span>{type === 'delivery' ? 'Total (hors livraison)' : 'Total'}</span><span className="text-[#F5A800]">{payable.toFixed(2)} DT</span></div>
+                <p className="text-center text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">
+                  Vous économisez {discount.amount.toFixed(2)} DT
+                </p>
               </div>
               <button type="submit" disabled={loading}
                 className="w-full bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-60 text-black font-black py-4 rounded-xl transition-all text-sm hover:scale-[1.02] active:scale-[0.98]">

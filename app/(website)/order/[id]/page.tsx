@@ -19,6 +19,9 @@ export default async function OrderConfirmPage({ params }: Props) {
 
   const o = order as Record<string, unknown>
   const customer = o.customer as Record<string, string>
+  // Absent on orders taken before the online promo existed.
+  const discount = (o.discount ?? {}) as { label?: string; rate?: number; amount?: number }
+  const discountAmount = Number(discount.amount ?? 0)
 
   const waPhone = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '').replace(/\D/g, '')
   const typeLabel = o.type === 'delivery' ? 'Livraison' : 'À emporter'
@@ -80,6 +83,22 @@ export default async function OrderConfirmPage({ params }: Props) {
               </span>
             </div>
           </div>
+
+          {discountAmount > 0 && (
+            <div className="border-t pt-4 space-y-1.5 text-sm">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Sous-total</span>
+                <span>{(o.subtotal as number).toFixed(2)} DT</span>
+              </div>
+              <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+                <span>
+                  {discount.label || 'Remise'}
+                  {discount.rate ? ` (−${Math.round(discount.rate * 100)}%)` : ''}
+                </span>
+                <span>− {discountAmount.toFixed(2)} DT</span>
+              </div>
+            </div>
+          )}
 
           <div className="border-t pt-4 flex justify-between items-center">
             <span className="font-black text-base">Total</span>
