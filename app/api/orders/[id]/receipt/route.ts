@@ -77,6 +77,17 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     ? Math.round(widthParam)
     : 72
 
+  // `page` is the sheet the *driver* believes it has — the full roll width.
+  // Many POS-58 drivers expose only fixed paper sizes, so a custom 48mm page is
+  // refused, the driver substitutes its own 58mm paper, and the 48mm layout is
+  // scaled up 20% to fill it — which shoves the right fifth of every line past
+  // the 48mm print head. Asking for the sheet the driver already has means no
+  // scaling, and the ink stays inside the printable band.
+  const pageParam = Number(searchParams.get('page'))
+  const pageMm = Number.isFinite(pageParam) && pageParam >= paperMm && pageParam <= 130
+    ? Math.round(pageParam)
+    : paperMm
+
   // Below ~64mm the display type has to come down or every heading wraps and
   // the wrapped half falls off the paper. Scaling everything linearly would
   // push body text under the point where thermal dots stay legible, so the two
@@ -145,7 +156,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     .thanks{font-size:${S.small}px;font-weight:600;text-align:center;margin-top:10px;letter-spacing:${narrow ? 0 : 0.5}px}
     .prep-row{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1.5px solid #000;border-radius:3px;padding:5px 8px;margin:6px 0}.prep-lbl{font-size:${S.small}px;font-weight:700}.prep-val{font-size:${S.mode}px;font-weight:900;white-space:nowrap}
     .printbtn{display:block;width:100%;margin:16px 0 0;padding:14px;border:none;border-radius:10px;background:#F5A800;color:#1C1200;font-size:16px;font-weight:800;cursor:pointer}
-    @media print{@page{size:${paperMm}mm auto;margin:0}html,body{width:100%;max-width:none;margin:0;padding:${S.pad}}.printbtn{display:none}}
+    @media print{@page{size:${pageMm}mm auto;margin:0}html{width:100%}body{width:${paperMm}mm;max-width:${paperMm}mm;margin:0;padding:${S.pad}}.printbtn{display:none}}
   </style></head><body>
     <div class="brand">MR. BURRITOS</div><div class="tagline">Gestionnaire de commandes</div><hr class="dash">
     <!-- "COMMANDE #MB-20260822-0082" runs to 26 characters and wraps mid-number
