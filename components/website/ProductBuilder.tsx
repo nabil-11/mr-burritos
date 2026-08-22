@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, Plus, Minus, ArrowLeft, ShoppingBag, Sparkles } from 'lucide-react'
 import { groupSupplements, meatQuotaFor, configuredPrice } from '@/lib/supplements'
 import Diaporama from './Diaporama'
@@ -88,6 +88,27 @@ export default function ProductBuilder({
   const [sauces, setSauces] = useState<BuilderSupplement[]>([])
   const [extras, setExtras] = useState<BuilderSupplement[]>([])
   const [quantity, setQuantity] = useState(1)
+
+  const rootRef = useRef<HTMLDivElement>(null)
+  const mountedOnce = useRef(false)
+
+  /**
+   * Entering a category swaps a tall grid of cards for a much shorter panel —
+   * roughly 800px of document disappears. The browser keeps the old scroll
+   * offset, which now sits past the end of the page, so the visitor is left
+   * staring at the footer. Re-anchor the builder under the navbar instead.
+   */
+  useEffect(() => {
+    if (!mountedOnce.current) {
+      mountedOnce.current = true
+      return
+    }
+    const el = rootRef.current
+    if (!el) return
+    const NAVBAR = 80
+    const top = el.getBoundingClientRect().top + window.scrollY - NAVBAR
+    window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
+  }, [category])
 
   // A composable category configures its base product; anything else
   // configures whichever item the customer picked.
@@ -223,7 +244,7 @@ export default function ProductBuilder({
   // ── Layer 0 — pick a category ─────────────────────────────────────────────
   if (!category) {
     return (
-      <div className={`grid gap-4 ${compact ? 'grid-cols-2 sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+      <div ref={rootRef} className={`grid gap-4 ${compact ? 'grid-cols-2 sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {categories.map((cat) => {
           const composable = !!cat.base
           const from = composable ? cat.base!.price : Math.min(...cat.products.map((p) => p.price))
@@ -294,7 +315,7 @@ export default function ProductBuilder({
 
   // ── Layers 1..n — configure ───────────────────────────────────────────────
   return (
-    <div className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+    <div ref={rootRef} className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
 
       {/* Header: the category, shown as pictures rather than dish names */}
       <div className={compact ? 'relative h-28' : 'relative h-40 sm:h-48'}>
