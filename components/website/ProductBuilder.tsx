@@ -5,6 +5,7 @@ import { useMemo, useState } from 'react'
 import { Check, Plus, Minus, ArrowLeft, ShoppingBag, Sparkles } from 'lucide-react'
 import { groupSupplements, meatQuotaFor, configuredPrice } from '@/lib/supplements'
 import Diaporama from './Diaporama'
+import ShareButton from './ShareButton'
 import IngredientStack from './IngredientStack'
 
 export interface BuilderSupplement {
@@ -226,14 +227,23 @@ export default function ProductBuilder({
         {categories.map((cat) => {
           const composable = !!cat.base
           const from = composable ? cat.base!.price : Math.min(...cat.products.map((p) => p.price))
+          const blurb = composable
+            ? cat.base!.description.fr
+            : `${cat.products.length} choix — dès ${from.toFixed(2)} DT`
           return (
-            <button
+            // The share control is a sibling, not a child: a button inside a
+            // button is invalid and swallows the click.
+            <div
               key={cat._id}
-              onClick={() => openCategory(cat)}
-              className={`group relative rounded-3xl overflow-hidden text-left shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 ${
+              className={`group relative rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 hover:-translate-y-1 ${
                 compact ? 'h-40' : 'h-64 sm:h-80'
               }`}
             >
+              <button
+                onClick={() => openCategory(cat)}
+                className="absolute inset-0 w-full h-full text-left"
+                aria-label={`Composer ${cat.name.fr}`}
+              >
               <Diaporama
                 images={cat.gallery}
                 alt={cat.name.fr}
@@ -267,7 +277,15 @@ export default function ProductBuilder({
                   )}
                 </p>
               </div>
-            </button>
+              </button>
+
+              <ShareButton
+                title={`${cat.emoji} ${cat.name.fr} — Mr. Burritos`}
+                description={blurb}
+                image={cat.gallery[0]}
+                className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full grid place-items-center bg-black/45 backdrop-blur-md text-white/80 hover:text-[#F5A800] hover:bg-black/65 border border-white/15"
+              />
+            </div>
           )
         })}
       </div>
@@ -379,12 +397,15 @@ export default function ProductBuilder({
             {category.products.map((p) => {
               const activeItem = product?._id === p._id
               return (
-                <button
+                <div
                   key={p._id}
-                  onClick={() => pickProduct(p)}
-                  className={`rounded-2xl border-2 overflow-hidden text-left transition-all ${
+                  className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
                     activeItem ? 'border-[#F5A800] shadow-md' : 'border-gray-200 hover:border-[#F5A800]/50'
                   }`}
+                >
+                <button
+                  onClick={() => pickProduct(p)}
+                  className="block w-full text-left"
                 >
                   <div className="relative h-24 sm:h-28 bg-gray-100">
                     {p.image ? (
@@ -398,11 +419,19 @@ export default function ProductBuilder({
                       </span>
                     )}
                   </div>
-                  <div className="p-2.5">
+                  <div className="p-2.5 pr-9">
                     <p className="text-xs font-bold text-[#1A1A1A] leading-tight">{p.name.fr}</p>
                     <p className="text-[#F5A800] font-black text-xs mt-1">{p.price.toFixed(2)} DT</p>
                   </div>
                 </button>
+
+                <ShareButton
+                  title={`${p.name.fr} — Mr. Burritos`}
+                  description={`${p.description.fr || category.name.fr} · ${p.price.toFixed(2)} DT`}
+                  image={p.image}
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full grid place-items-center text-gray-400 hover:text-[#F5A800] hover:bg-gray-100"
+                />
+                </div>
               )
             })}
           </div>
