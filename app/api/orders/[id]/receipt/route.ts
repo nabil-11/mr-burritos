@@ -62,6 +62,30 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const notes = order.notes as string | undefined
   const prepMinutes = prepParam ? Number(prepParam) : Number(order.preparationDuration ?? 0)
 
+  // ── Paper width ────────────────────────────────────────────────────────
+  // `width` is the printable width in millimetres, not the roll width: a 58mm
+  // roll (POS-58) prints 48mm, an 80mm roll (POS-80) prints 72mm. Laying the
+  // ticket out any wider than that is what makes a thermal printer shear the
+  // right-hand side off every line. Defaults to the 80mm roll, which is what
+  // the browser-print path has always assumed.
+  const widthParam = Number(searchParams.get('width'))
+  const paperMm = Number.isFinite(widthParam) && widthParam >= 30 && widthParam <= 120
+    ? Math.round(widthParam)
+    : 72
+
+  // Below ~64mm the display type has to come down or every heading wraps and
+  // the wrapped half falls off the paper. Scaling everything linearly would
+  // push body text under the point where thermal dots stay legible, so the two
+  // sets are tuned rather than derived.
+  const narrow = paperMm < 64
+  const S = narrow
+    ? { body: 11, brand: 15, ord: 12, mode: 12, tot: 14, small: 10, tiny: 9, micro: 8, track: 0.5, qty: 20, price: 46, pad: '3px 3px 16px' }
+    : { body: 13, brand: 22, ord: 17, mode: 15, tot: 17, small: 11, tiny: 10, micro: 9, track: 2, qty: 24, price: 60, pad: '4px 6px 20px' }
+
+  // On screen the ticket is shown at its true paper width so what you see is
+  // what the roll gets. 1mm = 96/25.4 CSS px.
+  const screenMax = Math.round(paperMm * (96 / 25.4))
+
   const now = new Date()
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -89,22 +113,23 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     ? `<div class="prep-row"><span class="prep-lbl">Temps de preparation</span><span class="prep-val">${prepMinutes >= 60 ? `${Math.floor(prepMinutes / 60)}h${prepMinutes % 60 ? ` ${prepMinutes % 60}min` : ''}` : `${prepMinutes} min`}</span></div>` : ''
 
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Commande #${esc(orderNumber)}</title><style>
-    *{margin:0;padding:0;box-sizing:border-box}body{font-family:Arial,Helvetica,sans-serif;font-size:13px;padding:10px 10px 28px;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;max-width:380px;margin:0 auto}
-    .brand{font-size:22px;font-weight:900;text-align:center;letter-spacing:2px;margin-bottom:2px}.tagline{font-size:10px;text-align:center;color:#444}
-    .dash{border:none;border-top:1.5px dashed #000;margin:7px 0}.ordnum{font-size:17px;font-weight:900;text-align:center;letter-spacing:2px;margin:5px 0 2px}
-    .datetime{font-size:11px;text-align:center;color:#333;margin-bottom:5px}.mode{font-size:15px;font-weight:900;text-align:center;border:2px solid #000;padding:5px 0;margin:7px 0;letter-spacing:1.5px}
-    .info-table{width:100%;border-collapse:collapse;margin:3px 0}.lbl{font-size:9px;color:#555;padding-bottom:1px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
-    .val{font-size:13px;font-weight:700;padding-bottom:5px}.addr{font-size:12px;line-height:1.45;word-break:break-word}
-    .section-head{font-size:9px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin:7px 0 4px;color:#444}
-    table.items{width:100%;border-collapse:collapse}.qty{width:24px;vertical-align:top;font-weight:900;font-size:13px;padding-right:5px;white-space:nowrap}
-    .name{vertical-align:top;font-size:13px;line-height:1.45;word-break:break-word}.price{text-align:right;vertical-align:top;white-space:nowrap;padding-left:5px;font-weight:800;font-size:13px;width:1%}
-    td{padding-bottom:6px}.supp{font-size:10px;color:#444;margin-top:2px}.note{font-size:10px;color:#555;font-style:italic;margin-top:2px}
-    .tot-label{font-size:17px;font-weight:900;padding-top:4px}.tot-val{font-size:17px;font-weight:900;text-align:right;padding-top:4px;white-space:nowrap}
-    .notesbox{border:1.5px dashed #000;padding:6px 8px;font-size:12px;font-style:italic;line-height:1.5;margin:5px 0;word-break:break-word}
-    .thanks{font-size:11px;text-align:center;margin-top:10px;letter-spacing:.5px}
-    .prep-row{display:flex;justify-content:space-between;align-items:center;background:#f0f0f0;border:1.5px solid #000;border-radius:3px;padding:5px 8px;margin:6px 0}.prep-lbl{font-size:11px;font-weight:700}.prep-val{font-size:14px;font-weight:900}
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:${S.body}px;padding:10px 10px 28px;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;max-width:${screenMax}px;margin:0 auto;overflow-wrap:anywhere}
+    .brand{font-size:${S.brand}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin-bottom:2px}.tagline{font-size:${S.tiny}px;text-align:center;color:#444}
+    .dash{border:none;border-top:1.5px dashed #000;margin:7px 0}.ordnum{font-size:${S.ord}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin:5px 0 2px}
+    .datetime{font-size:${S.small}px;text-align:center;color:#333;margin-bottom:5px}.mode{font-size:${S.mode}px;font-weight:900;text-align:center;border:2px solid #000;padding:5px 0;margin:7px 0;letter-spacing:${S.track}px}
+    .info-table{width:100%;border-collapse:collapse;margin:3px 0;table-layout:fixed}.lbl{font-size:${S.micro}px;color:#555;padding-bottom:1px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
+    .val{font-size:${S.body}px;font-weight:700;padding-bottom:5px}.addr{font-size:${S.small}px;line-height:1.45;word-break:break-word}
+    .section-head{font-size:${S.micro}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin:7px 0 4px;color:#444}
+    table.items{width:100%;border-collapse:collapse;table-layout:fixed}.qty{width:${S.qty}px;vertical-align:top;font-weight:900;font-size:${S.body}px;padding-right:5px;white-space:nowrap}
+    .name{vertical-align:top;font-size:${S.body}px;line-height:1.45;word-break:break-word}.price{text-align:right;vertical-align:top;white-space:nowrap;padding-left:5px;font-weight:800;font-size:${S.body}px;width:${S.price}px}
+    td{padding-bottom:6px}.supp{font-size:${S.tiny}px;color:#444;margin-top:2px}.note{font-size:${S.tiny}px;color:#555;font-style:italic;margin-top:2px}
+    .tot-label{font-size:${S.tot}px;font-weight:900;padding-top:4px}.tot-val{font-size:${S.tot}px;font-weight:900;text-align:right;padding-top:4px;white-space:nowrap}
+    .notesbox{border:1.5px dashed #000;padding:6px 8px;font-size:${S.small}px;font-style:italic;line-height:1.5;margin:5px 0;word-break:break-word}
+    .thanks{font-size:${S.small}px;text-align:center;margin-top:10px;letter-spacing:.5px}
+    .prep-row{display:flex;justify-content:space-between;align-items:center;gap:6px;background:#f0f0f0;border:1.5px solid #000;border-radius:3px;padding:5px 8px;margin:6px 0}.prep-lbl{font-size:${S.small}px;font-weight:700}.prep-val{font-size:${S.mode}px;font-weight:900;white-space:nowrap}
     .printbtn{display:block;width:100%;margin:16px 0 0;padding:14px;border:none;border-radius:10px;background:#F5A800;color:#1C1200;font-size:16px;font-weight:800;cursor:pointer}
-    @media print{@page{size:80mm auto;margin:0}html,body{width:100%;max-width:none;margin:0;padding:4px 6px 20px}.printbtn{display:none}}
+    @media print{@page{size:${paperMm}mm auto;margin:0}html,body{width:100%;max-width:none;margin:0;padding:${S.pad}}.printbtn{display:none}}
   </style></head><body>
     <div class="brand">MR. BURRITOS</div><div class="tagline">Gestionnaire de commandes</div><hr class="dash">
     <div class="ordnum">COMMANDE #${esc(orderNumber)}</div><div class="datetime">${dateStr} a ${timeStr}</div>

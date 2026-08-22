@@ -40,7 +40,7 @@ export default async function HomePage() {
   }, [])
 
   return (
-    <div className="bg-background">
+    <div>
 
       {/* ── BANNIÈRES ─────────────────────────────────────────── */}
       <section className="pt-20 px-4">

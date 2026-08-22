@@ -143,3 +143,35 @@
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* ── Ambient background ─────────────────────────────────────────────────────
+   Slow drifting light behind the page. Composited on the GPU (transform and
+   opacity only, never layout), so it costs nothing to animate — unlike the
+   video background this replaces. */
+@keyframes ambient-a {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  33%      { transform: translate3d(7vw, -5vh, 0) scale(1.15); }
+  66%      { transform: translate3d(-5vw, 6vh, 0) scale(0.92); }
+}
+@keyframes ambient-b {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1.05); }
+  40%      { transform: translate3d(-8vw, 4vh, 0) scale(0.9); }
+  75%      { transform: translate3d(5vw, -6vh, 0) scale(1.2); }
+}
+@keyframes ambient-c {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(0.95); }
+  50%      { transform: translate3d(4vw, 7vh, 0) scale(1.18); }
+}
+
+/* Motion is decoration here; anyone who asked for less simply gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .ambient-blob { animation: none !important; }
+}
+
+/* The burger loop plays on every viewport. It is a portrait file (834x1112),
+   so on wide screens it is upscaled and cropped hard — kept at low opacity
+   behind a scrim, that reads as texture rather than as a blurry video.
+   Motion is still decoration: anyone who asked for less gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .bg-video { display: none !important; }
+}
