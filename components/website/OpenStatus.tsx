@@ -28,8 +28,8 @@ export default function OpenStatus({ compact = false }: { compact?: boolean }) {
         compact ? 'text-[11px] px-2.5 py-1' : 'text-xs px-3 py-1.5'
       } ${
         state.open
-          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-400/25'
-          : 'bg-white/5 text-white/45 border border-white/10'
+          ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
+          : 'bg-muted text-muted-foreground border border-border'
       }`}
     >
       <span className="relative flex h-1.5 w-1.5">
@@ -38,7 +38,7 @@ export default function OpenStatus({ compact = false }: { compact?: boolean }) {
         )}
         <span
           className={`relative inline-flex h-1.5 w-1.5 rounded-full ${
-            state.open ? 'bg-emerald-400' : 'bg-white/30'
+            state.open ? 'bg-emerald-500' : 'bg-muted-foreground/40'
           }`}
         />
       </span>

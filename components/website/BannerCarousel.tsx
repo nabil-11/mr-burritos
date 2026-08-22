@@ -54,7 +54,7 @@ export default function BannerCarousel() {
         setApi={setApi}
         opts={{ loop: true }}
         plugins={[Autoplay({ delay: 6000, stopOnInteraction: true })]}
-        className="rounded-3xl overflow-hidden border border-white/8 shadow-2xl shadow-black/50 bg-[#141414]"
+        className="rounded-3xl overflow-hidden border border-border shadow-xl shadow-black/10 dark:shadow-black/50 bg-muted"
       >
         <CarouselContent className="ml-0">
           {BANNERS.map((b) => (
@@ -73,8 +73,8 @@ export default function BannerCarousel() {
           ))}
         </CarouselContent>
 
-        <CarouselPrevious className="left-3 bg-black/50 border-white/15 text-white hover:bg-black/70 hover:text-[#F5A800] opacity-0 group-hover:opacity-100 transition-opacity" />
-        <CarouselNext className="right-3 bg-black/50 border-white/15 text-white hover:bg-black/70 hover:text-[#F5A800] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <CarouselPrevious className="left-3 bg-black/55 border-white/20 text-white hover:bg-black/75 hover:text-[#F5A800] opacity-0 group-hover:opacity-100 transition-opacity" />
+        <CarouselNext className="right-3 bg-black/55 border-white/20 text-white hover:bg-black/75 hover:text-[#F5A800] opacity-0 group-hover:opacity-100 transition-opacity" />
       </Carousel>
 
       <div className="flex items-center justify-center gap-2 mt-4">
@@ -84,7 +84,7 @@ export default function BannerCarousel() {
             onClick={() => api?.scrollTo(i)}
             aria-label={`Voir la bannière ${i + 1}`}
             className={`h-1.5 rounded-full transition-all duration-400 ${
-              i === current ? 'w-7 bg-[#F5A800]' : 'w-1.5 bg-white/25 hover:bg-white/40'
+              i === current ? 'w-7 bg-[#F5A800]' : 'w-1.5 bg-muted-foreground/40 hover:bg-muted-foreground/60'
             }`}
           />
         ))}

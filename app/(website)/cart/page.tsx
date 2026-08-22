@@ -151,7 +151,7 @@ export default function CartPage() {
 
   if (!hydrated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <ShoppingBag size={48} className="text-gray-200 animate-pulse" />
       </div>
     )
@@ -159,10 +159,10 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 px-4">
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 px-4">
         <div className="text-center">
           <ShoppingBag size={64} className="text-gray-200 mx-auto mb-4" />
-          <h2 className="text-2xl font-black text-[#1A1A1A] mb-2">Votre panier est vide</h2>
+          <h2 className="text-2xl font-black text-foreground mb-2">Votre panier est vide</h2>
           <p className="text-muted-foreground mb-6">Parcourez notre menu et ajoutez vos plats préférés</p>
           <Link href="/#composer" className="bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-8 py-3 rounded-full transition-all">
             Voir le menu
@@ -173,19 +173,19 @@ export default function CartPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-16">
+    <div className="min-h-screen bg-background pt-24 pb-16">
       <div className="max-w-5xl mx-auto px-4">
-        <h1 className="text-3xl font-black text-[#1A1A1A] mb-8">Votre commande</h1>
+        <h1 className="text-3xl font-black text-foreground mb-8">Votre commande</h1>
 
         <div className="grid lg:grid-cols-5 gap-8">
           {/* Items — 3 cols */}
           <div className="lg:col-span-3 space-y-4">
-            <div className="bg-white rounded-2xl border p-5 space-y-3">
-              <h2 className="font-black text-[#1A1A1A] mb-4">Articles ({items.length})</h2>
+            <div className="bg-card rounded-2xl border p-5 space-y-3">
+              <h2 className="font-black text-foreground mb-4">Articles ({items.length})</h2>
               {items.map((item) => {
                 const suppTotal = item.selectedSupplements.reduce((s, x) => s + x.price, 0)
                 return (
-                  <div key={item.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                  <div key={item.id} className="flex items-start gap-3 p-3 bg-background rounded-xl">
                     <div className="flex-1 min-w-0">
                       <p className="font-semibold text-sm">{item.name.fr}</p>
                       {item.selectedSupplements.length > 0 && (
@@ -194,10 +194,10 @@ export default function CartPage() {
                       <p className="text-[#F5A800] font-black mt-1">{((item.price + suppTotal) * item.quantity).toFixed(2)} DT</p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1 bg-white border rounded-lg p-0.5">
-                        <button onClick={() => item.quantity > 1 ? updateQty(item.id, item.quantity - 1) : removeItem(item.id)} className="p-1 rounded hover:bg-gray-100"><Minus size={12} /></button>
+                      <div className="flex items-center gap-1 bg-card border rounded-lg p-0.5">
+                        <button onClick={() => item.quantity > 1 ? updateQty(item.id, item.quantity - 1) : removeItem(item.id)} className="p-1 rounded hover:bg-muted"><Minus size={12} /></button>
                         <span className="w-5 text-center text-xs font-bold">{item.quantity}</span>
-                        <button onClick={() => updateQty(item.id, item.quantity + 1)} className="p-1 rounded hover:bg-gray-100"><Plus size={12} /></button>
+                        <button onClick={() => updateQty(item.id, item.quantity + 1)} className="p-1 rounded hover:bg-muted"><Plus size={12} /></button>
                       </div>
                       <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-600 p-1"><Trash2 size={14} /></button>
                     </div>
@@ -210,12 +210,12 @@ export default function CartPage() {
           {/* Form — 2 cols */}
           <form onSubmit={handleSubmit} className="lg:col-span-2 space-y-4">
             {/* Order type */}
-            <div className="bg-white rounded-2xl border p-5">
-              <h2 className="font-black text-[#1A1A1A] mb-4">Type de commande</h2>
+            <div className="bg-card rounded-2xl border p-5">
+              <h2 className="font-black text-foreground mb-4">Type de commande</h2>
               <div className="grid grid-cols-2 gap-3">
                 {([['delivery', '🛵', 'Livraison'], ['pickup', '🏪', 'À emporter']] as const).map(([t, icon, label]) => (
                   <button key={t} type="button" onClick={() => setType(t)}
-                    className={`flex flex-col items-center gap-1 py-4 rounded-xl border-2 font-bold text-sm transition-all ${type === t ? 'border-[#F5A800] bg-[#F5A800]/5 text-[#1A1A1A]' : 'border-gray-200 text-gray-500 hover:border-[#F5A800]/50'}`}>
+                    className={`flex flex-col items-center gap-1 py-4 rounded-xl border-2 font-bold text-sm transition-all ${type === t ? 'border-[#F5A800] bg-[#F5A800]/5 text-foreground' : 'border-border text-muted-foreground hover:border-[#F5A800]/50'}`}>
                     <span className="text-2xl">{icon}</span>
                     {label}
                   </button>
@@ -224,17 +224,17 @@ export default function CartPage() {
             </div>
 
             {/* Customer info */}
-            <div className="bg-white rounded-2xl border p-5 space-y-4">
-              <h2 className="font-black text-[#1A1A1A] flex items-center gap-2">
+            <div className="bg-card rounded-2xl border p-5 space-y-4">
+              <h2 className="font-black text-foreground flex items-center gap-2">
                 <MapPin size={16} className="text-[#F5A800]" /> Vos coordonnées
               </h2>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Nom *</Label>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase">Nom *</Label>
                   <Input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required placeholder="Votre nom" />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Téléphone *</Label>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase">Téléphone *</Label>
                   <Input 
                     value={form.phone} 
                     onChange={handlePhoneChange}
@@ -250,7 +250,7 @@ export default function CartPage() {
               </div>
               {type === 'delivery' && (
                 <div className="space-y-1">
-                  <Label className="text-xs font-bold text-gray-500 uppercase">Adresse *</Label>
+                  <Label className="text-xs font-bold text-muted-foreground uppercase">Adresse *</Label>
                   <div className="flex gap-2">
                     <Input 
                       value={form.address} 
@@ -276,14 +276,14 @@ export default function CartPage() {
                 </div>
               )}
               <div className="space-y-1">
-                <Label className="text-xs font-bold text-gray-500 uppercase">Notes</Label>
+                <Label className="text-xs font-bold text-muted-foreground uppercase">Notes</Label>
                 <Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} rows={2} placeholder="Instructions spéciales..." />
               </div>
             </div>
 
             {/* Summary */}
-            <div className="bg-white rounded-2xl border p-5">
-              <h2 className="font-black text-[#1A1A1A] flex items-center gap-2 mb-4">
+            <div className="bg-card rounded-2xl border p-5">
+              <h2 className="font-black text-foreground flex items-center gap-2 mb-4">
                 <Package size={16} className="text-[#F5A800]" /> Récapitulatif
               </h2>
               <div className="space-y-2 text-sm mb-4">

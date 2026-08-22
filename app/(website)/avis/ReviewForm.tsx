@@ -33,8 +33,8 @@ export default function ReviewForm() {
     return (
       <div className="text-center py-8">
         <p className="text-4xl mb-3">🎉</p>
-        <p className="font-black text-[#1A1A1A]">Merci !</p>
-        <p className="text-xs text-gray-500 mt-1">Votre avis sera publié après vérification.</p>
+        <p className="font-black text-foreground">Merci !</p>
+        <p className="text-xs text-muted-foreground mt-1">Votre avis sera publié après vérification.</p>
       </div>
     )
   }
@@ -43,7 +43,7 @@ export default function ReviewForm() {
     <form onSubmit={submit} className="space-y-4">
       {/* Star selector */}
       <div>
-        <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-2">Note *</label>
+        <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-2">Note *</label>
         <div className="flex gap-1">
           {[1, 2, 3, 4, 5].map((s) => (
             <button
@@ -59,18 +59,18 @@ export default function ReviewForm() {
       </div>
 
       <div>
-        <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-1.5">Prénom *</label>
+        <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Prénom *</label>
         <input
           type="text"
           placeholder="Votre prénom"
           value={form.customerName}
           onChange={(e) => setForm({ ...form, customerName: e.target.value })}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+          className="w-full border border-border rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
         />
       </div>
 
       <div>
-        <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-1.5">
+        <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-1.5">
           N° de commande <span className="text-gray-300 normal-case font-medium">(facultatif)</span>
         </label>
         <input
@@ -78,18 +78,18 @@ export default function ReviewForm() {
           placeholder="ex: MB-20260323-0042"
           value={form.orderNumber}
           onChange={(e) => setForm({ ...form, orderNumber: e.target.value })}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+          className="w-full border border-border rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
         />
       </div>
 
       <div>
-        <label className="text-xs font-black text-gray-500 uppercase tracking-widest block mb-1.5">Commentaire</label>
+        <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-1.5">Commentaire</label>
         <textarea
           placeholder="Partagez votre expérience…"
           rows={3}
           value={form.comment}
           onChange={(e) => setForm({ ...form, comment: e.target.value })}
-          className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+          className="w-full border border-border rounded-xl px-4 py-2.5 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
         />
       </div>
 

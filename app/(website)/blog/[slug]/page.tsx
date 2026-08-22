@@ -30,7 +30,7 @@ export default async function BlogPostPage({ params }: Props) {
     new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-white pt-20 pb-16" dir="ltr">
+    <div className="min-h-screen bg-card pt-20 pb-16" dir="ltr">
 
       {/* Hero image */}
       {p.image && (
@@ -59,21 +59,21 @@ export default async function BlogPostPage({ params }: Props) {
         )}
 
         {/* Title */}
-        <h1 className="text-3xl sm:text-4xl font-black text-[#1A1A1A] mt-4 leading-tight">{p.title.fr}</h1>
+        <h1 className="text-3xl sm:text-4xl font-black text-foreground mt-4 leading-tight">{p.title.fr}</h1>
         {p.excerpt?.fr && (
-          <p className="text-gray-500 text-base mt-3 leading-relaxed">{p.excerpt.fr}</p>
+          <p className="text-muted-foreground text-base mt-3 leading-relaxed">{p.excerpt.fr}</p>
         )}
-        <p className="text-xs text-gray-400 mt-3 uppercase tracking-widest">
+        <p className="text-xs text-muted-foreground mt-3 uppercase tracking-widest">
           Publié le {fmtDate(p.publishedAt || p.createdAt)}
         </p>
 
-        <hr className="my-8 border-gray-100" />
+        <hr className="my-8 border-border" />
 
         {/* Content */}
-        <div className="prose prose-lg max-w-none text-[#1A1A1A]">
+        <div className="prose prose-lg max-w-none text-foreground">
           {p.content.fr.split('\n').map((para, i) =>
             para.trim() ? (
-              <p key={i} className="mb-4 leading-relaxed text-gray-700">{para}</p>
+              <p key={i} className="mb-4 leading-relaxed text-foreground">{para}</p>
             ) : (
               <br key={i} />
             )
@@ -83,10 +83,10 @@ export default async function BlogPostPage({ params }: Props) {
         {/* Arabic content if available */}
         {p.content.ar && (
           <>
-            <hr className="my-10 border-gray-100" />
+            <hr className="my-10 border-border" />
             <div dir="rtl" className="text-right">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">عربي</span>
-              <div className="mt-4 space-y-4 text-gray-700 leading-relaxed text-base font-arabic">
+              <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">عربي</span>
+              <div className="mt-4 space-y-4 text-foreground leading-relaxed text-base font-arabic">
                 {p.content.ar.split('\n').map((para, i) =>
                   para.trim() ? <p key={i}>{para}</p> : <br key={i} />
                 )}
@@ -95,12 +95,12 @@ export default async function BlogPostPage({ params }: Props) {
           </>
         )}
 
-        <hr className="my-10 border-gray-100" />
+        <hr className="my-10 border-border" />
 
         {/* CTA */}
         <div className="bg-gradient-to-br from-[#F5A800]/10 to-[#FF6B00]/5 rounded-2xl p-6 text-center border border-[#F5A800]/20">
-          <p className="font-black text-[#1A1A1A] text-lg">Vous avez envie d&apos;un bon burrito ?</p>
-          <p className="text-gray-500 text-sm mt-1">Commandez en ligne ou passez nous voir !</p>
+          <p className="font-black text-foreground text-lg">Vous avez envie d&apos;un bon burrito ?</p>
+          <p className="text-muted-foreground text-sm mt-1">Commandez en ligne ou passez nous voir !</p>
           <Link href="/#composer"
             className="inline-block mt-4 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-6 py-2.5 rounded-full text-sm transition-colors">
             Voir le menu →

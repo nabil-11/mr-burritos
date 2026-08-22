@@ -15,20 +15,20 @@ export default async function BlogPage() {
     new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
 
   return (
-    <div className="min-h-screen bg-gray-50 pt-24 pb-16" dir="ltr">
+    <div className="min-h-screen bg-background pt-24 pb-16" dir="ltr">
       {/* Header */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 mb-12 text-center">
         <span className="inline-block bg-[#F5A800]/10 text-[#F5A800] text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
           Blog
         </span>
-        <h1 className="text-4xl font-black text-[#1A1A1A]">Actualités & Recettes</h1>
-        <p className="text-gray-500 mt-2 text-sm">Conseils, nouveautés et inspirations culinaires de Mr. Burritos</p>
+        <h1 className="text-4xl font-black text-foreground">Actualités & Recettes</h1>
+        <p className="text-muted-foreground mt-2 text-sm">Conseils, nouveautés et inspirations culinaires de Mr. Burritos</p>
       </div>
 
       {/* Posts grid */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
         {posts.length === 0 ? (
-          <div className="text-center py-24 text-gray-400">
+          <div className="text-center py-24 text-muted-foreground">
             <p className="text-5xl mb-4">📝</p>
             <p className="text-lg font-semibold">Aucun article pour le moment</p>
             <p className="text-sm mt-1">Revenez bientôt !</p>
@@ -42,7 +42,7 @@ export default async function BlogPage() {
               }
               return (
                 <Link key={String(p._id)} href={`/blog/${p.slug}`}
-                  className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#F5A800]/40 hover:shadow-lg transition-all duration-200">
+                  className="group bg-card rounded-2xl overflow-hidden border border-border hover:border-[#F5A800]/40 hover:shadow-lg transition-all duration-200">
                   {/* Image */}
                   <div className="relative h-48 bg-gradient-to-br from-[#F5A800]/10 to-[#FF6B00]/10 overflow-hidden">
                     {p.image ? (
@@ -58,14 +58,14 @@ export default async function BlogPage() {
                   </div>
                   {/* Content */}
                   <div className="p-5">
-                    <p className="text-[10px] text-gray-400 uppercase tracking-widest mb-2">
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
                       {fmtDate(p.publishedAt || p.createdAt)}
                     </p>
-                    <h2 className="font-black text-[#1A1A1A] text-base leading-snug group-hover:text-[#F5A800] transition-colors line-clamp-2">
+                    <h2 className="font-black text-foreground text-base leading-snug group-hover:text-[#F5A800] transition-colors line-clamp-2">
                       {p.title.fr}
                     </h2>
                     {p.excerpt?.fr && (
-                      <p className="text-gray-500 text-xs mt-2 line-clamp-3 leading-relaxed">{p.excerpt.fr}</p>
+                      <p className="text-muted-foreground text-xs mt-2 line-clamp-3 leading-relaxed">{p.excerpt.fr}</p>
                     )}
                     <p className="mt-4 text-[#F5A800] text-xs font-bold flex items-center gap-1">
                       Lire la suite <span className="group-hover:translate-x-1 transition-transform">→</span>
