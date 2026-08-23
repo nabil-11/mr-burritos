@@ -1,25 +1,13 @@
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
-import { Badge } from '@/components/ui/badge'
-import OrderActions from './OrderActions'
+import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
+import OrderRow, { OrderListItem } from './OrderRow'
 import Link from 'next/link'
-import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
+import { orderSourceLabel } from '@/lib/orderSource'
 
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  preparing: 'bg-orange-100 text-orange-800',
-  ready: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
-}
+type Doc = Record<string, unknown>
 
-const statusLabels: Record<string, string> = {
-  pending: 'En attente', confirmed: 'Confirmée', preparing: 'En préparation',
-  ready: 'Prête', delivered: 'Livrée', cancelled: 'Annulée',
-}
-
-function buildWhatsAppUrl(order: Record<string, unknown>): string {
+function buildWhatsAppUrl(order: Doc): string {
   const raw = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? ''
   const phone = raw.replace(/\D/g, '') // strip non-digits, e.g. "+216..." → "216..."
   const customer = order.customer as Record<string, string>
@@ -34,9 +22,96 @@ function buildWhatsAppUrl(order: Record<string, unknown>): string {
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
 }
 
+/** French name of a bilingual { ar, fr } label, whichever half exists. */
+function label(value: unknown): string {
+  if (value && typeof value === 'object') {
+    const l = value as { fr?: string; ar?: string }
+    return l.fr || l.ar || ''
+  }
+  return String(value ?? '')
+}
+
+const num = (v: unknown, fallback = 0): number => (typeof v === 'number' ? v : fallback)
+const str = (v: unknown): string => (typeof v === 'string' ? v : '')
+
+const dateFr = (d: unknown): string =>
+  d ? new Date(d as string).toLocaleDateString('fr-FR') : ''
+const timeFr = (d: unknown): string =>
+  d ? new Date(d as string).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''
+
+/**
+ * Flattens a mongo document into the plain, already-formatted shape the row
+ * component takes. Dates are rendered here rather than in the browser so the
+ * server and client markup agree, and ObjectIds never cross the boundary.
+ */
+function toListItem(order: Doc): OrderListItem {
+  const customer = (order.customer ?? {}) as Record<string, unknown>
+  const discount = (order.discount ?? {}) as Record<string, unknown>
+  const company = (order.deliveryCompany ?? {}) as Record<string, unknown>
+  const driver = (order.assignedDelivery ?? null) as Record<string, unknown> | null
+  const items = (order.items ?? []) as Doc[]
+  const discountAmount = num(discount.amount)
+
+  return {
+    id: String(order._id),
+    orderNumber: str(order.orderNumber),
+    type: str(order.type),
+    source: str(order.source) || null,
+    status: str(order.status),
+    createdAtLabel: dateFr(order.createdAt),
+    createdAtTime: timeFr(order.createdAt),
+    confirmedAtLabel: order.confirmedAt ? `${dateFr(order.confirmedAt)} à ${timeFr(order.confirmedAt)}` : '',
+    preparationDuration: num(order.preparationDuration),
+    customer: {
+      name: str(customer.name),
+      phone: str(customer.phone),
+      email: str(customer.email),
+      address: str(customer.address),
+      latitude: typeof customer.latitude === 'number' ? customer.latitude : null,
+      longitude: typeof customer.longitude === 'number' ? customer.longitude : null,
+    },
+    items: items.map((item) => {
+      const supplements = ((item.supplements ?? []) as Doc[]).map((s) => ({
+        name: label(s.name),
+        price: num(s.price),
+      }))
+      const quantity = num(item.quantity, 1)
+      const unitPrice = num(item.unitPrice)
+      const suppTotal = supplements.reduce((s, x) => s + x.price, 0)
+      return {
+        name: label(item.productName) || '—',
+        quantity,
+        unitPrice,
+        supplements,
+        notes: str(item.notes),
+        lineTotal: (unitPrice + suppTotal) * quantity,
+      }
+    }),
+    subtotal: num(order.subtotal, num(order.total)),
+    discount: discountAmount > 0
+      ? { label: str(discount.label), rate: num(discount.rate), amount: discountAmount }
+      : null,
+    deliveryFee: num(order.deliveryFee),
+    total: num(order.total),
+    deliveryCompany: str(company.name)
+      ? { name: str(company.name), commission: num(company.commission) }
+      : null,
+    assignedDelivery: driver && str(driver.name)
+      ? { name: str(driver.name), phone: str(driver.phone) }
+      : null,
+    reference: str(order.reference),
+    notes: str(order.notes),
+    whatsappUrl: buildWhatsAppUrl(order),
+  }
+}
+
 export default async function OrdersPage() {
   await connectDB()
-  const orders = await Order.find().sort({ createdAt: -1 }).limit(50).lean()
+  const orders = await Order.find().sort({ createdAt: -1 }).limit(50)
+    .populate('assignedDelivery', 'name phone')
+    .lean()
+
+  const rows = (orders as Doc[]).map(toListItem)
 
   return (
     <div>
@@ -58,66 +133,13 @@ export default async function OrdersPage() {
             </tr>
           </thead>
           <tbody className="divide-y">
-            {(orders as Record<string, unknown>[]).map((order) => {
-              const customer = order.customer as Record<string, string>
-              const status = String(order.status)
-              return (
-                <tr key={String(order._id)} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-mono font-bold text-xs">{String(order.orderNumber)}</td>
-                  <td className="px-4 py-3">
-                    <p className="font-medium">{customer.name}</p>
-                    <p className="text-xs text-muted-foreground">{customer.phone}</p>
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline">{order.type === 'delivery' ? '🛵 Livraison' : '🏠 À emporter'}</Badge>
-                    {(() => {
-                      const dc = order.deliveryCompany as Record<string, string | number> | null | undefined
-                      if (order.type === 'delivery' && dc?.name) {
-                        return (
-                          <p className="text-[10px] text-orange-600 font-bold mt-1">
-                            {String(dc.name)} ({String(dc.commission)}%)
-                          </p>
-                        )
-                      }
-                    })()}
-                  </td>
-                  <td className="px-4 py-3">
-                    <Badge variant="outline" className="whitespace-nowrap">
-                      {orderSourceIcon(order.source, '❔')} {orderSourceLabel(order.source, 'Inconnue')}
-                    </Badge>
-                  </td>
-                  <td className="px-4 py-3 font-bold text-[#F5A800]">{(order.total as number).toFixed(2)} DT</td>
-                  <td className="px-4 py-3">
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[status] || ''}`}>
-                      {statusLabels[status] || status}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-xs text-muted-foreground">
-                    {new Date(order.createdAt as string).toLocaleDateString('fr-FR')}
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex items-center gap-2">
-                      <OrderActions orderId={String(order._id)} currentStatus={status} />
-                      <a
-                        href={buildWhatsAppUrl(order)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        title="Envoyer sur WhatsApp"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-green-500 hover:bg-green-600 text-white transition-colors"
-                      >
-                        <svg viewBox="0 0 24 24" fill="currentColor" className="w-4 h-4">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                      </a>
-                    </div>
-                  </td>
-                </tr>
-              )
-            })}
+            {rows.map((order) => (
+              <OrderRow key={order.id} order={order} />
+            ))}
           </tbody>
         </table>
         </div>
-        {orders.length === 0 && (
+        {rows.length === 0 && (
           <p className="text-center text-muted-foreground py-10">Aucune commande</p>
         )}
       </div>
