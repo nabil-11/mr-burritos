@@ -39,15 +39,15 @@ export default function ReviewActions({ id, isApproved }: { id: string; isApprov
         title={isApproved ? 'Masquer' : 'Approuver'}
         className={`p-2 rounded-lg transition-colors ${
           isApproved
-            ? 'text-gray-400 hover:text-orange-500 hover:bg-orange-50'
-            : 'text-gray-400 hover:text-green-600 hover:bg-green-50'
+            ? 'text-muted-foreground hover:text-orange-500 hover:bg-orange-50'
+            : 'text-muted-foreground hover:text-green-600 hover:bg-green-50'
         }`}
       >
         {isApproved ? <X size={15} /> : <Check size={15} />}
       </button>
       <button
         onClick={deleteReview}
-        className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+        className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors"
       >
         <Trash2 size={15} />
       </button>

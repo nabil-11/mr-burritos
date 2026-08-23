@@ -66,7 +66,7 @@ const STATUS_LABELS: { key: keyof ReportData['byStatus']; label: string; color: 
   { key: 'ready',     label: 'Prêtes',            color: 'text-blue-600 bg-blue-50' },
   { key: 'preparing', label: 'En préparation',    color: 'text-yellow-600 bg-yellow-50' },
   { key: 'confirmed', label: 'Confirmées',         color: 'text-purple-600 bg-purple-50' },
-  { key: 'pending',   label: 'En attente',         color: 'text-gray-600 bg-gray-100' },
+  { key: 'pending',   label: 'En attente',         color: 'text-muted-foreground bg-muted' },
 ]
 
 // Legacy orders (no source stored) get their own row so the web share is not
@@ -111,7 +111,7 @@ function HourlyChart({ byHour }: { byHour: ReportData['byHour'] }) {
               {/* Bar */}
               <div
                 className={`w-full rounded-t-sm transition-all ${
-                  isEmpty ? 'bg-gray-100' : 'bg-[#F5A800] group-hover:bg-[#FF6B00]'
+                  isEmpty ? 'bg-muted' : 'bg-[#F5A800] group-hover:bg-[#FF6B00]'
                 }`}
                 style={{ height: isEmpty ? '4px' : `${Math.max(pct, 4)}%` }}
               />
@@ -125,7 +125,7 @@ function HourlyChart({ byHour }: { byHour: ReportData['byHour'] }) {
         {byHour.map((h) => (
           <div key={h.hour} className="flex-1 text-center">
             {h.hour % 3 === 0 && (
-              <span className="text-[9px] text-gray-400">{h.hour}h</span>
+              <span className="text-[9px] text-muted-foreground">{h.hour}h</span>
             )}
           </div>
         ))}
@@ -183,7 +183,7 @@ export default function ReportsClient() {
     <div className="space-y-6">
 
       {/* Period selector */}
-      <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
+      <div className="bg-card border border-border rounded-xl p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
           {PRESETS.map((p) => (
             <button
@@ -192,7 +192,7 @@ export default function ReportsClient() {
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 preset === p.key
                   ? 'bg-[#F5A800] text-black shadow-sm'
-                  : 'bg-gray-50 border border-gray-200 hover:bg-gray-100 text-gray-700'
+                  : 'bg-muted/50 border border-border hover:bg-muted text-foreground'
               }`}
             >
               {p.label}
@@ -202,26 +202,26 @@ export default function ReportsClient() {
 
         {/* Custom date range inputs */}
         {preset === 'custom' && (
-          <div className="flex flex-wrap items-end gap-3 pt-1 border-t border-gray-100">
+          <div className="flex flex-wrap items-end gap-3 pt-1 border-t border-border">
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Du</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Du</label>
               <input
                 type="date"
                 value={customFrom}
                 max={customTo}
                 onChange={(e) => setCustomFrom(e.target.value)}
-                className="block border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+                className="block border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
               />
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-widest">Au</label>
+              <label className="text-xs font-semibold text-muted-foreground uppercase tracking-widest">Au</label>
               <input
                 type="date"
                 value={customTo}
                 min={customFrom}
                 max={todayStr()}
                 onChange={(e) => setCustomTo(e.target.value)}
-                className="block border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
+                className="block border border-border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#F5A800] focus:border-transparent"
               />
             </div>
             <button
@@ -328,7 +328,7 @@ export default function ReportsClient() {
           )}
 
           {data.orderCount === 0 ? (
-            <div className="text-center py-16 text-muted-foreground text-sm bg-white rounded-xl border">
+            <div className="text-center py-16 text-muted-foreground text-sm bg-card rounded-xl border">
               Aucune commande pour cette période
             </div>
           ) : (
@@ -359,7 +359,7 @@ export default function ReportsClient() {
                           <span className="text-muted-foreground">{row.label}</span>
                           <span className="font-semibold">{row.count} · {fmt(row.revenue)} DT</span>
                         </div>
-                        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div className="h-2 bg-muted rounded-full overflow-hidden">
                           <div
                             className={`h-full ${row.color} rounded-full transition-all duration-500`}
                             style={{ width: data.totalRevenue > 0 ? `${(row.revenue / data.totalRevenue) * 100}%` : '0%' }}
@@ -384,7 +384,7 @@ export default function ReportsClient() {
                             <span className="text-muted-foreground">{label}</span>
                             <span className="font-semibold">{row.count} · {fmt(row.revenue)} DT</span>
                           </div>
-                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                          <div className="h-2 bg-muted rounded-full overflow-hidden">
                             <div
                               className={`h-full ${color} rounded-full transition-all duration-500`}
                               style={{ width: data.totalRevenue > 0 ? `${(row.revenue / data.totalRevenue) * 100}%` : '0%' }}
@@ -426,7 +426,7 @@ export default function ReportsClient() {
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-120">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-muted/50 border-b">
                           <tr>
                             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Date</th>
                             <th className="px-4 py-3 text-right font-medium text-muted-foreground">Commandes</th>
@@ -438,12 +438,12 @@ export default function ReportsClient() {
                           {(() => {
                             const maxRev = Math.max(...data.byDay.map((x) => x.revenue))
                             return data.byDay.map((d) => (
-                              <tr key={d.date} className="hover:bg-gray-50">
+                              <tr key={d.date} className="hover:bg-muted/50">
                                 <td className="px-4 py-3 font-medium">{fmtDate(d.date)}</td>
                                 <td className="px-4 py-3 text-right text-muted-foreground">{d.count}</td>
                                 <td className="px-4 py-3 text-right font-semibold text-[#F5A800]">{fmt(d.revenue)} DT</td>
                                 <td className="px-4 py-3 pr-6">
-                                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                                  <div className="h-2 bg-muted rounded-full overflow-hidden">
                                     <div
                                       className="h-full bg-[#F5A800] rounded-full"
                                       style={{ width: `${maxRev > 0 ? (d.revenue / maxRev) * 100 : 0}%` }}
@@ -469,7 +469,7 @@ export default function ReportsClient() {
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-120">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-muted/50 border-b">
                           <tr>
                             {['Plateforme', 'Commandes', 'CA brut', 'Commission', 'Net reçu'].map((h) => (
                               <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -478,7 +478,7 @@ export default function ReportsClient() {
                         </thead>
                         <tbody className="divide-y">
                           {data.byDeliveryCompany.map((c) => (
-                            <tr key={c.name} className="hover:bg-gray-50">
+                            <tr key={c.name} className="hover:bg-muted/50">
                               <td className="px-4 py-3 font-semibold">{c.name}</td>
                               <td className="px-4 py-3 text-muted-foreground">{c.count}</td>
                               <td className="px-4 py-3 font-medium">{fmt(c.revenue)} DT</td>
@@ -492,7 +492,7 @@ export default function ReportsClient() {
                           ))}
                         </tbody>
                         {data.byDeliveryCompany.length >= 1 && (
-                          <tfoot className="border-t-2 border-gray-300 bg-gray-50">
+                          <tfoot className="border-t-2 border-border bg-muted/50">
                             <tr>
                               <td className="px-4 py-3 font-black text-sm">TOTAL</td>
                               <td className="px-4 py-3 font-bold text-sm">
@@ -525,7 +525,7 @@ export default function ReportsClient() {
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-96">
-                        <thead className="bg-gray-50 border-b">
+                        <thead className="bg-muted/50 border-b">
                           <tr>
                             <th className="px-4 py-3 text-left font-medium text-muted-foreground w-10">#</th>
                             <th className="px-4 py-3 text-left font-medium text-muted-foreground">Produit</th>
@@ -535,7 +535,7 @@ export default function ReportsClient() {
                         </thead>
                         <tbody className="divide-y">
                           {data.topProducts.map((p, i) => (
-                            <tr key={p.name} className="hover:bg-gray-50">
+                            <tr key={p.name} className="hover:bg-muted/50">
                               <td className="px-4 py-3 text-muted-foreground text-xs">{i + 1}</td>
                               <td className="px-4 py-3 font-medium">{p.name}</td>
                               <td className="px-4 py-3 text-right text-muted-foreground">{p.qty}</td>

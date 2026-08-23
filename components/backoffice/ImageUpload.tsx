@@ -53,7 +53,7 @@ export default function ImageUpload({ value, onChange }: Props) {
     <div className="space-y-2">
       {/* Preview */}
       {value ? (
-        <div className="relative w-full h-48 rounded-xl overflow-hidden border border-gray-200 bg-gray-50 group">
+        <div className="relative w-full h-48 rounded-xl overflow-hidden border border-border bg-muted/50 group">
           <Image
             src={value}
             alt="Product image"
@@ -66,14 +66,14 @@ export default function ImageUpload({ value, onChange }: Props) {
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
-              className="flex items-center gap-1.5 bg-white text-[#1A1A1A] font-bold text-xs px-3 py-2 rounded-lg shadow hover:bg-[#F5A800] transition-colors"
+              className="flex items-center gap-1.5 bg-card text-foreground font-bold text-xs px-3 py-2 rounded-lg shadow hover:bg-[#F5A800] transition-colors"
             >
               <Upload size={13} /> Changer
             </button>
             <button
               type="button"
               onClick={() => onChange('')}
-              className="flex items-center gap-1.5 bg-white text-red-500 font-bold text-xs px-3 py-2 rounded-lg shadow hover:bg-red-50 transition-colors"
+              className="flex items-center gap-1.5 bg-card text-red-500 font-bold text-xs px-3 py-2 rounded-lg shadow hover:bg-red-50 transition-colors"
             >
               <X size={13} /> Supprimer
             </button>
@@ -91,7 +91,7 @@ export default function ImageUpload({ value, onChange }: Props) {
             flex flex-col items-center justify-center gap-3
             ${dragging
               ? 'border-[#F5A800] bg-[#F5A800]/5 scale-[1.01]'
-              : 'border-gray-300 bg-gray-50 hover:border-[#F5A800]/60 hover:bg-[#F5A800]/5'
+              : 'border-border bg-muted/50 hover:border-[#F5A800]/60 hover:bg-[#F5A800]/5'
             }
             ${uploading ? 'pointer-events-none opacity-70' : ''}
           `}
@@ -99,21 +99,21 @@ export default function ImageUpload({ value, onChange }: Props) {
           {uploading ? (
             <>
               <Loader2 size={28} className="text-[#F5A800] animate-spin" />
-              <p className="text-sm font-medium text-gray-500">Téléchargement en cours...</p>
+              <p className="text-sm font-medium text-muted-foreground">Téléchargement en cours...</p>
             </>
           ) : (
             <>
-              <div className="w-12 h-12 rounded-xl bg-gray-100 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center">
                 {dragging
                   ? <Upload size={22} className="text-[#F5A800]" />
-                  : <ImageIcon size={22} className="text-gray-400" />
+                  : <ImageIcon size={22} className="text-muted-foreground" />
                 }
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-[#1A1A1A]">
+                <p className="text-sm font-semibold text-foreground">
                   {dragging ? 'Déposer ici' : 'Cliquer ou glisser une image'}
                 </p>
-                <p className="text-xs text-gray-400 mt-0.5">PNG, JPG, WEBP — max 10 MB</p>
+                <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, WEBP — max 10 MB</p>
               </div>
             </>
           )}

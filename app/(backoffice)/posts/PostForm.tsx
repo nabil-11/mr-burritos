@@ -74,8 +74,8 @@ export default function PostForm({ post, onSaved }: Props) {
     <form onSubmit={submit} className="space-y-6">
 
       {/* Title */}
-      <div className="bg-white rounded-xl border p-5 space-y-4">
-        <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">Titre</h3>
+      <div className="bg-card rounded-xl border p-5 space-y-4">
+        <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Titre</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Français *</Label>
@@ -89,8 +89,8 @@ export default function PostForm({ post, onSaved }: Props) {
       </div>
 
       {/* Excerpt */}
-      <div className="bg-white rounded-xl border p-5 space-y-4">
-        <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">Résumé</h3>
+      <div className="bg-card rounded-xl border p-5 space-y-4">
+        <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Résumé</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Français</Label>
@@ -117,8 +117,8 @@ export default function PostForm({ post, onSaved }: Props) {
       </div>
 
       {/* Content */}
-      <div className="bg-white rounded-xl border p-5 space-y-4">
-        <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">Contenu *</h3>
+      <div className="bg-card rounded-xl border p-5 space-y-4">
+        <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Contenu *</h3>
         <div className="grid sm:grid-cols-2 gap-4">
           <div className="space-y-1.5">
             <Label>Français *</Label>
@@ -146,25 +146,25 @@ export default function PostForm({ post, onSaved }: Props) {
 
       {/* Image + Tags + Publish */}
       <div className="grid sm:grid-cols-2 gap-6">
-        <div className="bg-white rounded-xl border p-5 space-y-3">
-          <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest">Image de couverture</h3>
+        <div className="bg-card rounded-xl border p-5 space-y-3">
+          <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest">Image de couverture</h3>
           <ImageUpload value={form.image} onChange={(url) => set('image', url)} />
         </div>
 
-        <div className="bg-white rounded-xl border p-5 space-y-5">
+        <div className="bg-card rounded-xl border p-5 space-y-5">
           <div className="space-y-1.5">
-            <Label>Tags <span className="text-gray-400 font-normal">(séparés par virgule)</span></Label>
+            <Label>Tags <span className="text-muted-foreground font-normal">(séparés par virgule)</span></Label>
             <Input value={form.tags} onChange={(e) => set('tags', e.target.value)} placeholder="recette, actualité, promo" />
           </div>
 
           <div>
-            <h3 className="text-xs font-black text-gray-500 uppercase tracking-widest mb-3">Publication</h3>
+            <h3 className="text-xs font-black text-muted-foreground uppercase tracking-widest mb-3">Publication</h3>
             <label className="flex items-center gap-3 cursor-pointer group">
               <div
                 onClick={() => set('isPublished', !form.isPublished)}
-                className={`relative w-11 h-6 rounded-full transition-colors ${form.isPublished ? 'bg-[#F5A800]' : 'bg-gray-200'}`}
+                className={`relative w-11 h-6 rounded-full transition-colors ${form.isPublished ? 'bg-[#F5A800]' : 'bg-muted-foreground/30'}`}
               >
-                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.isPublished ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
+                <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-card shadow transition-transform ${form.isPublished ? 'translate-x-5.5' : 'translate-x-0.5'}`} />
               </div>
               <span className="text-sm font-medium">{form.isPublished ? 'Publié' : 'Brouillon'}</span>
             </label>
@@ -181,7 +181,7 @@ export default function PostForm({ post, onSaved }: Props) {
           {loading ? 'Sauvegarde…' : isEdit ? 'Mettre à jour' : 'Créer l\'article'}
         </button>
         <button type="button" onClick={() => router.push('/posts')}
-          className="px-6 py-3 rounded-xl text-sm border border-gray-200 hover:bg-gray-50 font-medium transition-colors">
+          className="px-6 py-3 rounded-xl text-sm border border-border hover:bg-muted/50 font-medium transition-colors">
           Annuler
         </button>
       </div>

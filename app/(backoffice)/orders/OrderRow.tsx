@@ -52,12 +52,12 @@ export type OrderListItem = {
 }
 
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800',
-  confirmed: 'bg-blue-100 text-blue-800',
-  preparing: 'bg-orange-100 text-orange-800',
-  ready: 'bg-purple-100 text-purple-800',
-  delivered: 'bg-green-100 text-green-800',
-  cancelled: 'bg-red-100 text-red-800',
+  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
+  confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
+  preparing: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
+  ready: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300',
+  delivered: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
+  cancelled: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
 }
 
 const statusLabels: Record<string, string> = {
@@ -87,7 +87,7 @@ function Field({ label, value }: { label: string; value: React.ReactNode }) {
 
 function DetailCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-lg border p-3">
+    <div className="bg-card rounded-lg border p-3">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-2">{title}</p>
       <div className="text-xs">{children}</div>
     </div>
@@ -106,7 +106,7 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
 
   return (
     <>
-      <tr className={`hover:bg-gray-50 ${open ? 'bg-gray-50' : ''}`}>
+      <tr className={`hover:bg-muted/50 ${open ? 'bg-muted/50' : ''}`}>
         <td className="px-4 py-3">
           <button
             type="button"
@@ -146,7 +146,10 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
             {statusLabels[order.status] || order.status}
           </span>
         </td>
-        <td className="px-4 py-3 text-xs text-muted-foreground">{order.createdAtLabel}</td>
+        <td className="px-4 py-3 text-xs whitespace-nowrap">
+          <span className="text-muted-foreground">{order.createdAtLabel}</span>
+          <span className="block font-semibold">{order.createdAtTime}</span>
+        </td>
         <td className="px-4 py-3">
           <div className="flex items-center gap-2">
             <OrderActions orderId={order.id} currentStatus={order.status} />
@@ -166,12 +169,12 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
       </tr>
 
       {open && (
-        <tr id={`order-details-${order.id}`} className="bg-gray-50/70">
+        <tr id={`order-details-${order.id}`} className="bg-muted/40">
           <td colSpan={8} className="px-4 pt-0 pb-5">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
 
               {/* ── Articles ─────────────────────────────────────── */}
-              <div className="lg:col-span-2 bg-white rounded-lg border p-3">
+              <div className="lg:col-span-2 bg-card rounded-lg border p-3">
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                     Articles {itemCount > 0 && `(${itemCount})`}
@@ -206,7 +209,7 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                         {item.supplements.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1.5">
                             {item.supplements.map((s, j) => (
-                              <span key={j} className="text-[10px] bg-gray-100 rounded-full px-2 py-0.5">
+                              <span key={j} className="text-[10px] bg-muted rounded-full px-2 py-0.5">
                                 + {s.name}{s.price > 0 && ` (${dt(s.price)})`}
                               </span>
                             ))}
@@ -221,7 +224,7 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                 )}
 
                 {order.notes && (
-                  <p className="mt-3 text-[11px] italic bg-yellow-50 border border-yellow-200 rounded-md px-2.5 py-2">
+                  <p className="mt-3 text-[11px] italic bg-yellow-50 border border-yellow-200 dark:bg-yellow-500/10 dark:border-yellow-500/30 rounded-md px-2.5 py-2">
                     <span className="font-bold not-italic">Note : </span>{order.notes}
                   </p>
                 )}

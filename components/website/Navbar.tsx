@@ -8,7 +8,7 @@ import { useCart } from '@/contexts/CartContext'
 import CartDrawer from './CartDrawer'
 import TrackOrderDrawer from './TrackOrderDrawer'
 import OpenStatus from './OpenStatus'
-import ThemeToggle from './ThemeToggle'
+import ThemeToggle from '@/components/ThemeToggle'
 
 /**
  * Three jobs, nothing else: say whether we're open, let you find an order in

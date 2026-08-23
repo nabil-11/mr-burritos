@@ -14,10 +14,10 @@ export default async function CategoriesPage() {
         <h1 className="text-2xl font-bold">Catégories</h1>
         <CategoryForm />
       </div>
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-125">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
               {['Image', 'Nom (FR)', 'Nom (AR)', 'Slug', 'Ordre', 'Actif'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -28,7 +28,7 @@ export default async function CategoriesPage() {
             {(categories as Record<string, unknown>[]).map((cat) => {
               const name = cat.name as { ar: string; fr: string }
               return (
-                <tr key={String(cat._id)} className="hover:bg-gray-50">
+                <tr key={String(cat._id)} className="hover:bg-muted/50">
                   <td className="px-4 py-2">
                     <CategoryImage
                       id={String(cat._id)}

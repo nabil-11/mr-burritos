@@ -24,10 +24,10 @@ export default async function UsersPage() {
         <h1 className="text-2xl font-bold">Utilisateurs</h1>
         <UserForm />
       </div>
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-muted/50 border-b">
               <tr>
                 {['Nom', 'Email', 'Téléphone', 'Rôle', 'Statut', 'Créé le', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -36,7 +36,7 @@ export default async function UsersPage() {
             </thead>
             <tbody className="divide-y">
               {users.map((u) => (
-                <tr key={u._id} className="hover:bg-gray-50">
+                <tr key={u._id} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium">{u.name}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.email}</td>
                   <td className="px-4 py-3 text-muted-foreground">{u.phone || '—'}</td>

@@ -132,7 +132,7 @@ export function EditCompanyButton({ company }: { company: Company }) {
     <CompanyDialog
       company={company}
       trigger={
-        <button className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-[#1A1A1A] transition-colors">
+        <button className="p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
           <Pencil size={14} />
         </button>
       }

@@ -15,7 +15,7 @@ export default async function NewOrderPage() {
     <div>
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1A1A1A]">Nouvelle commande</h1>
+          <h1 className="text-2xl font-bold text-foreground">Nouvelle commande</h1>
           <p className="text-sm text-muted-foreground mt-0.5">Saisie manuelle — comptoir ou téléphone</p>
         </div>
       </div>

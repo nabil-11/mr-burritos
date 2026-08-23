@@ -16,10 +16,10 @@ export default async function SupplementsPage() {
         <h1 className="text-2xl font-bold">Suppléments</h1>
         <SupplementForm />
       </div>
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-125">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
               {['Nom (FR)', 'Nom (AR)', 'Prix', 'Type', 'Actif'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -30,7 +30,7 @@ export default async function SupplementsPage() {
             {(supplements as Record<string, unknown>[]).map((sup) => {
               const name = sup.name as { ar: string; fr: string }
               return (
-                <tr key={String(sup._id)} className="hover:bg-gray-50">
+                <tr key={String(sup._id)} className="hover:bg-muted/50">
                   <td className="px-4 py-3 font-medium">{name.fr}</td>
                   <td className="px-4 py-3">{name.ar}</td>
                   <td className="px-4 py-3 text-[#F5A800] font-bold">{(sup.price as number).toFixed(2)} DT</td>

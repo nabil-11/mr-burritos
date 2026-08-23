@@ -17,10 +17,10 @@ export default async function ProductsPage() {
           <Plus size={16} /> Nouveau produit
         </Link>
       </div>
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-175">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
               {['Image', 'Nom', 'Catégorie', 'Prix', 'Disponible', 'Actif', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -32,12 +32,12 @@ export default async function ProductsPage() {
               const name = p.name as { ar: string; fr: string }
               const cat = p.category as Record<string, unknown> | null
               return (
-                <tr key={String(p._id)} className="hover:bg-gray-50">
+                <tr key={String(p._id)} className="hover:bg-muted/50">
                   <td className="px-4 py-3">
                     {p.image ? (
                       <Image src={String(p.image)} alt={name.fr} width={40} height={40} className="rounded-lg object-cover" />
                     ) : (
-                      <div className="w-10 h-10 bg-gray-100 rounded-lg flex items-center justify-center text-lg">🌯</div>
+                      <div className="w-10 h-10 bg-muted rounded-lg flex items-center justify-center text-lg">🌯</div>
                     )}
                   </td>
                   <td className="px-4 py-3">

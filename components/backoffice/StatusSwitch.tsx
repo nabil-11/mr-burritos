@@ -44,7 +44,7 @@ export default function StatusSwitch({ id, field, checked, apiPath, label }: Pro
         className="data-[state=checked]:bg-[#F5A800]"
       />
       {label && (
-        <span className={`text-xs font-medium ${value ? 'text-[#1A1A1A]' : 'text-gray-400'}`}>
+        <span className={`text-xs font-medium ${value ? 'text-foreground' : 'text-muted-foreground'}`}>
           {value ? label : 'Non'}
         </span>
       )}

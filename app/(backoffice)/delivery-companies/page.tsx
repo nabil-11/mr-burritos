@@ -17,10 +17,10 @@ export default async function DeliveryCompaniesPage() {
         <AddCompanyButton />
       </div>
 
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm min-w-100">
-            <thead className="bg-gray-50 border-b">
+            <thead className="bg-muted/50 border-b">
               <tr>
                 {['Société', 'Commission', 'Montant net (ex. 10 DT)', 'Actif', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -32,9 +32,9 @@ export default async function DeliveryCompaniesPage() {
                 const commission = c.commission as number
                 const net = (10 * (1 - commission / 100)).toFixed(2)
                 return (
-                  <tr key={String(c._id)} className="hover:bg-gray-50">
+                  <tr key={String(c._id)} className="hover:bg-muted/50">
                     <td className="px-4 py-3">
-                      <p className="font-semibold text-[#1A1A1A]">{String(c.name)}</p>
+                      <p className="font-semibold text-foreground">{String(c.name)}</p>
                     </td>
                     <td className="px-4 py-3">
                       <span className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 font-black text-sm px-2.5 py-1 rounded-full">

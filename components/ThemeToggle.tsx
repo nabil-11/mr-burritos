@@ -2,6 +2,7 @@
 
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import { cn } from '@/lib/utils'
 
 /**
  * Dark/light switch.
@@ -11,7 +12,7 @@ import { useTheme } from 'next-themes'
  * anything state-driven here either flashes the wrong icon or needs a mounted
  * guard. CSS knows the answer as soon as next-themes sets the class.
  */
-export default function ThemeToggle() {
+export default function ThemeToggle({ className }: { className?: string }) {
   const { setTheme } = useTheme()
 
   const toggle = () => {
@@ -25,7 +26,10 @@ export default function ThemeToggle() {
       onClick={toggle}
       aria-label="Changer de thème"
       title="Changer de thème"
-      className="relative grid place-items-center w-9 h-9 rounded-full border border-border text-muted-foreground hover:text-[#F5A800] hover:border-[#F5A800]/40 transition-colors"
+      className={cn(
+        'relative grid place-items-center w-9 h-9 rounded-full border border-border text-muted-foreground hover:text-[#F5A800] hover:border-[#F5A800]/40 transition-colors',
+        className
+      )}
     >
       <Sun size={15} className="hidden dark:block" />
       <Moon size={15} className="block dark:hidden" />

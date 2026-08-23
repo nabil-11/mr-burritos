@@ -16,10 +16,10 @@ export default async function ReservationsPage() {
   return (
     <div>
       <h1 className="text-2xl font-bold mb-6">Réservations</h1>
-      <div className="bg-white rounded-xl border overflow-hidden">
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-150">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
               {['Client', 'Date', 'Heure', 'Couverts', 'Statut', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -31,7 +31,7 @@ export default async function ReservationsPage() {
               const customer = r.customer as Record<string, string>
               const status = String(r.status)
               return (
-                <tr key={String(r._id)} className="hover:bg-gray-50">
+                <tr key={String(r._id)} className="hover:bg-muted/50">
                   <td className="px-4 py-3">
                     <p className="font-medium">{customer.name}</p>
                     <p className="text-xs text-muted-foreground">{customer.phone}</p>

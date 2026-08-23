@@ -4,6 +4,12 @@ import '@/lib/models/User' // register User schema so populate('assignedDelivery
 import OrderRow, { OrderListItem } from './OrderRow'
 import Link from 'next/link'
 import { orderSourceLabel } from '@/lib/orderSource'
+import RangeFilter from './RangeFilter'
+import { RANGE_LABELS, normalizeRange, rangeBounds } from './dateRange'
+
+// A day of service rarely passes 200 orders; a year easily does. The list
+// shows the most recent ones and says so rather than silently truncating.
+const MAX_ROWS = 200
 
 type Doc = Record<string, unknown>
 
@@ -105,27 +111,60 @@ function toListItem(order: Doc): OrderListItem {
   }
 }
 
-export default async function OrdersPage() {
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
   await connectDB()
-  const orders = await Order.find().sort({ createdAt: -1 }).limit(50)
-    .populate('assignedDelivery', 'name phone')
-    .lean()
+
+  const range = normalizeRange((await searchParams).range)
+  const { from, to } = rangeBounds(range)
+  const createdAt: Record<string, Date> = {}
+  if (from) createdAt.$gte = from
+  if (to) createdAt.$lt = to
+  const query = from || to ? { createdAt } : {}
+
+  const [orders, matching, summary] = await Promise.all([
+    Order.find(query).sort({ createdAt: -1 }).limit(MAX_ROWS)
+      .populate('assignedDelivery', 'name phone')
+      .lean(),
+    Order.countDocuments(query),
+    // Revenue for the period, cancelled orders left out — they were never
+    // cashed in. Aggregated rather than summed from `rows`, which stops at
+    // MAX_ROWS.
+    Order.aggregate<{ revenue: number }>([
+      { $match: { ...query, status: { $ne: 'cancelled' } } },
+      { $group: { _id: null, revenue: { $sum: '$total' } } },
+    ]),
+  ])
 
   const rows = (orders as Doc[]).map(toListItem)
+  const revenue = summary[0]?.revenue ?? 0
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Commandes</h1>
+      <div className="flex items-center justify-between gap-4 mb-4">
+        <div>
+          <h1 className="text-2xl font-bold">Commandes</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {RANGE_LABELS[range]} · {matching} commande{matching > 1 ? "s" : ""} · {revenue.toFixed(2)} DT
+            {matching > rows.length && ` · ${rows.length} affichées`}
+          </p>
+        </div>
         <Link href="/orders/new"
-          className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-all hover:scale-105">
+          className="inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold px-4 py-2.5 rounded-xl text-sm transition-all hover:scale-105 shrink-0">
           + Nouvelle commande
         </Link>
       </div>
-      <div className="bg-white rounded-xl border overflow-hidden">
+
+      <div className="mb-4">
+        <RangeFilter active={range} />
+      </div>
+      <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
         <table className="w-full text-sm min-w-200">
-          <thead className="bg-gray-50 border-b">
+          <thead className="bg-muted/50 border-b">
             <tr>
               {['N° Commande', 'Client', 'Type', 'Origine', 'Total', 'Statut', 'Date', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
@@ -140,7 +179,9 @@ export default async function OrdersPage() {
         </table>
         </div>
         {rows.length === 0 && (
-          <p className="text-center text-muted-foreground py-10">Aucune commande</p>
+          <p className="text-center text-muted-foreground py-10 text-sm">
+            Aucune commande — {RANGE_LABELS[range].toLowerCase()}
+          </p>
         )}
       </div>
     </div>

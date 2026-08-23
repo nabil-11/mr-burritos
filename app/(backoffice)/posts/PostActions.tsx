@@ -22,15 +22,15 @@ export default function PostActions({ slug }: { slug: string }) {
   return (
     <div className="flex items-center justify-end gap-1">
       <a href={`/blog/${slug}`} target="_blank" rel="noopener noreferrer"
-        className="p-2 rounded-lg text-gray-400 hover:text-blue-500 hover:bg-blue-50 transition-colors">
+        className="p-2 rounded-lg text-muted-foreground hover:text-blue-500 hover:bg-blue-50 transition-colors">
         <Eye size={15} />
       </a>
       <Link href={`/posts/${slug}/edit`}
-        className="p-2 rounded-lg text-gray-400 hover:text-[#F5A800] hover:bg-[#F5A800]/10 transition-colors">
+        className="p-2 rounded-lg text-muted-foreground hover:text-[#F5A800] hover:bg-[#F5A800]/10 transition-colors">
         <Pencil size={15} />
       </Link>
       <button onClick={deletePost}
-        className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+        className="p-2 rounded-lg text-muted-foreground hover:text-red-500 hover:bg-red-50 transition-colors">
         <Trash2 size={15} />
       </button>
     </div>

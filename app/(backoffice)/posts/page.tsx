@@ -29,16 +29,16 @@ export default async function PostsPage() {
       </div>
 
       {posts.length === 0 ? (
-        <div className="text-center py-24 text-muted-foreground bg-white rounded-xl border">
+        <div className="text-center py-24 text-muted-foreground bg-card rounded-xl border">
           <p className="text-4xl mb-3">📝</p>
           <p className="font-semibold">Aucun article</p>
           <p className="text-sm mt-1">Créez votre premier article de blog</p>
         </div>
       ) : (
-        <div className="bg-white rounded-xl border overflow-hidden">
+        <div className="bg-card rounded-xl border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-sm min-w-150">
-              <thead className="bg-gray-50 border-b">
+              <thead className="bg-muted/50 border-b">
                 <tr>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Article</th>
                   <th className="px-4 py-3 text-left font-medium text-muted-foreground">Tags</th>
@@ -54,11 +54,11 @@ export default async function PostsPage() {
                     tags: string[]; isPublished: boolean; publishedAt: Date | null; createdAt: Date
                   }
                   return (
-                    <tr key={String(p._id)} className="hover:bg-gray-50">
+                    <tr key={String(p._id)} className="hover:bg-muted/50">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           {p.image ? (
-                            <div className="relative w-12 h-10 rounded-lg overflow-hidden bg-gray-100 shrink-0">
+                            <div className="relative w-12 h-10 rounded-lg overflow-hidden bg-muted shrink-0">
                               <Image src={p.image} alt={p.title.fr} fill sizes="48px" className="object-cover" />
                             </div>
                           ) : (
@@ -73,12 +73,12 @@ export default async function PostsPage() {
                       <td className="px-4 py-3">
                         <div className="flex flex-wrap gap-1">
                           {p.tags?.slice(0, 2).map((tag) => (
-                            <span key={tag} className="text-[10px] bg-gray-100 px-2 py-0.5 rounded-full text-gray-500">{tag}</span>
+                            <span key={tag} className="text-[10px] bg-muted px-2 py-0.5 rounded-full text-muted-foreground">{tag}</span>
                           ))}
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${p.isPublished ? 'bg-green-50 text-green-700' : 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`text-xs font-bold px-2.5 py-1 rounded-full ${p.isPublished ? 'bg-green-50 text-green-700' : 'bg-muted text-muted-foreground'}`}>
                           {p.isPublished ? '● Publié' : '○ Brouillon'}
                         </span>
                       </td>

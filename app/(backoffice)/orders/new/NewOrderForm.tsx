@@ -74,7 +74,7 @@ function PickupForm({
         {categories.length > 0 ? (
           <ProductBuilder categories={categories} onAdd={handleAdd} compact />
         ) : (
-          <div className="bg-white rounded-xl border p-10 text-center text-muted-foreground text-sm">
+          <div className="bg-card rounded-xl border p-10 text-center text-muted-foreground text-sm">
             Aucun produit disponible
           </div>
         )}
@@ -82,8 +82,8 @@ function PickupForm({
 
       {/* RIGHT: order being built */}
       <div className="lg:col-span-2 space-y-4 sticky top-6">
-        <div className="bg-white rounded-xl border p-4">
-          <p className="text-xs font-bold text-gray-500 uppercase tracking-widest flex items-center gap-1.5 mb-3">
+        <div className="bg-card rounded-xl border p-4">
+          <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-1.5 mb-3">
             <ShoppingCart size={12} /> Articles ({items.length})
           </p>
           {items.length === 0 ? (
@@ -96,9 +96,9 @@ function PickupForm({
                 const linePrice =
                   (it.price + it.selectedSupplements.reduce((s, x) => s + x.price, 0)) * it.quantity
                 return (
-                  <div key={it.uid} className="flex items-start gap-2 bg-gray-50 rounded-lg p-2.5">
+                  <div key={it.uid} className="flex items-start gap-2 bg-muted/50 rounded-lg p-2.5">
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold text-[#1A1A1A] truncate">{it.name.fr}</p>
+                      <p className="text-xs font-semibold text-foreground truncate">{it.name.fr}</p>
                       {it.selectedSupplements.length > 0 && (
                         <p className="text-[10px] text-muted-foreground mt-0.5 line-clamp-2">
                           + {it.selectedSupplements.map((s) => s.name.fr).join(', ')}
@@ -106,12 +106,12 @@ function PickupForm({
                       )}
                       <p className="text-[#F5A800] font-black text-xs mt-0.5">{linePrice.toFixed(2)} DT</p>
                     </div>
-                    <div className="flex items-center gap-1 bg-white border rounded-lg p-0.5 shrink-0">
-                      <button onClick={() => updateQty(it.uid, it.quantity - 1)} className="p-1 rounded hover:bg-gray-100" aria-label="Réduire">
+                    <div className="flex items-center gap-1 bg-card border rounded-lg p-0.5 shrink-0">
+                      <button onClick={() => updateQty(it.uid, it.quantity - 1)} className="p-1 rounded hover:bg-muted" aria-label="Réduire">
                         <Minus size={11} />
                       </button>
                       <span className="w-5 text-center text-xs font-bold">{it.quantity}</span>
-                      <button onClick={() => updateQty(it.uid, it.quantity + 1)} className="p-1 rounded hover:bg-gray-100" aria-label="Augmenter">
+                      <button onClick={() => updateQty(it.uid, it.quantity + 1)} className="p-1 rounded hover:bg-muted" aria-label="Augmenter">
                         <Plus size={11} />
                       </button>
                     </div>
@@ -129,7 +129,7 @@ function PickupForm({
           )}
         </div>
 
-        <div className="bg-white rounded-xl border p-4 space-y-4">
+        <div className="bg-card rounded-xl border p-4 space-y-4">
           {items.length > 0 && (
             <div className="space-y-1 text-sm">
               {items.map((it) => (
@@ -181,8 +181,8 @@ function DeliveryForm({
     <div className="max-w-lg mx-auto space-y-6">
 
       {/* Company selector */}
-      <div className="bg-white rounded-xl border p-5 space-y-3">
-        <p className="text-xs font-black text-gray-500 uppercase tracking-widest">Société de livraison</p>
+      <div className="bg-card rounded-xl border p-5 space-y-3">
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Société de livraison</p>
         {deliveryCompanies.length === 0 ? (
           <p className="text-sm text-muted-foreground">Aucune société configurée — ajoutez-en dans <strong>Sociétés livraison</strong></p>
         ) : (
@@ -194,7 +194,7 @@ function DeliveryForm({
                 className={`px-4 py-2 rounded-xl border-2 text-sm font-bold transition-all ${
                   selectedCompanyId === c._id
                     ? 'bg-[#1A1A1A] border-[#1A1A1A] text-white'
-                    : 'border-gray-200 text-gray-600 hover:border-[#1A1A1A]'
+                    : 'border-border text-muted-foreground hover:border-[#1A1A1A]'
                 }`}
               >
                 {c.name}
@@ -208,9 +208,9 @@ function DeliveryForm({
       </div>
 
       {/* Amount + Reference */}
-      <div className="bg-white rounded-xl border p-5 space-y-4">
+      <div className="bg-card rounded-xl border p-5 space-y-4">
         <div className="space-y-1.5">
-          <Label className="text-xs font-black text-gray-500 uppercase tracking-widest">Montant de la commande</Label>
+          <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Montant de la commande</Label>
           <div className="relative">
             <Input
               type="number"
@@ -221,12 +221,12 @@ function DeliveryForm({
               onChange={(e) => setAmount(e.target.value)}
               className="pr-10 text-lg font-bold"
             />
-            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-gray-400">DT</span>
+            <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-muted-foreground">DT</span>
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-xs font-black text-gray-500 uppercase tracking-widest">Référence / N° commande</Label>
+          <Label className="text-xs font-black text-muted-foreground uppercase tracking-widest">Référence / N° commande</Label>
           <Input
             placeholder="ex: GLV-123456"
             value={reference}
@@ -240,7 +240,7 @@ function DeliveryForm({
       {company && amountNum > 0 && (
         <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 space-y-2 text-sm">
           <p className="text-xs font-black text-orange-700 uppercase tracking-widest mb-3">Calcul commission</p>
-          <div className="flex justify-between text-gray-600">
+          <div className="flex justify-between text-muted-foreground">
             <span>Total commande</span>
             <span className="font-bold">{amountNum.toFixed(2)} DT</span>
           </div>
@@ -345,15 +345,15 @@ export default function NewOrderForm({
   return (
     <div className="space-y-6">
       {/* Type toggle */}
-      <div className="bg-white rounded-xl border p-4">
-        <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Type de commande</p>
+      <div className="bg-card rounded-xl border p-4">
+        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-3">Type de commande</p>
         <div className="grid grid-cols-2 gap-2 max-w-xs">
           {(['pickup', 'delivery'] as const).map((t) => (
             <button
               key={t}
               onClick={() => setType(t)}
               className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 font-semibold text-xs transition-all ${
-                type === t ? 'border-[#F5A800] bg-[#F5A800]/5 text-[#1A1A1A]' : 'border-gray-200 text-gray-400 hover:border-gray-300'
+                type === t ? 'border-[#F5A800] bg-[#F5A800]/5 text-foreground' : 'border-border text-muted-foreground hover:border-border'
               }`}
             >
               <span className="text-xl">{t === 'pickup' ? '🏪' : '🛵'}</span>

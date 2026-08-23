@@ -9,6 +9,7 @@ import {
   BookOpen, MessageSquare,
 } from 'lucide-react'
 import { toast } from 'sonner'
+import ThemeToggle from '@/components/ThemeToggle'
 
 const nav = [
   { href: '/dashboard',    label: 'Tableau de bord', icon: LayoutDashboard },
@@ -74,10 +75,13 @@ export default function Sidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-white/10">
-        <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 w-full transition-colors">
+      <div className="p-3 border-t border-white/10 flex items-center gap-2">
+        <button onClick={logout} className="flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-400 hover:bg-red-500/10 flex-1 transition-colors">
           <LogOut size={16} /> Déconnexion
         </button>
+        {/* The sidebar is dark in both themes, so the toggle gets a
+            light-on-dark skin rather than the token-based default. */}
+        <ThemeToggle className="border-white/15 text-white/60 hover:text-[#F5A800] shrink-0" />
       </div>
     </aside>
   )
@@ -87,13 +91,16 @@ export default function Sidebar() {
       {/* ── Mobile top bar ──────────────────────────────────── */}
       <div className="lg:hidden fixed top-0 inset-x-0 z-30 h-14 bg-[#1A1A1A] flex items-center justify-between px-4 shadow-md">
         <p className="text-[#F5A800] font-black text-lg tracking-widest">MR. BURRITOS</p>
-        <button
-          onClick={() => setOpen(true)}
-          className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
-          aria-label="Ouvrir le menu"
-        >
-          <Menu size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          <ThemeToggle className="border-white/15 text-white/60 hover:text-[#F5A800]" />
+          <button
+            onClick={() => setOpen(true)}
+            className="p-2 rounded-lg hover:bg-white/10 text-white transition-colors"
+            aria-label="Ouvrir le menu"
+          >
+            <Menu size={22} />
+          </button>
+        </div>
       </div>
 
       {/* ── Mobile backdrop ─────────────────────────────────── */}

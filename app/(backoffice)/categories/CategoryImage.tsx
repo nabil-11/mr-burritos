@@ -51,11 +51,11 @@ export default function CategoryImage({
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger
         render={
-          <button className="relative w-14 h-10 rounded-lg overflow-hidden border bg-gray-50 hover:border-[#F5A800] transition-colors grid place-items-center">
+          <button className="relative w-14 h-10 rounded-lg overflow-hidden border bg-muted/50 hover:border-[#F5A800] transition-colors grid place-items-center">
             {image ? (
               <Image src={image} alt={name} fill sizes="56px" className="object-cover" />
             ) : (
-              <ImageIcon size={14} className="text-gray-300" />
+              <ImageIcon size={14} className="text-muted-foreground/50" />
             )}
           </button>
         }
