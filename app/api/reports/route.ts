@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import { ORDER_SOURCES, type OrderSource } from '@/lib/orderSource'
 
 export async function GET(req: NextRequest) {
   await connectDB()
@@ -67,6 +68,22 @@ export async function GET(req: NextRequest) {
       commissionAmount: d.revenue - d.netRevenue,
     }))
     .sort((a, b) => b.revenue - a.revenue)
+
+  // By source — which front-end took the order. `unknown` collects orders
+  // placed before the field existed; they are not folded into 'website',
+  // which would overstate the site's share of past revenue.
+  const bySource = {} as Record<OrderSource | 'unknown', { count: number; revenue: number; net: number }>
+  for (const key of [...ORDER_SOURCES, 'unknown'] as const) {
+    bySource[key] = { count: 0, revenue: 0, net: 0 }
+  }
+  for (const o of orders) {
+    const key = (ORDER_SOURCES as readonly string[]).includes(String(o.source))
+      ? (o.source as OrderSource)
+      : 'unknown'
+    bySource[key].count++
+    bySource[key].revenue += o.total || 0
+    bySource[key].net += orderNet(o)
+  }
 
   // Top products (from pickup orders with items)
   const productMap: Record<string, { qty: number; revenue: number }> = {}
@@ -153,6 +170,7 @@ export async function GET(req: NextRequest) {
       commissionAmount: deliveryCommissionAmount,
       net: deliveryNet,
     },
+    bySource,
     byDeliveryCompany,
     topProducts,
     byDay,

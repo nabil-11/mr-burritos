@@ -119,7 +119,7 @@ export default function CartPage() {
         headers: { 'Content-Type': 'application/json' },
         // subtotal is what the food costs; total is what the customer owes
         // after the online discount.
-        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, discount, total: payable, type, notes: form.notes, deliveryFee: 0 }),
+        body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, discount, total: payable, type, source: 'website', notes: form.notes, deliveryFee: 0 }),
       })
       if (!res.ok) throw new Error()
       const order = await res.json()

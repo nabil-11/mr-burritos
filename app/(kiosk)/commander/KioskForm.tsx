@@ -77,6 +77,7 @@ export default function KioskForm({ categories }: { categories: BuilderCategory[
           subtotal: total,
           total,
           type: orderType,
+          source: 'kiosk',
           status: 'confirmed',
         }),
       })

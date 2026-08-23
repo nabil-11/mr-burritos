@@ -4,6 +4,7 @@ import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
+import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -52,12 +53,14 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const type = searchParams.get('type')
+    const source = searchParams.get('source') // website | counter | kiosk
     const assignedDelivery = searchParams.get('assignedDelivery')
     const from = searchParams.get('from') // ISO date — filters createdAt >= from
     const to = searchParams.get('to')     // ISO date — filters createdAt <= to
     const query: Record<string, unknown> = {}
     if (status) query.status = status
     if (type) query.type = type
+    if (source) query.source = source
     if (assignedDelivery) query.assignedDelivery = assignedDelivery
     if (from || to) {
       const createdAt: Record<string, Date> = {}
@@ -79,7 +82,10 @@ export async function POST(req: NextRequest) {
     await connectDB()
     const body = await req.json()
     const orderNumber = generateOrderNumber()
-    const order = await Order.create({ ...body, orderNumber })
+    // An unknown or missing source falls back to the public site — the only
+    // caller that has no reason to announce itself.
+    const source = normalizeOrderSource(body.source)
+    const order = await Order.create({ ...body, source, orderNumber })
 
     // ── Instant in-process push to all connected SSE streams ──────────────
     // Emitting synchronously here means any manager with an open SSE connection
@@ -90,7 +96,7 @@ export async function POST(req: NextRequest) {
     const typeLabel = body.type === 'delivery' ? 'Livraison' : 'À emporter'
     sendPushToAll(
       '🌯 Nouvelle commande !',
-      `#${orderNumber} — ${typeLabel} — ${body.total ?? '?'} DT`,
+      `#${orderNumber} — ${ORDER_SOURCE_LABELS[source]} — ${typeLabel} — ${body.total ?? '?'} DT`,
       { orderId: String(order._id), orderNumber }
     ).catch(() => {})
 

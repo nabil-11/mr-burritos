@@ -318,6 +318,7 @@ export default function NewOrderForm({
       subtotal: total,
       total,
       type: 'pickup',
+      source: 'counter',
       status: 'confirmed',
       deliveryCompany: { companyId: null, name: '', commission: 0 },
       reference: '',
@@ -332,6 +333,7 @@ export default function NewOrderForm({
       subtotal: amount,
       total: amount,
       type: 'delivery',
+      source: 'counter',
       status: 'confirmed',
       reference,
       deliveryCompany: company

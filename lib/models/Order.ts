@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from 'mongoose'
+import { DEFAULT_ORDER_SOURCE, ORDER_SOURCES } from '../orderSource'
 
 const OrderItemSchema = new Schema(
   {
@@ -43,6 +44,17 @@ const OrderSchema = new Schema(
       type: String,
       enum: ['delivery', 'pickup'],
       required: true,
+    },
+    // Channel the order came in through — site web, logiciel de caisse, or the
+    // in-store kiosk. Distinct from `type`: a counter order can still be a
+    // delivery, and a web order can still be picked up. Orders taken before this
+    // field existed carry no value at all, so readers treat "missing" as unknown
+    // rather than as the default.
+    source: {
+      type: String,
+      enum: ORDER_SOURCES,
+      default: DEFAULT_ORDER_SOURCE,
+      index: true,
     },
     status: {
       type: String,

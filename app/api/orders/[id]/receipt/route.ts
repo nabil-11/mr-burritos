@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import { ORDER_SOURCE_SHORT, isOrderSource } from '@/lib/orderSource'
 
 export const dynamic = 'force-dynamic'
 
@@ -57,6 +58,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const customer = (order.customer ?? {}) as { name?: string; phone?: string; address?: string }
   const items = (order.items ?? []) as ItemLike[]
   const type = order.type as string
+  const source = order.source
   const orderNumber = String(order.orderNumber ?? '')
   const total = Number(order.total ?? 0)
   const subtotal = Number(order.subtotal ?? total)
@@ -105,6 +107,12 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const typeLabel = type === 'delivery' ? 'LIVRAISON' : 'A EMPORTER'
+  // Where the order was punched in. Left off entirely on tickets predating
+  // the field rather than guessed at — a wrong origin on a ticket is worse
+  // than none. Accent-free labels: thermal fonts render them more reliably.
+  const originHtml = isOrderSource(source)
+    ? `<div class="origin">Origine : ${ORDER_SOURCE_SHORT[source]}</div>`
+    : ''
 
   const rows = items.map(item => {
     const name = esc(productName(item.productName))
@@ -144,6 +152,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     .dash{border:none;border-top:1.5px dashed #000;margin:7px 0}.ordnum{font-size:${S.ord}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin:5px 0 2px}
     .ordlbl{font-size:${S.micro}px;font-weight:700;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-top:5px}
     .datetime{font-size:${S.small}px;text-align:center;font-weight:600;margin-bottom:5px}.mode{font-size:${S.mode}px;font-weight:900;text-align:center;border:2px solid #000;padding:5px 0;margin:7px 0;letter-spacing:${S.track}px}
+    .origin{font-size:${S.micro}px;font-weight:700;text-align:center;letter-spacing:1px;text-transform:uppercase;margin:-3px 0 4px}
     .info-table{width:100%;border-collapse:collapse;margin:3px 0;table-layout:fixed}.lbl{font-size:${S.micro}px;padding-bottom:1px;font-weight:700;letter-spacing:1px;text-transform:uppercase}
     .val{font-size:${S.body}px;font-weight:700;padding-bottom:5px}.addr{font-size:${S.small}px;font-weight:600;line-height:1.45;word-break:break-word}
     .section-head{font-size:${S.micro}px;font-weight:900;letter-spacing:2px;text-transform:uppercase;margin:7px 0 4px}
@@ -164,7 +173,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
          into a label and the number, it stays on one line at every width. -->
     <div class="ordlbl">Commande</div><div class="ordnum">${esc(orderNumber)}</div>
     <div class="datetime">${dateStr} a ${timeStr}</div>
-    <div class="mode">${narrow ? typeLabel : `&gt;&gt;&gt; ${typeLabel} &gt;&gt;&gt;`}</div>${prepHtml}<hr class="dash">
+    <div class="mode">${narrow ? typeLabel : `&gt;&gt;&gt; ${typeLabel} &gt;&gt;&gt;`}</div>${originHtml}${prepHtml}<hr class="dash">
     <table class="info-table"><tbody><tr><td><div class="lbl">CLIENT</div><div class="val">${esc(customer.name)}</div></td>
     <td style="text-align:right"><div class="lbl">TEL</div><div class="val">${esc(customer.phone)}</div></td></tr>${addrHtml}</tbody></table><hr class="dash">
     <div class="section-head">Articles commandes</div><table class="items"><tbody>${rows}</tbody></table><hr class="dash">

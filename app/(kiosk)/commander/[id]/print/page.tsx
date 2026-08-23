@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import KioskPrintTrigger from './KioskPrintTrigger'
+import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
 
 type Props = { params: Promise<{ id: string }> }
 
@@ -50,6 +51,10 @@ export default async function KioskPrintPage({ params }: Props) {
             <div className="flex justify-between">
               <span className="text-gray-500">Type</span>
               <span className="font-bold">{o.type === 'delivery' ? '🛵 Livraison' : '🏪 À emporter'}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-gray-500">Origine</span>
+              <span className="font-bold">{orderSourceIcon(o.source)} {orderSourceLabel(o.source)}</span>
             </div>
             {customer.name && customer.name !== 'Comptoir' && (
               <div className="flex justify-between">

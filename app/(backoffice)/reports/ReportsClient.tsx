@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { TrendingUp, ShoppingBag, Receipt, Bike, BadgeDollarSign, TrendingDown } from 'lucide-react'
+import { ORDER_SOURCE_ICONS, ORDER_SOURCE_LABELS, type OrderSource } from '@/lib/orderSource'
 
 type ReportData = {
   totalRevenue: number
@@ -18,6 +19,7 @@ type ReportData = {
     commissionAmount: number
     net: number
   }
+  bySource: Record<OrderSource | 'unknown', { count: number; revenue: number; net: number }>
   byDeliveryCompany: { name: string; count: number; revenue: number; commission: number; net: number; commissionAmount: number }[]
   topProducts: { name: string; qty: number; revenue: number }[]
   byDay: { date: string; revenue: number; count: number }[]
@@ -65,6 +67,15 @@ const STATUS_LABELS: { key: keyof ReportData['byStatus']; label: string; color: 
   { key: 'preparing', label: 'En préparation',    color: 'text-yellow-600 bg-yellow-50' },
   { key: 'confirmed', label: 'Confirmées',         color: 'text-purple-600 bg-purple-50' },
   { key: 'pending',   label: 'En attente',         color: 'text-gray-600 bg-gray-100' },
+]
+
+// Legacy orders (no source stored) get their own row so the web share is not
+// inflated by everything that came before the field existed.
+const SOURCE_ROWS: { key: OrderSource | 'unknown'; label: string; color: string }[] = [
+  { key: 'website', label: `${ORDER_SOURCE_ICONS.website} ${ORDER_SOURCE_LABELS.website}`, color: 'bg-[#F5A800]' },
+  { key: 'counter', label: `${ORDER_SOURCE_ICONS.counter} ${ORDER_SOURCE_LABELS.counter}`, color: 'bg-blue-500' },
+  { key: 'kiosk',   label: `${ORDER_SOURCE_ICONS.kiosk} ${ORDER_SOURCE_LABELS.kiosk}`,     color: 'bg-purple-500' },
+  { key: 'unknown', label: '❔ Origine inconnue',                                          color: 'bg-gray-400' },
 ]
 
 function HourlyChart({ byHour }: { byHour: ReportData['byHour'] }) {
@@ -332,8 +343,8 @@ export default function ReportsClient() {
                 </CardContent>
               </Card>
 
-              {/* ── Type + Status row ──────────────────────────────── */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* ── Type + Origine + Status row ────────────────────── */}
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Répartition par type</CardTitle>
@@ -356,6 +367,32 @@ export default function ReportsClient() {
                         </div>
                       </div>
                     ))}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">Répartition par origine</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {SOURCE_ROWS.map(({ key, label, color }) => {
+                      const row = data.bySource?.[key]
+                      if (!row || row.count === 0) return null
+                      return (
+                        <div key={key}>
+                          <div className="flex justify-between text-sm mb-1.5">
+                            <span className="text-muted-foreground">{label}</span>
+                            <span className="font-semibold">{row.count} · {fmt(row.revenue)} DT</span>
+                          </div>
+                          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full ${color} rounded-full transition-all duration-500`}
+                              style={{ width: data.totalRevenue > 0 ? `${(row.revenue / data.totalRevenue) * 100}%` : '0%' }}
+                            />
+                          </div>
+                        </div>
+                      )
+                    })}
                   </CardContent>
                 </Card>
 

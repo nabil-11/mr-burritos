@@ -3,6 +3,7 @@ import { Order } from '@/lib/models/Order'
 import { Badge } from '@/components/ui/badge'
 import OrderActions from './OrderActions'
 import Link from 'next/link'
+import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
 
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
@@ -27,6 +28,7 @@ function buildWhatsAppUrl(order: Record<string, unknown>): string {
     `🌯 Nouvelle commande!\n` +
     `Numéro: ${order.orderNumber}\n` +
     `Type: ${typeLabel}\n` +
+    `Origine: ${orderSourceLabel(order.source)}\n` +
     `Client: ${customer.name ?? ''}${customer.phone ? ` (${customer.phone})` : ''}\n` +
     `Total: ${(order.total as number).toFixed(2)} DT`
   return `https://wa.me/${phone}?text=${encodeURIComponent(text)}`
@@ -47,10 +49,10 @@ export default async function OrdersPage() {
       </div>
       <div className="bg-white rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
-        <table className="w-full text-sm min-w-175">
+        <table className="w-full text-sm min-w-200">
           <thead className="bg-gray-50 border-b">
             <tr>
-              {['N° Commande', 'Client', 'Type', 'Total', 'Statut', 'Date', 'Actions'].map((h) => (
+              {['N° Commande', 'Client', 'Type', 'Origine', 'Total', 'Statut', 'Date', 'Actions'].map((h) => (
                 <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
               ))}
             </tr>
@@ -78,6 +80,11 @@ export default async function OrdersPage() {
                         )
                       }
                     })()}
+                  </td>
+                  <td className="px-4 py-3">
+                    <Badge variant="outline" className="whitespace-nowrap">
+                      {orderSourceIcon(order.source, '❔')} {orderSourceLabel(order.source, 'Inconnue')}
+                    </Badge>
                   </td>
                   <td className="px-4 py-3 font-bold text-[#F5A800]">{(order.total as number).toFixed(2)} DT</td>
                   <td className="px-4 py-3">

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
-    "upgrade-menu": "tsx scripts/upgrade-menu.ts"
+    "upgrade-menu": "tsx scripts/upgrade-menu.ts",
+    "backfill-order-source": "tsx scripts/backfill-order-source.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
