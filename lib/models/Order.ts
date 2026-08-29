@@ -39,6 +39,14 @@ const OrderSchema = new Schema(
       rate: { type: Number, default: 0 },
       amount: { type: Number, default: 0 },
     },
+    // What was added to the subtotal, and why. The counterpart of `discount`,
+    // stored the same way and for the same reason: a supplement agreed at the
+    // counter — a fee, an extra portion, a delivery arranged on the spot —
+    // must still read the same on the ticket a month later.
+    surcharge: {
+      label: { type: String, default: '' },
+      amount: { type: Number, default: 0 },
+    },
     total: { type: Number, required: true },
     type: {
       type: String,

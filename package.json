@@ -9,13 +9,15 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "upgrade-menu": "tsx scripts/upgrade-menu.ts",
-    "backfill-order-source": "tsx scripts/backfill-order-source.ts"
+    "backfill-order-source": "tsx scripts/backfill-order-source.ts",
+    "promo-card": "tsx scripts/generate-promo-card.ts"
   },
   "dependencies": {
     "@base-ui/react": "^1.3.0",
     "@types/bcryptjs": "^2.4.6",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/leaflet": "^1.9.21",
+    "@types/qrcode": "^1.5.6",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",
     "cloudinary": "^2.9.0",
@@ -29,6 +31,7 @@
     "mongoose": "^9.3.1",
     "next": "16.2.1",
     "next-themes": "^0.4.6",
+    "qrcode": "^1.5.4",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-leaflet": "^5.0.0",

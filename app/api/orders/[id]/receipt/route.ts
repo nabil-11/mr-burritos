@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { ORDER_SOURCE_SHORT, isOrderSource } from '@/lib/orderSource'
+import { renderWebPromoCard } from '@/lib/receiptPromoCard'
 
 export const dynamic = 'force-dynamic'
 
@@ -51,7 +52,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     })
   }
 
-  const { searchParams } = new URL(req.url)
+  const reqUrl = new URL(req.url)
+  const { searchParams } = reqUrl
   const prepParam = searchParams.get('prep')
   const autoprint = searchParams.get('autoprint') !== '0'
 
@@ -65,6 +67,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // Absent on orders taken before the online promo existed.
   const discount = (order.discount ?? {}) as { label?: string; rate?: number; amount?: number }
   const discountAmount = Number(discount.amount ?? 0)
+  // Added at the counter rather than taken off — see the Order model.
+  const surcharge = (order.surcharge ?? {}) as { label?: string; amount?: number }
+  const surchargeAmount = Number(surcharge.amount ?? 0)
   const notes = order.notes as string | undefined
   const prepMinutes = prepParam ? Number(prepParam) : Number(order.preparationDuration ?? 0)
 
@@ -109,6 +114,26 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // On screen the ticket is shown at its true paper width so what you see is
   // what the roll gets. 1mm = 96/25.4 CSS px.
   const screenMax = Math.round(paperMm * (96 / 25.4))
+
+  // ── Website promo card ─────────────────────────────────────────────────
+  // Printed on delivery tickets by default: that order left the shop without
+  // the customer touching a screen, so the paper in the bag is the only place
+  // left to pitch the site. Counter and kiosk customers are standing in front
+  // of a screen already. `?promo=1|0` forces it either way for previews.
+  const promoParam = searchParams.get('promo')
+  const showPromo = promoParam === '1' ? true : promoParam === '0' ? false : type === 'delivery'
+  // Falls back to whatever host served the receipt, which is right in dev and
+  // wrong behind a LAN address — set NEXT_PUBLIC_SITE_URL so the QR points at
+  // the public site rather than at the till.
+  const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL ?? reqUrl.origin).replace(/\/+$/, '')
+  const promo = showPromo
+    ? await renderWebPromoCard({
+        siteUrl,
+        narrow,
+        alreadyOnline: source === 'website',
+        saved: discountAmount,
+      })
+    : null
 
   // When the order was taken, not when the paper came out: a ticket
   // reprinted an hour later for a customer who lost theirs must still say
@@ -176,6 +201,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     .thanks{font-size:${S.small}px;font-weight:600;text-align:center;margin-top:10px;letter-spacing:${narrow ? 0 : 0.5}px}
     .prep-row{display:flex;justify-content:space-between;align-items:center;gap:6px;border:1.5px solid #000;border-radius:3px;padding:5px 8px;margin:6px 0}.prep-lbl{font-size:${S.small}px;font-weight:700}.prep-val{font-size:${S.mode}px;font-weight:900;white-space:nowrap}
     .printbtn{display:block;width:100%;margin:16px 0 0;padding:14px;border:none;border-radius:10px;background:#F5A800;color:#1C1200;font-size:16px;font-weight:800;cursor:pointer}
+    ${promo?.css ?? ''}
     @media print{@page{size:${pageMm}mm auto;margin:0}html{width:100%}body{width:${paperMm}mm;max-width:${paperMm}mm;margin:0;padding:${S.pad}}.printbtn{display:none}}
   </style></head><body>
     <div class="brand">MR. BURRITOS</div><div class="tagline">Gestionnaire de commandes</div><hr class="dash">
@@ -188,8 +214,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     <table class="info-table"><tbody><tr><td><div class="lbl">CLIENT</div><div class="val">${esc(customer.name)}</div></td>
     <td style="text-align:right"><div class="lbl">TEL</div><div class="val">${esc(customer.phone)}</div></td></tr>${addrHtml}</tbody></table><hr class="dash">
     <div class="section-head">Articles commandes</div><table class="items"><tbody>${rows}</tbody></table><hr class="dash">
-    <table style="width:100%"><tbody>${discountAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">SOUS-TOTAL</td><td class="tot-val" style="font-weight:400">${subtotal.toFixed(2)} DT</td></tr><tr><td class="tot-label" style="font-weight:400">${esc(discount.label || 'REMISE')}${discount.rate ? ` (-${Math.round(discount.rate * 100)}%)` : ''}</td><td class="tot-val" style="font-weight:400">-${discountAmount.toFixed(2)} DT</td></tr>` : ''}<tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr></tbody></table>
-    ${notesHtml}<hr class="dash"><div class="thanks">Merci pour votre commande !</div>
+    <table style="width:100%"><tbody>${discountAmount > 0 || surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">SOUS-TOTAL</td><td class="tot-val" style="font-weight:400">${subtotal.toFixed(2)} DT</td></tr>` : ''}${discountAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(discount.label || 'REMISE')}${discount.rate ? ` (-${Math.round(discount.rate * 100)}%)` : ''}</td><td class="tot-val" style="font-weight:400">-${discountAmount.toFixed(2)} DT</td></tr>` : ''}${surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(surcharge.label || 'SUPPLEMENT')}</td><td class="tot-val" style="font-weight:400">+${surchargeAmount.toFixed(2)} DT</td></tr>` : ''}<tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr></tbody></table>
+    ${notesHtml}<hr class="dash"><div class="thanks">Merci pour votre commande !</div>${promo?.html ?? ''}
     <button class="printbtn" onclick="window.print()">🖨️ Imprimer</button>
     ${autoprint ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},350)})</script>' : ''}
   </body></html>`
