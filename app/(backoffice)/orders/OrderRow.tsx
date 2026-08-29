@@ -1,8 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
-import { ChevronRight, Printer } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ChevronRight, Printer, Timer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import OrderActions from './OrderActions'
 import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
@@ -24,6 +25,9 @@ export type OrderListItem = {
   createdAtTime: string
   confirmedAtLabel: string
   preparationDuration: number
+  /** Deadline of the preparation countdown, ISO — null when none runs. */
+  readyAt: string | null
+  readyAtTime: string
   customer: {
     name: string
     phone: string
@@ -66,6 +70,81 @@ const statusLabels: Record<string, string> = {
 }
 
 const dt = (n: number) => `${n.toFixed(2)} DT`
+
+function clock(ms: number): string {
+  const total = Math.max(0, Math.round(ms / 1000))
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return h ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`
+}
+
+/**
+ * Live preparation countdown for on-site orders.
+ *
+ * The remaining time is only computed once mounted: the server has no idea
+ * what second the browser is on, and rendering a number it would immediately
+ * disagree with is a hydration mismatch. Until then the cell holds a
+ * same-sized placeholder so nothing jumps.
+ *
+ * On reaching zero it refreshes the page once — the server flips the order to
+ * `ready` on its next read, so the row comes back with the real status.
+ */
+function PrepCountdown({ readyAt }: { readyAt: string }) {
+  const router = useRouter()
+  const [remaining, setRemaining] = useState<number | null>(null)
+  const refreshed = useRef(false)
+
+  useEffect(() => {
+    const target = new Date(readyAt).getTime()
+    const tick = () => {
+      const left = target - Date.now()
+      setRemaining(left)
+      if (left <= 0) {
+        clearInterval(id)
+        if (!refreshed.current) {
+          refreshed.current = true
+          router.refresh()
+        }
+      }
+    }
+    const id = setInterval(tick, 1000)
+    tick()
+    return () => clearInterval(id)
+  }, [readyAt, router])
+
+  if (remaining === null) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium bg-muted text-muted-foreground">
+        <Timer size={12} /> --:--
+      </span>
+    )
+  }
+
+  if (remaining <= 0) {
+    return (
+      <span className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300">
+        <Timer size={12} /> 00:00
+      </span>
+    )
+  }
+
+  // Last five minutes turn red: that is when the counter starts watching.
+  const urgent = remaining <= 5 * 60_000
+  return (
+    <span
+      title={`Prête vers ${new Date(readyAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`}
+      className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-bold tabular-nums ${
+        urgent
+          ? 'bg-red-100 text-red-700 dark:bg-red-500/15 dark:text-red-300'
+          : 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300'
+      }`}
+    >
+      <Timer size={12} className="shrink-0" /> {clock(remaining)}
+    </span>
+  )
+}
 
 function prepLabel(minutes: number): string {
   if (minutes < 60) return `${minutes} min`
@@ -142,9 +221,12 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
         </td>
         <td className="px-4 py-3 font-bold text-[#F5A800]">{dt(order.total)}</td>
         <td className="px-4 py-3">
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || ''}`}>
-            {statusLabels[order.status] || order.status}
-          </span>
+          <div className="flex flex-col items-start gap-1">
+            <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[order.status] || ''}`}>
+              {statusLabels[order.status] || order.status}
+            </span>
+            {order.readyAt && <PrepCountdown readyAt={order.readyAt} />}
+          </div>
         </td>
         <td className="px-4 py-3 text-xs whitespace-nowrap">
           <span className="text-muted-foreground">{order.createdAtLabel}</span>
@@ -275,6 +357,7 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                   label="Préparation"
                   value={order.preparationDuration ? prepLabel(order.preparationDuration) : ''}
                 />
+                <Field label="Prête vers" value={order.readyAtTime} />
                 <Field label="Référence" value={order.reference} />
                 <Field
                   label="Livreur"

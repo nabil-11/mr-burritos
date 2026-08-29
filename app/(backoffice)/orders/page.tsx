@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { orderSourceLabel } from '@/lib/orderSource'
 import RangeFilter from './RangeFilter'
 import { RANGE_LABELS, normalizeRange, rangeBounds } from './dateRange'
+import { autoReadyOnSiteOrders, hasCountdown, readyDeadline } from '@/lib/orderTimers'
 
 // A day of service rarely passes 200 orders; a year easily does. The list
 // shows the most recent ones and says so rather than silently truncating.
@@ -57,6 +58,12 @@ function toListItem(order: Doc): OrderListItem {
   const driver = (order.assignedDelivery ?? null) as Record<string, unknown> | null
   const items = (order.items ?? []) as Doc[]
   const discountAmount = num(discount.amount)
+  // On-site orders run a preparation timer instead of sitting on a status.
+  const deadline = readyDeadline(
+    (order.confirmedAt ?? order.createdAt) as Date | null,
+    num(order.preparationDuration)
+  )
+  const counting = hasCountdown(order.source, order.type, order.status, order.autoReady)
 
   return {
     id: String(order._id),
@@ -68,6 +75,9 @@ function toListItem(order: Doc): OrderListItem {
     createdAtTime: timeFr(order.createdAt),
     confirmedAtLabel: order.confirmedAt ? `${dateFr(order.confirmedAt)} à ${timeFr(order.confirmedAt)}` : '',
     preparationDuration: num(order.preparationDuration),
+    // ISO for the live countdown, HH:MM for the detail panel.
+    readyAt: counting && deadline ? deadline.toISOString() : null,
+    readyAtTime: deadline ? timeFr(deadline) : '',
     customer: {
       name: str(customer.name),
       phone: str(customer.phone),
@@ -117,6 +127,9 @@ export default async function OrdersPage({
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
   await connectDB()
+  // Any on-site order whose preparation time ran out is already prête by the
+  // time the list is drawn.
+  await autoReadyOnSiteOrders()
 
   const range = normalizeRange((await searchParams).range)
   const { from, to } = rangeBounds(range)

@@ -319,7 +319,9 @@ export default function NewOrderForm({
       total,
       type: 'pickup',
       source: 'counter',
-      status: 'confirmed',
+      // Rung up at the till means the kitchen already has it: it opens in
+      // preparation and its timer decides when it turns prête.
+      status: 'preparing',
       deliveryCompany: { companyId: null, name: '', commission: 0 },
       reference: '',
     })

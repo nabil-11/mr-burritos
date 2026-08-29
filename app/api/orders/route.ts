@@ -5,6 +5,7 @@ import '@/lib/models/User' // register User schema so populate('assignedDelivery
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
+import { autoReadyOnSiteOrders } from '@/lib/orderTimers'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -49,6 +50,7 @@ async function autoCancelOverdueOrders(): Promise<void> {
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
+    await autoReadyOnSiteOrders()
     await autoCancelOverdueOrders()
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
@@ -85,7 +87,13 @@ export async function POST(req: NextRequest) {
     // An unknown or missing source falls back to the public site — the only
     // caller that has no reason to announce itself.
     const source = normalizeOrderSource(body.source)
-    const order = await Order.create({ ...body, source, orderNumber })
+    // An order created already confirmed (caisse, borne) never passes through
+    // the status route, so nothing else would ever stamp `confirmedAt` — and
+    // that stamp is what the preparation countdown and the overdue sweep both
+    // count from.
+    const startedNow = body.status === 'confirmed' || body.status === 'preparing'
+    const confirmedAt = body.confirmedAt ?? (startedNow ? new Date() : undefined)
+    const order = await Order.create({ ...body, source, confirmedAt, orderNumber })
 
     // ── Instant in-process push to all connected SSE streams ──────────────
     // Emitting synchronously here means any manager with an open SSE connection

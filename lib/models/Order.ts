@@ -72,6 +72,12 @@ const OrderSchema = new Schema(
     notes: { type: String, default: '' },
     confirmedAt: { type: Date },
     preparationDuration: { type: Number, default: 30 },
+    // Set when the caisse takes an order in hand: it accepted the order and
+    // started the preparation clock, so the same countdown that runs on-site
+    // orders should carry this one to "prête" on its own. Without it a web
+    // order accepted at the till would sit in "en préparation" until the
+    // overdue sweep cancelled it.
+    autoReady: { type: Boolean, default: false },
   },
   { timestamps: true }
 )
