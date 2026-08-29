@@ -72,12 +72,17 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // `width` is the printable width in millimetres, not the roll width: a 58mm
   // roll (POS-58) prints 48mm, an 80mm roll (POS-80) prints 72mm. Laying the
   // ticket out any wider than that is what makes a thermal printer shear the
-  // right-hand side off every line. Defaults to the 80mm roll, which is what
-  // the browser-print path has always assumed.
+  // right-hand side off every line — the total, the prices, the end of every
+  // heading.
+  //
+  // A caller that says nothing gets the POS-58 layout. The two mistakes are
+  // not equally bad: a 48mm ticket on an 80mm roll is a narrow ticket, while
+  // a 72mm ticket on a 58mm roll is a ticket with the prices cut off. So the
+  // default is the roll that cannot be over-run, and the wide layout is
+  // opt-in (`?width=72&page=80`) from a caller that knows what is loaded.
   const widthParam = Number(searchParams.get('width'))
-  const paperMm = Number.isFinite(widthParam) && widthParam >= 30 && widthParam <= 120
-    ? Math.round(widthParam)
-    : 72
+  const widthGiven = Number.isFinite(widthParam) && widthParam >= 30 && widthParam <= 120
+  const paperMm = widthGiven ? Math.round(widthParam) : 48
 
   // `page` is the sheet the *driver* believes it has — the full roll width.
   // Many POS-58 drivers expose only fixed paper sizes, so a custom 48mm page is
@@ -88,7 +93,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   const pageParam = Number(searchParams.get('page'))
   const pageMm = Number.isFinite(pageParam) && pageParam >= paperMm && pageParam <= 130
     ? Math.round(pageParam)
-    : paperMm
+    : widthGiven
+      ? paperMm
+      : 58
 
   // Below ~64mm the display type has to come down or every heading wraps and
   // the wrapped half falls off the paper. Scaling everything linearly would
@@ -103,7 +110,11 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // what the roll gets. 1mm = 96/25.4 CSS px.
   const screenMax = Math.round(paperMm * (96 / 25.4))
 
-  const now = new Date()
+  // When the order was taken, not when the paper came out: a ticket
+  // reprinted an hour later for a customer who lost theirs must still say
+  // when it was rung up.
+  const placed = new Date(String(order.createdAt ?? ''))
+  const now = Number.isNaN(placed.getTime()) ? new Date() : placed
   const dateStr = now.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
   const timeStr = now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
   const typeLabel = type === 'delivery' ? 'LIVRAISON' : 'A EMPORTER'
