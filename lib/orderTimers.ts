@@ -28,6 +28,12 @@ export const DEFAULT_PREP_MINUTES = 30
 const RUNNING = ['confirmed', 'preparing']
 
 /**
+ * How long an order is left past its prep deadline before the sweep closes
+ * it by itself.
+ */
+export const LATE_GRACE_MS = 60 * 60 * 1000 // 1 hour
+
+/**
  * When the food is due. Counter orders are created already confirmed, and
  * `confirmedAt` is only written by the status route, so fall back to the
  * creation time — for these orders the two are the same instant anyway.
@@ -95,5 +101,44 @@ export async function autoReadyOnSiteOrders(): Promise<void> {
       },
     },
     { $set: { status: 'ready' } }
+  )
+}
+
+/**
+ * Lazy settlement: an order still sitting on "confirmée" or "en préparation"
+ * an hour past its prep deadline is closed as **livrée**.
+ *
+ * It used to be cancelled, which was wrong in the one case it fires on: the
+ * kitchen cooked the food and it went out, and nobody tapped the status
+ * afterwards. Cancelling it erased a real sale — cancelled orders are excluded
+ * from every revenue figure in the reports. A genuine cancellation is a
+ * decision someone makes, not something a timeout infers.
+ *
+ * "Prête" is left alone on purpose: that one is waiting on a customer who is
+ * coming to collect it, and the counter clears it by hand.
+ *
+ * Runs on read like the other sweeps, so no cron job is needed, and it is a
+ * no-op (zero writes) when nothing is overdue.
+ */
+export async function autoSettleOverdueOrders(): Promise<void> {
+  await connectDB()
+  await Order.updateMany(
+    {
+      status: { $in: RUNNING },
+      confirmedAt: { $type: 'date' },
+      $expr: {
+        $lt: [
+          {
+            $add: [
+              '$confirmedAt',
+              { $multiply: [{ $ifNull: ['$preparationDuration', DEFAULT_PREP_MINUTES] }, 60_000] },
+              LATE_GRACE_MS,
+            ],
+          },
+          new Date(),
+        ],
+      },
+    },
+    { $set: { status: 'delivered' } }
   )
 }

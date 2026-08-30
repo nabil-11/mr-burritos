@@ -5,7 +5,7 @@ import '@/lib/models/User' // register User schema so populate('assignedDelivery
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
-import { autoReadyOnSiteOrders } from '@/lib/orderTimers'
+import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -14,44 +14,12 @@ function generateOrderNumber(): string {
   return `MB-${date}-${rand}`
 }
 
-// An order is "en retard" once it passes its prep deadline
-// (confirmedAt + preparationDuration minutes). After this much extra grace
-// past the deadline, it is considered abandoned and auto-cancelled.
-const LATE_GRACE_MS = 60 * 60 * 1000 // 1 hour
-
-/**
- * Lazy expiration: auto-cancel active orders left more than LATE_GRACE_MS past
- * their prep deadline. Runs on read so no cron job is needed. Only touches
- * confirmed/preparing orders — a "ready" order's food is already made, and
- * delivered/cancelled are terminal. A no-op (zero writes) when nothing is overdue.
- */
-async function autoCancelOverdueOrders(): Promise<void> {
-  await Order.updateMany(
-    {
-      status: { $in: ['confirmed', 'preparing'] },
-      confirmedAt: { $type: 'date' },
-      $expr: {
-        $lt: [
-          {
-            $add: [
-              '$confirmedAt',
-              { $multiply: [{ $ifNull: ['$preparationDuration', 30] }, 60_000] },
-              LATE_GRACE_MS,
-            ],
-          },
-          new Date(),
-        ],
-      },
-    },
-    { $set: { status: 'cancelled' } }
-  )
-}
 
 export async function GET(req: NextRequest) {
   try {
     await connectDB()
     await autoReadyOnSiteOrders()
-    await autoCancelOverdueOrders()
+    await autoSettleOverdueOrders()
     const { searchParams } = new URL(req.url)
     const status = searchParams.get('status')
     const type = searchParams.get('type')

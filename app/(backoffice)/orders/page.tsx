@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { orderSourceLabel } from '@/lib/orderSource'
 import RangeFilter from './RangeFilter'
 import { RANGE_LABELS, normalizeRange, rangeBounds } from './dateRange'
-import { autoReadyOnSiteOrders, hasCountdown, readyDeadline } from '@/lib/orderTimers'
+import { autoReadyOnSiteOrders, autoSettleOverdueOrders, hasCountdown, readyDeadline } from '@/lib/orderTimers'
 
 // A day of service rarely passes 200 orders; a year easily does. The list
 // shows the most recent ones and says so rather than silently truncating.
@@ -128,8 +128,10 @@ export default async function OrdersPage({
 }) {
   await connectDB()
   // Any on-site order whose preparation time ran out is already prête by the
-  // time the list is drawn.
+  // time the list is drawn, and anything long past its deadline is closed as
+  // livrée rather than left hanging.
   await autoReadyOnSiteOrders()
+  await autoSettleOverdueOrders()
 
   const range = normalizeRange((await searchParams).range)
   const { from, to } = rangeBounds(range)
