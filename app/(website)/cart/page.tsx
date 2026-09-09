@@ -305,7 +305,7 @@ export default function CartPage() {
                 </div>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Livraison</span>
-                  <span>{type === 'delivery' ? 'Gratuite → 7 DT max' : '—'}</span>
+                  <span>{type === 'delivery' ? '2 DT min → 7 DT max' : '—'}</span>
                 </div>
                 {type === 'delivery' && (
                   <p className="text-xs text-muted-foreground italic">Les frais de livraison seront confirmés par notre équipe.</p>

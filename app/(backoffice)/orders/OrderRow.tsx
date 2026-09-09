@@ -52,6 +52,8 @@ export type OrderListItem = {
   assignedDelivery: { name: string; phone: string } | null
   reference: string
   notes: string
+  /** Till session the order was rung up in — null when none was open. */
+  recette: { id: string; number: string } | null
   whatsappUrl: string
 }
 
@@ -359,6 +361,18 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                 />
                 <Field label="Prête vers" value={order.readyAtTime} />
                 <Field label="Référence" value={order.reference} />
+                <Field
+                  label="Recette"
+                  value={
+                    order.recette ? (
+                      <Link href={`/recettes/${order.recette.id}`} className="text-[#F5A800] hover:underline">
+                        {order.recette.number}
+                      </Link>
+                    ) : (
+                      ''
+                    )
+                  }
+                />
                 <Field
                   label="Livreur"
                   value={

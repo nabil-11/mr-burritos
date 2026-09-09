@@ -6,6 +6,7 @@ import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
 import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
+import { getOpenRecette } from '@/lib/recette'
 
 function generateOrderNumber(): string {
   const now = new Date()
@@ -24,6 +25,7 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get('status')
     const type = searchParams.get('type')
     const source = searchParams.get('source') // website | counter | kiosk
+    const recette = searchParams.get('recette') // till session id
     const assignedDelivery = searchParams.get('assignedDelivery')
     const from = searchParams.get('from') // ISO date — filters createdAt >= from
     const to = searchParams.get('to')     // ISO date — filters createdAt <= to
@@ -31,6 +33,7 @@ export async function GET(req: NextRequest) {
     if (status) query.status = status
     if (type) query.type = type
     if (source) query.source = source
+    if (recette) query.recette = recette
     if (assignedDelivery) query.assignedDelivery = assignedDelivery
     if (from || to) {
       const createdAt: Record<string, Date> = {}
@@ -61,7 +64,17 @@ export async function POST(req: NextRequest) {
     // count from.
     const startedNow = body.status === 'confirmed' || body.status === 'preparing'
     const confirmedAt = body.confirmedAt ?? (startedNow ? new Date() : undefined)
-    const order = await Order.create({ ...body, source, confirmedAt, orderNumber })
+    // The order falls into whichever till session is open right now. None open
+    // means none stamped: a sale is never refused because the caisse was not
+    // started, it simply lands outside the day's recette.
+    const recette = await getOpenRecette()
+    const order = await Order.create({
+      ...body,
+      source,
+      confirmedAt,
+      recette: recette?._id ?? null,
+      orderNumber,
+    })
 
     // ── Instant in-process push to all connected SSE streams ──────────────
     // Emitting synchronously here means any manager with an open SSE connection

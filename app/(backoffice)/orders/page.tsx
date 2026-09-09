@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
+import '@/lib/models/Recette' // idem for populate('recette')
 import OrderRow, { OrderListItem } from './OrderRow'
 import Link from 'next/link'
 import { orderSourceLabel } from '@/lib/orderSource'
@@ -56,6 +57,7 @@ function toListItem(order: Doc): OrderListItem {
   const discount = (order.discount ?? {}) as Record<string, unknown>
   const company = (order.deliveryCompany ?? {}) as Record<string, unknown>
   const driver = (order.assignedDelivery ?? null) as Record<string, unknown> | null
+  const recette = (order.recette ?? null) as Record<string, unknown> | null
   const items = (order.items ?? []) as Doc[]
   const discountAmount = num(discount.amount)
   // On-site orders run a preparation timer instead of sitting on a status.
@@ -117,6 +119,9 @@ function toListItem(order: Doc): OrderListItem {
       : null,
     reference: str(order.reference),
     notes: str(order.notes),
+    recette: recette && str(recette.number)
+      ? { id: String(recette._id), number: str(recette.number) }
+      : null,
     whatsappUrl: buildWhatsAppUrl(order),
   }
 }
@@ -143,6 +148,7 @@ export default async function OrdersPage({
   const [orders, matching, summary] = await Promise.all([
     Order.find(query).sort({ createdAt: -1 }).limit(MAX_ROWS)
       .populate('assignedDelivery', 'name phone')
+      .populate('recette', 'number')
       .lean(),
     Order.countDocuments(query),
     // Revenue for the period, cancelled orders left out — they were never

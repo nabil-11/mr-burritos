@@ -86,6 +86,11 @@ const OrderSchema = new Schema(
     // order accepted at the till would sit in "en préparation" until the
     // overdue sweep cancelled it.
     autoReady: { type: Boolean, default: false },
+    // Till session this order belongs to. Stamped at creation: the order falls
+    // into whichever recette was open at that instant and never moves to
+    // another one. `null` means no session was open when it came in — a sale is
+    // never blocked for want of an open till.
+    recette: { type: Schema.Types.ObjectId, ref: 'Recette', default: null, index: true },
   },
   { timestamps: true }
 )
