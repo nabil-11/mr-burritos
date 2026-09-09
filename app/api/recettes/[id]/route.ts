@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Recette } from '@/lib/models/Recette'
-import { requireCaisseOrAuth } from '@/lib/caisseAuth'
+import { callerFrom } from '@/lib/caisseCaller'
 import { RecetteError, cashDifference, closeRecette, recetteOrders, recetteTotals } from '@/lib/recette'
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -9,7 +9,6 @@ type Ctx = { params: Promise<{ id: string }> }
 /** GET /api/recettes/[id] — one session, its figures and its orders. */
 export async function GET(req: NextRequest, { params }: Ctx) {
   try {
-    requireCaisseOrAuth(req)
     await connectDB()
     const { id } = await params
     const recette = await Recette.findById(id).lean()
@@ -39,12 +38,12 @@ export async function GET(req: NextRequest, { params }: Ctx) {
  */
 export async function PATCH(req: NextRequest, { params }: Ctx) {
   try {
-    const caller = requireCaisseOrAuth(req)
     const { id } = await params
     const body = await req.json().catch(() => ({}))
+    const caller = callerFrom(req, body.userName)
     const recette = await closeRecette(id, {
       userId: caller.userId,
-      userName: body.userName ?? caller.name,
+      userName: caller.name,
       closingCash: body.closingCash === '' || body.closingCash == null ? null : Number(body.closingCash),
       notes: body.notes,
     })
@@ -57,5 +56,5 @@ export async function PATCH(req: NextRequest, { params }: Ctx) {
 function fail(e: unknown) {
   if (e instanceof RecetteError) return NextResponse.json({ error: e.message }, { status: e.status })
   const msg = e instanceof Error ? e.message : 'Erreur serveur'
-  return NextResponse.json({ error: msg }, { status: msg === 'Unauthorized' ? 401 : 500 })
+  return NextResponse.json({ error: msg }, { status: 500 })
 }
