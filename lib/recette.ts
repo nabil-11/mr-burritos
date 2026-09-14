@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import { connectDB } from './mongodb'
 import { Order } from './models/Order'
 import { Recette } from './models/Recette'
@@ -15,6 +16,11 @@ import { ORDER_SOURCES, type OrderSource } from './orderSource'
  * the shift's takings, whether the ticket was rung up at the counter, tapped on
  * the kiosk or sent from the website. The breakdown by origin, computed below,
  * is what tells them apart.
+ *
+ * Cash also leaves the drawer while the service runs — the bread bought at
+ * nine, the rider paid at noon. Those are recorded on the session itself as
+ * achats and dépenses (`mouvements`), so the count at closing is measured
+ * against what the drawer should really hold, not against sales alone.
  */
 
 /** An error carrying the HTTP status the API should answer with. */
@@ -25,6 +31,9 @@ export class RecetteError extends Error {
     this.status = status
   }
 }
+
+export const MOVEMENT_KINDS = ['achat', 'depense'] as const
+export type MovementKind = (typeof MOVEMENT_KINDS)[number]
 
 export interface Bucket {
   count: number
@@ -46,14 +55,22 @@ export interface RecetteTotals {
   deliveryFees: number
   commission: number
   /**
-   * What the drawer should hold on top of the opening float.
+   * Cash taken on the premises.
    *
    * Payment method is not recorded anywhere, so this is the honest
    * approximation: orders taken on the premises (caisse, borne) that no
    * delivery platform was involved in — the ones that are paid in cash at the
    * counter.
    */
+  cashSales: number
+  /** Goods paid for out of the drawer — cancelled entries excluded. */
+  achats: number
+  /** Everything else paid out of the drawer — cancelled entries excluded. */
+  depenses: number
+  /** What the drawer should hold on top of the opening float. */
   cashExpected: number
+  /** Net takings once achats and dépenses are paid. */
+  solde: number
   byType: Record<'delivery' | 'pickup', Bucket>
   bySource: Record<OrderSource | 'unknown', Bucket>
 }
@@ -69,6 +86,12 @@ type OrderLike = {
   deliveryCompany?: { name?: string; commission?: number } | null
 }
 
+type MovementLike = {
+  kind?: string
+  amount?: number
+  cancelledAt?: Date | string | null
+}
+
 export function emptyTotals(): RecetteTotals {
   const bySource = {} as Record<OrderSource | 'unknown', Bucket>
   for (const key of [...ORDER_SOURCES, 'unknown'] as const) bySource[key] = { count: 0, revenue: 0 }
@@ -82,17 +105,29 @@ export function emptyTotals(): RecetteTotals {
     surcharges: 0,
     deliveryFees: 0,
     commission: 0,
+    cashSales: 0,
+    achats: 0,
+    depenses: 0,
     cashExpected: 0,
+    solde: 0,
     byType: { delivery: { count: 0, revenue: 0 }, pickup: { count: 0, revenue: 0 } },
     bySource,
   }
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+const MONEY_KEYS = [
+  'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
+  'cashSales', 'achats', 'depenses', 'cashExpected', 'solde',
+] as const
+
 /**
- * Adds up a session's orders. Pure, so the same arithmetic serves the live
- * figures of an open session and the snapshot frozen into a closed one.
+ * Adds up a session's orders and cash-outs. Pure, so the same arithmetic
+ * serves the live figures of an open session and the snapshot frozen into a
+ * closed one.
  */
-export function computeTotals(orders: OrderLike[]): RecetteTotals {
+export function computeTotals(orders: OrderLike[], movements: MovementLike[] = []): RecetteTotals {
   const totals = emptyTotals()
 
   for (const order of orders) {
@@ -125,7 +160,24 @@ export function computeTotals(orders: OrderLike[]): RecetteTotals {
     totals.bySource[source].revenue += total
 
     const onPremises = source === 'counter' || source === 'kiosk'
-    if (onPremises && !order.deliveryCompany?.name) totals.cashExpected += total
+    if (onPremises && !order.deliveryCompany?.name) totals.cashSales += total
+  }
+
+  // A cancelled entry stays on the record but moves no money.
+  for (const movement of movements) {
+    if (movement.cancelledAt) continue
+    const amount = Number(movement.amount) || 0
+    if (movement.kind === 'achat') totals.achats += amount
+    else if (movement.kind === 'depense') totals.depenses += amount
+  }
+
+  totals.cashExpected = totals.cashSales - totals.achats - totals.depenses
+  totals.solde = totals.net - totals.achats - totals.depenses
+
+  // Sums of prices drift into 12.300000000000001; a report shows centimes.
+  for (const key of MONEY_KEYS) totals[key] = round2(totals[key])
+  for (const bucket of [...Object.values(totals.byType), ...Object.values(totals.bySource)]) {
+    bucket.revenue = round2(bucket.revenue)
   }
 
   return totals
@@ -144,6 +196,24 @@ export async function recetteOrders(id: unknown) {
 }
 
 /**
+ * A frozen snapshot, completed if it predates cash-outs. Such a session had no
+ * achats or dépenses, so every cash sale was still in the drawer: its figures
+ * read exactly as they did the day it was closed.
+ */
+function normalizeTotals(raw: RecetteTotals): RecetteTotals {
+  const withToObject = raw as unknown as { toObject?: () => RecetteTotals }
+  const totals = typeof withToObject.toObject === 'function' ? withToObject.toObject() : raw
+  if (typeof totals.cashSales === 'number') return totals
+  return {
+    ...totals,
+    cashSales: totals.cashExpected ?? 0,
+    achats: 0,
+    depenses: 0,
+    solde: totals.net ?? 0,
+  }
+}
+
+/**
  * Live figures for a session. A closed session keeps its frozen snapshot —
  * recomputing it would let a status change made weeks later rewrite a closing
  * report that has already been signed off.
@@ -152,9 +222,13 @@ export async function recetteTotals(recette: {
   _id: unknown
   status?: string
   totals?: RecetteTotals | null
+  mouvements?: MovementLike[] | null
 }): Promise<RecetteTotals> {
-  if (recette.status === 'closed' && recette.totals) return recette.totals
-  return computeTotals((await recetteOrders(recette._id)) as OrderLike[])
+  if (recette.status === 'closed' && recette.totals) return normalizeTotals(recette.totals)
+  return computeTotals(
+    (await recetteOrders(recette._id)) as OrderLike[],
+    (recette.mouvements ?? []) as MovementLike[]
+  )
 }
 
 /**
@@ -167,7 +241,7 @@ export function cashDifference(
   totals: RecetteTotals
 ): number | null {
   if (typeof recette.closingCash !== 'number') return null
-  return recette.closingCash - ((recette.openingFloat || 0) + totals.cashExpected)
+  return round2(recette.closingCash - ((recette.openingFloat || 0) + totals.cashExpected))
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -235,21 +309,135 @@ export interface CloseInput {
   notes?: string
 }
 
-/** Closes a session and freezes its figures. */
+/**
+ * Closes a session and freezes its figures.
+ *
+ * Two steps, in this order. The status flips first, in one atomic update: from
+ * that instant no achat, dépense or cancellation can land, because each of
+ * those only matches an open session. The entries read back are therefore
+ * final, and the totals frozen from them are complete.
+ *
+ * Reading first and saving after — the obvious way — leaves a gap: an achat
+ * pushed in between stays on the session but is missing from its frozen
+ * totals, and the drawer no longer adds up.
+ */
 export async function closeRecette(id: string, input: CloseInput) {
+  if (!mongoose.isValidObjectId(id)) throw new RecetteError('Recette introuvable', 404)
   await connectDB()
-  const recette = await Recette.findById(id)
-  if (!recette) throw new RecetteError('Recette introuvable', 404)
-  if (recette.status === 'closed') throw new RecetteError('Recette déjà clôturée', 409)
 
-  recette.totals = computeTotals((await recetteOrders(recette._id)) as OrderLike[])
-  recette.status = 'closed'
-  recette.closedAt = new Date()
-  recette.closedBy = { user: input.userId ?? null, name: input.userName ?? '' }
-  if (typeof input.closingCash === 'number' && Number.isFinite(input.closingCash)) {
-    recette.closingCash = input.closingCash
+  const set: Record<string, unknown> = {
+    status: 'closed',
+    closedAt: new Date(),
+    closedBy: { user: input.userId ?? null, name: input.userName ?? '' },
   }
-  if (typeof input.notes === 'string' && input.notes.trim()) recette.notes = input.notes.trim()
+  if (typeof input.closingCash === 'number' && Number.isFinite(input.closingCash)) {
+    set.closingCash = input.closingCash
+  }
+  if (typeof input.notes === 'string' && input.notes.trim()) set.notes = input.notes.trim()
+
+  const recette = await Recette.findOneAndUpdate(
+    { _id: id, status: 'open' },
+    { $set: set },
+    { returnDocument: 'after' }
+  )
+  if (!recette) {
+    if (await Recette.exists({ _id: id })) throw new RecetteError('Recette déjà clôturée', 409)
+    throw new RecetteError('Recette introuvable', 404)
+  }
+
+  recette.totals = computeTotals(
+    (await recetteOrders(recette._id)) as OrderLike[],
+    recette.mouvements as MovementLike[]
+  )
   await recette.save()
   return recette
+}
+
+// ── Sorties de caisse ───────────────────────────────────────────────────────
+
+/** Above this, a typing slip is far likelier than a real cash-out. */
+const MAX_MOVEMENT = 100_000
+
+export interface MovementInput {
+  kind?: unknown
+  label?: unknown
+  amount?: unknown
+  note?: unknown
+  userName?: string
+}
+
+function cleanMovement(input: MovementInput) {
+  const kind = String(input.kind ?? '')
+  if (!(MOVEMENT_KINDS as readonly string[]).includes(kind)) {
+    throw new RecetteError('Type de sortie invalide : achat ou dépense', 400)
+  }
+  const label = typeof input.label === 'string' ? input.label.trim().slice(0, 80) : ''
+  if (!label) throw new RecetteError('Indiquez un libellé', 400)
+  // A till types "12,5" as readily as 12.5.
+  const amount = round2(Number(String(input.amount ?? '').replace(',', '.')))
+  if (!Number.isFinite(amount) || amount <= 0) throw new RecetteError('Montant invalide', 400)
+  if (amount > MAX_MOVEMENT) throw new RecetteError('Montant trop élevé', 400)
+  const note = typeof input.note === 'string' ? input.note.trim().slice(0, 200) : ''
+  return { kind: kind as MovementKind, label, amount, note }
+}
+
+/** Why an update guarded on an open session matched nothing. */
+async function sessionMiss(id: string): Promise<never> {
+  const found = await Recette.exists({ _id: id })
+  if (!found) throw new RecetteError('Recette introuvable', 404)
+  throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409)
+}
+
+/**
+ * Records an achat or a dépense on an open session.
+ *
+ * The open status is part of the update's filter rather than a check made
+ * beforehand: a session closed a millisecond earlier cannot receive an entry
+ * after its figures were frozen.
+ */
+export async function addMovement(recetteId: string, input: MovementInput) {
+  const movement = cleanMovement(input)
+  if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404)
+  await connectDB()
+
+  const updated = await Recette.findOneAndUpdate(
+    { _id: recetteId, status: 'open' },
+    {
+      $push: {
+        mouvements: { ...movement, createdAt: new Date(), createdBy: { name: input.userName ?? '' } },
+      },
+    },
+    { returnDocument: 'after', runValidators: true }
+  )
+  return updated ?? sessionMiss(recetteId)
+}
+
+/**
+ * Cancels an entry. It stays on the session, struck through and out of the
+ * totals — same guard as above, and an entry is only ever cancelled once.
+ */
+export async function cancelMovement(recetteId: string, movementId: string, userName = '') {
+  if (!mongoose.isValidObjectId(recetteId) || !mongoose.isValidObjectId(movementId)) {
+    throw new RecetteError('Sortie introuvable', 404)
+  }
+  await connectDB()
+
+  const updated = await Recette.findOneAndUpdate(
+    { _id: recetteId, status: 'open', mouvements: { $elemMatch: { _id: movementId, cancelledAt: null } } },
+    { $set: { 'mouvements.$.cancelledAt': new Date(), 'mouvements.$.cancelledBy': { name: userName } } },
+    { returnDocument: 'after' }
+  )
+  if (updated) return updated
+
+  // Nothing matched: say which of the three conditions failed.
+  const recette = (await Recette.findById(recetteId).select('status mouvements._id mouvements.cancelledAt').lean()) as {
+    status?: string
+    mouvements?: { _id: unknown; cancelledAt?: Date | null }[]
+  } | null
+  if (!recette) throw new RecetteError('Recette introuvable', 404)
+  if (recette.status !== 'open') throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409)
+  if (!recette.mouvements?.some((m) => String(m._id) === movementId)) {
+    throw new RecetteError('Sortie introuvable', 404)
+  }
+  throw new RecetteError('Sortie déjà annulée', 409)
 }

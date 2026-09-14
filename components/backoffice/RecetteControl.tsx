@@ -298,7 +298,7 @@ function CloseDialog({
             <Row label="Espèces attendues" value={money(expected)} />
           </dl>
           <p className="text-xs text-muted-foreground -mt-2">
-            Espèces attendues = fond de caisse + commandes prises sur place. Les commandes
+            Espèces attendues = fond de caisse + commandes prises sur place − achats et dépenses payés depuis le tiroir. Les commandes
             livrées par une plateforme n&apos;y sont pas comptées.
           </p>
 

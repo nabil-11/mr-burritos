@@ -7,8 +7,8 @@ import { cashDifference, recetteOrders, recetteTotals, type RecetteTotals } from
 import { ORDER_SOURCES, orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
 
 /**
- * Le détail d'une session de caisse : les chiffres, puis les commandes qui les
- * composent.
+ * Le détail d'une session de caisse : les chiffres, les sorties de caisse
+ * (achats et dépenses payés depuis le tiroir), puis les commandes.
  *
  * Une session clôturée affiche le total figé au moment de la clôture ; une
  * session encore ouverte est recalculée à chaque affichage.
@@ -25,7 +25,20 @@ type Doc = {
   openingFloat?: number
   closingCash?: number | null
   notes?: string
+  mouvements?: MovementDoc[]
   totals?: RecetteTotals | null
+}
+
+type MovementDoc = {
+  _id: unknown
+  kind?: string
+  label?: string
+  amount?: number
+  note?: string
+  createdAt?: Date
+  createdBy?: { name?: string }
+  cancelledAt?: Date | null
+  cancelledBy?: { name?: string }
 }
 
 type OrderDoc = Record<string, unknown>
@@ -114,7 +127,9 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
         {/* ── Caisse ──────────────────────────────────────────── */}
         <Card title="Caisse">
           <Line label="Fond de caisse" value={money(recette.openingFloat || 0)} />
-          <Line label="Ventes sur place" value={money(totals.cashExpected)} />
+          <Line label="Ventes sur place" value={`+ ${money(totals.cashSales)}`} />
+          {totals.achats > 0 && <Line label="Achats" value={`− ${money(totals.achats)}`} />}
+          {totals.depenses > 0 && <Line label="Dépenses" value={`− ${money(totals.depenses)}`} />}
           <Line label="Espèces attendues" value={money(expectedCash)} strong />
           <Line
             label="Espèces comptées"
@@ -130,7 +145,8 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           />
           <p className="px-3 pt-2 text-[11px] text-muted-foreground leading-snug">
             Les ventes sur place regroupent la caisse et la borne, hors plateformes de livraison —
-            le mode de paiement n&apos;est pas enregistré.
+            le mode de paiement n&apos;est pas enregistré. Les achats et dépenses payés depuis le
+            tiroir en sont déduits.
           </p>
         </Card>
 
@@ -167,6 +183,11 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           })}
         </Card>
       </div>
+
+      {/* ── Sorties de caisse ─────────────────────────────────── */}
+      {(recette.mouvements?.length ?? 0) > 0 && (
+        <MovementsTable movements={recette.mouvements ?? []} totals={totals} />
+      )}
 
       {recette.notes && (
         <div className="mb-4 rounded-xl border bg-card px-4 py-3">
@@ -233,6 +254,71 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
             Aucune commande rattachée à cette recette
           </p>
         )}
+      </div>
+    </div>
+  )
+}
+
+/** Every cash-out, cancelled ones included and struck through — nothing is erased. */
+function MovementsTable({ movements, totals }: { movements: MovementDoc[]; totals: RecetteTotals }) {
+  return (
+    <div className="bg-card rounded-xl border overflow-hidden mb-4">
+      <div className="px-4 py-3 border-b flex flex-wrap items-center justify-between gap-2">
+        <p className="font-semibold text-sm">
+          Sorties de caisse <span className="text-muted-foreground font-normal">({movements.length})</span>
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Achats {money(totals.achats)} · Dépenses {money(totals.depenses)} · Solde après sorties{' '}
+          <span className="font-semibold text-foreground">{money(totals.solde)}</span>
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-150">
+          <thead className="bg-muted/50 border-b">
+            <tr>
+              {['Heure', 'Type', 'Libellé', 'Note', 'Par', 'Montant'].map((h) => (
+                <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {movements.map((m) => {
+              const cancelled = Boolean(m.cancelledAt)
+              return (
+                <tr key={String(m._id)} className={cancelled ? 'text-muted-foreground' : 'hover:bg-muted/50'}>
+                  <td className="px-4 py-3">{timeFr(m.createdAt)}</td>
+                  <td className="px-4 py-3">
+                    <span
+                      className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${
+                        m.kind === 'achat'
+                          ? 'bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300'
+                          : 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300'
+                      } ${cancelled ? 'opacity-50' : ''}`}
+                    >
+                      {m.kind === 'achat' ? 'Achat' : 'Dépense'}
+                    </span>
+                  </td>
+                  <td className={`px-4 py-3 font-medium ${cancelled ? 'line-through' : ''}`}>{m.label}</td>
+                  <td className="px-4 py-3 text-muted-foreground">
+                    {cancelled
+                      ? `Annulée le ${dateFr(m.cancelledAt)} à ${timeFr(m.cancelledAt)}${
+                          m.cancelledBy?.name ? ` par ${m.cancelledBy.name}` : ''
+                        }`
+                      : m.note || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-muted-foreground">{m.createdBy?.name || '—'}</td>
+                  <td
+                    className={`px-4 py-3 font-bold whitespace-nowrap ${
+                      cancelled ? 'line-through' : 'text-red-600 dark:text-red-400'
+                    }`}
+                  >
+                    − {money(m.amount ?? 0)}
+                  </td>
+                </tr>
+              )
+            })}
+          </tbody>
+        </table>
       </div>
     </div>
   )
