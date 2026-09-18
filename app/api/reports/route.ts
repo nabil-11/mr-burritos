@@ -1,180 +1,317 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
+import { Recette } from '@/lib/models/Recette'
 import { ORDER_SOURCES, type OrderSource } from '@/lib/orderSource'
+import { cashDifference, recetteTotals, type RecetteTotals } from '@/lib/recette'
+import { daysBetween, isDay, nextDay, safeTimeZone, startOfDay, wallClock } from '@/lib/reportTime'
+
+/**
+ * GET /api/reports?from=YYYY-MM-DD&to=YYYY-MM-DD&tz=Africa/Tunis
+ *
+ * What a period took in — and, since the caisse records them, what went out
+ * of the drawer, what is left, and whether the drawers balanced. Read by the
+ * back-office and by the till; everything added after the first version is
+ * additive, so an older reader simply ignores it.
+ *
+ * Days and hours are cut in the shop's time zone (`tz`, Tunis by default), not
+ * the server's: the server runs in UTC, and a sale at 13:10 in Tunis belongs
+ * in the 13h bar, not the 12h one.
+ */
+
+const round2 = (n: number) => Math.round(n * 100) / 100
+
+/** Up to this many days, a period lists every day — closed ones as zero. */
+const FILL_DAYS_UP_TO = 62
+/** A month and then some; beyond that the list is a history, not a report. */
+const MAX_RECETTES = 62
+
+type MovementDoc = {
+  kind?: string
+  label?: string
+  amount?: number
+  createdAt?: Date
+  cancelledAt?: Date | null
+}
+
+type RecetteDoc = {
+  _id: unknown
+  number?: string
+  status?: string
+  openedAt?: Date
+  closedAt?: Date | null
+  openingFloat?: number
+  closingCash?: number | null
+  totals?: RecetteTotals | null
+  mouvements?: MovementDoc[]
+}
+
+/** "Légumes ", "legumes" and "LEGUMES" are one line of the report. */
+const labelKey = (kind: string, label: string) =>
+  `${kind}:${label.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}`
 
 export async function GET(req: NextRequest) {
-  await connectDB()
-  const { searchParams } = new URL(req.url)
-  const from = searchParams.get('from')
-  const to = searchParams.get('to')
+  try {
+    await connectDB()
+    const { searchParams } = new URL(req.url)
+    const tz = safeTimeZone(searchParams.get('tz'))
+    const fromParam = searchParams.get('from')
+    const toParam = searchParams.get('to')
+    const from = isDay(fromParam) ? fromParam : null
+    const to = isDay(toParam) ? toParam : null
 
-  const dateFilter: Record<string, unknown> = {}
-  if (from || to) {
-    const range: Record<string, Date> = {}
-    if (from) range.$gte = new Date(from)
-    if (to) {
-      const end = new Date(to)
-      end.setHours(23, 59, 59, 999)
-      range.$lte = end
+    // Local midnight to local midnight: `to` runs up to the start of the day
+    // after it, so its last hour is in and the next day's first is not.
+    const range: { $gte?: Date; $lt?: Date } = {}
+    if (from) range.$gte = startOfDay(from, tz)
+    if (to) range.$lt = startOfDay(nextDay(to), tz)
+    const bounded = Boolean(range.$gte || range.$lt)
+    const within = (t: number) =>
+      (!range.$gte || t >= range.$gte.getTime()) && (!range.$lt || t < range.$lt.getTime())
+    const clock = wallClock(tz)
+
+    const [all, recetteDocs, movementDocs] = await Promise.all([
+      Order.find(bounded ? { createdAt: range } : {}).lean(),
+      Recette.find(bounded ? { openedAt: range } : {})
+        .sort({ openedAt: -1 })
+        .limit(MAX_RECETTES)
+        .lean(),
+      // A cash-out belongs to the day it was paid, whichever session it sits
+      // in — a recette opened on Monday evening can hold Tuesday's bread.
+      Recette.find(
+        bounded ? { mouvements: { $elemMatch: { createdAt: range } } } : { 'mouvements.0': { $exists: true } },
+        { mouvements: 1 }
+      ).lean(),
+    ])
+
+    // Cancelled orders took no money: they stay out of every figure below and
+    // are counted on their own, so a bad day of cancellations still shows.
+    const orders = all.filter((o) => o.status !== 'cancelled')
+    const cancelledOrders = all.filter((o) => o.status === 'cancelled')
+
+    // Net revenue for a single order (deducts commission for delivery orders)
+    const orderNet = (o: (typeof orders)[0]): number => {
+      const total = o.total || 0
+      if (o.type === 'delivery') {
+        const commission = (o.deliveryCompany as { commission?: number } | undefined)?.commission ?? 0
+        return total * (1 - commission / 100)
+      }
+      return total
     }
-    dateFilter.createdAt = range
-  }
 
-  const orders = await Order.find({
-    ...dateFilter,
-    status: { $ne: 'cancelled' },
-  }).lean()
+    const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0)
+    const orderCount = orders.length
 
-  // Helper: net revenue for a single order (deducts commission for delivery orders)
-  const orderNet = (o: (typeof orders)[0]): number => {
-    const total = o.total || 0
-    if (o.type === 'delivery') {
-      const commission = (o.deliveryCompany as { commission?: number } | undefined)?.commission ?? 0
-      return total * (1 - commission / 100)
+    const delivery = orders.filter((o) => o.type === 'delivery')
+    const pickup = orders.filter((o) => o.type === 'pickup')
+
+    // By delivery company — net computed per order, with each order's own rate
+    const companyMap: Record<string, { count: number; revenue: number; netRevenue: number; commission: number }> = {}
+    for (const o of delivery) {
+      const dc = o.deliveryCompany as { name?: string; commission?: number } | undefined
+      const name = dc?.name || 'Inconnue'
+      const commission = dc?.commission ?? 0
+      if (!companyMap[name]) companyMap[name] = { count: 0, revenue: 0, netRevenue: 0, commission }
+      companyMap[name].count++
+      companyMap[name].revenue += o.total || 0
+      companyMap[name].netRevenue += (o.total || 0) * (1 - commission / 100)
+      companyMap[name].commission = commission
     }
-    return total
-  }
+    const byDeliveryCompany = Object.entries(companyMap)
+      .map(([name, d]) => ({
+        name,
+        count: d.count,
+        revenue: d.revenue,
+        commission: d.commission,
+        net: d.netRevenue,
+        commissionAmount: d.revenue - d.netRevenue,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
 
-  // Summary — gross total kept for reference, net used as the real revenue
-  const totalRevenue = orders.reduce((s, o) => s + (o.total || 0), 0)
-  const orderCount = orders.length
-
-  // By type
-  const delivery = orders.filter((o) => o.type === 'delivery')
-  const pickup = orders.filter((o) => o.type === 'pickup')
-
-  // By delivery company — net computed per-order using each order's stored commission rate
-  const companyMap: Record<string, { count: number; revenue: number; netRevenue: number; commission: number }> = {}
-  for (const o of delivery) {
-    const dc = o.deliveryCompany as { name?: string; commission?: number } | undefined
-    const name = dc?.name || 'Inconnue'
-    const commission = dc?.commission ?? 0
-    if (!companyMap[name]) companyMap[name] = { count: 0, revenue: 0, netRevenue: 0, commission }
-    companyMap[name].count++
-    companyMap[name].revenue += o.total || 0
-    // Use this order's commission rate to compute net correctly
-    companyMap[name].netRevenue += (o.total || 0) * (1 - commission / 100)
-    // Keep the latest commission rate for display
-    companyMap[name].commission = commission
-  }
-  const byDeliveryCompany = Object.entries(companyMap)
-    .map(([name, d]) => ({
-      name,
-      count: d.count,
-      revenue: d.revenue,
-      commission: d.commission,
-      net: d.netRevenue,
-      commissionAmount: d.revenue - d.netRevenue,
-    }))
-    .sort((a, b) => b.revenue - a.revenue)
-
-  // By source — which front-end took the order. `unknown` collects orders
-  // placed before the field existed; they are not folded into 'website',
-  // which would overstate the site's share of past revenue.
-  const bySource = {} as Record<OrderSource | 'unknown', { count: number; revenue: number; net: number }>
-  for (const key of [...ORDER_SOURCES, 'unknown'] as const) {
-    bySource[key] = { count: 0, revenue: 0, net: 0 }
-  }
-  for (const o of orders) {
-    const key = (ORDER_SOURCES as readonly string[]).includes(String(o.source))
-      ? (o.source as OrderSource)
-      : 'unknown'
-    bySource[key].count++
-    bySource[key].revenue += o.total || 0
-    bySource[key].net += orderNet(o)
-  }
-
-  // Top products (from pickup orders with items)
-  const productMap: Record<string, { qty: number; revenue: number }> = {}
-  for (const o of pickup) {
-    const items = (o.items || []) as {
-      productName: { fr: string } | string
-      quantity: number
-      unitPrice: number
-      supplements?: { price: number }[]
-    }[]
-    for (const item of items) {
-      const name =
-        typeof item.productName === 'object' && item.productName !== null
-          ? (item.productName as { fr: string }).fr
-          : String(item.productName)
-      const suppTotal = item.supplements?.reduce((s, x) => s + (x.price || 0), 0) ?? 0
-      const lineRevenue = (item.unitPrice + suppTotal) * item.quantity
-      if (!productMap[name]) productMap[name] = { qty: 0, revenue: 0 }
-      productMap[name].qty += item.quantity
-      productMap[name].revenue += lineRevenue
+    // By source — `unknown` collects orders placed before the field existed;
+    // folding them into 'website' would overstate the site's past share.
+    const bySource = {} as Record<OrderSource | 'unknown', { count: number; revenue: number; net: number }>
+    for (const key of [...ORDER_SOURCES, 'unknown'] as const) bySource[key] = { count: 0, revenue: 0, net: 0 }
+    for (const o of orders) {
+      const key = (ORDER_SOURCES as readonly string[]).includes(String(o.source))
+        ? (o.source as OrderSource)
+        : 'unknown'
+      bySource[key].count++
+      bySource[key].revenue += o.total || 0
+      bySource[key].net += orderNet(o)
     }
+
+    // Top products — from every order that lists its items: caisse, borne and
+    // web alike, delivered or not. Platform orders keyed in at the till carry
+    // an amount rather than items, and simply add nothing here.
+    const productMap: Record<string, { qty: number; revenue: number }> = {}
+    for (const o of orders) {
+      const items = (o.items || []) as {
+        productName: { fr: string } | string
+        quantity: number
+        unitPrice: number
+        supplements?: { price: number }[]
+      }[]
+      for (const item of items) {
+        const name =
+          typeof item.productName === 'object' && item.productName !== null
+            ? (item.productName as { fr: string }).fr
+            : String(item.productName)
+        const suppTotal = item.supplements?.reduce((s, x) => s + (x.price || 0), 0) ?? 0
+        const lineRevenue = (item.unitPrice + suppTotal) * item.quantity
+        if (!productMap[name]) productMap[name] = { qty: 0, revenue: 0 }
+        productMap[name].qty += item.quantity
+        productMap[name].revenue += lineRevenue
+      }
+    }
+    const topProducts = Object.entries(productMap)
+      .map(([name, d]) => ({ name, qty: d.qty, revenue: d.revenue }))
+      .sort((a, b) => b.revenue - a.revenue)
+      .slice(0, 10)
+
+    // By day and by hour, on the shop's clock. A short bounded period lists
+    // every day, closed ones as zero: a Monday with no sales is part of the
+    // shape of the week, not a gap to close up.
+    const dayMap = new Map<string, { revenue: number; count: number }>()
+    if (from && to) {
+      const days = daysBetween(from, to)
+      if (days.length <= FILL_DAYS_UP_TO) for (const d of days) dayMap.set(d, { revenue: 0, count: 0 })
+    }
+    const byHour = Array.from({ length: 24 }, (_, hour) => ({ hour, revenue: 0, count: 0 }))
+    for (const o of orders) {
+      const { day, hour } = clock(o.createdAt as Date)
+      const net = orderNet(o)
+      const entry = dayMap.get(day) ?? { revenue: 0, count: 0 }
+      entry.revenue += net
+      entry.count++
+      dayMap.set(day, entry)
+      byHour[hour].revenue += net
+      byHour[hour].count++
+    }
+    const byDay = [...dayMap.entries()]
+      .map(([date, d]) => ({ date, revenue: d.revenue, count: d.count }))
+      .sort((a, b) => a.date.localeCompare(b.date))
+
+    const byStatus = {
+      pending: orders.filter((o) => o.status === 'pending').length,
+      confirmed: orders.filter((o) => o.status === 'confirmed').length,
+      preparing: orders.filter((o) => o.status === 'preparing').length,
+      ready: orders.filter((o) => o.status === 'ready').length,
+      delivered: orders.filter((o) => o.status === 'delivered').length,
+    }
+
+    const deliveryGross = delivery.reduce((s, o) => s + (o.total || 0), 0)
+    const deliveryNet = byDeliveryCompany.reduce((s, c) => s + c.net, 0)
+    const pickupRevenue = pickup.reduce((s, o) => s + (o.total || 0), 0)
+    // What the restaurant actually receives: pickup in full, delivery after commission
+    const netTotalRevenue = pickupRevenue + deliveryNet
+    const avgOrder = orderCount > 0 ? netTotalRevenue / orderCount : 0
+
+    // ── Sorties de caisse ─────────────────────────────────────────────────
+    let achats = 0
+    let depenses = 0
+    let movementCount = 0
+    const labels = new Map<string, { kind: string; label: string; count: number; amount: number; last: number }>()
+    for (const r of movementDocs as RecetteDoc[]) {
+      for (const m of r.mouvements ?? []) {
+        if (m.cancelledAt || !m.createdAt) continue
+        const at = new Date(m.createdAt).getTime()
+        if (!within(at)) continue
+        const amount = Number(m.amount) || 0
+        if (m.kind === 'achat') achats += amount
+        else if (m.kind === 'depense') depenses += amount
+        else continue
+        movementCount++
+        const label = (m.label ?? '').trim()
+        const key = labelKey(m.kind, label)
+        const entry = labels.get(key) ?? { kind: m.kind, label, count: 0, amount: 0, last: 0 }
+        entry.count++
+        entry.amount += amount
+        // Shown as it was last typed.
+        if (at >= entry.last && label) {
+          entry.last = at
+          entry.label = label
+        }
+        labels.set(key, entry)
+      }
+    }
+    const sorties = {
+      achats: round2(achats),
+      depenses: round2(depenses),
+      total: round2(achats + depenses),
+      count: movementCount,
+      byLabel: [...labels.values()]
+        .sort((a, b) => b.amount - a.amount)
+        .slice(0, 10)
+        .map(({ kind, label, count, amount }) => ({ kind, label, count, amount: round2(amount) })),
+    }
+
+    // ── Recettes of the period and how their drawers came out ─────────────
+    const recettes = await Promise.all(
+      (recetteDocs as RecetteDoc[]).map(async (r) => {
+        const t = await recetteTotals(r)
+        return {
+          _id: String(r._id),
+          number: r.number ?? '',
+          status: r.status === 'open' ? 'open' : 'closed',
+          openedAt: r.openedAt ?? null,
+          closedAt: r.closedAt ?? null,
+          orders: t.orders,
+          revenue: round2(t.revenue),
+          net: round2(t.net),
+          sorties: round2((t.achats ?? 0) + (t.depenses ?? 0)),
+          openingFloat: r.openingFloat ?? 0,
+          expected: round2((r.openingFloat ?? 0) + t.cashExpected),
+          closingCash: typeof r.closingCash === 'number' ? r.closingCash : null,
+          ecart: cashDifference(r, t),
+        }
+      })
+    )
+    const counted = recettes.filter((r) => r.ecart !== null)
+    // Under half a centime, a drawer is right: rounded prices leave dust.
+    const short = counted.filter((r) => (r.ecart ?? 0) < -0.005)
+    const over = counted.filter((r) => (r.ecart ?? 0) > 0.005)
+    const caisse = {
+      sessions: recettes.length,
+      open: recettes.filter((r) => r.status === 'open').length,
+      counted: counted.length,
+      ecartTotal: round2(counted.reduce((s, r) => s + (r.ecart ?? 0), 0)),
+      manquants: { count: short.length, amount: round2(-short.reduce((s, r) => s + (r.ecart ?? 0), 0)) },
+      excedents: { count: over.length, amount: round2(over.reduce((s, r) => s + (r.ecart ?? 0), 0)) },
+    }
+
+    return NextResponse.json({
+      totalRevenue,
+      netTotalRevenue,
+      orderCount,
+      avgOrder,
+      byType: {
+        delivery: { count: delivery.length, revenue: deliveryGross },
+        pickup: { count: pickup.length, revenue: pickupRevenue },
+      },
+      deliverySummary: {
+        gross: deliveryGross,
+        commissionAmount: deliveryGross - deliveryNet,
+        net: deliveryNet,
+      },
+      bySource,
+      byDeliveryCompany,
+      topProducts,
+      byDay,
+      byHour,
+      byStatus,
+      period: { from, to, tz },
+      cancelled: {
+        count: cancelledOrders.length,
+        revenue: round2(cancelledOrders.reduce((s, o) => s + (o.total || 0), 0)),
+      },
+      sorties,
+      solde: round2(netTotalRevenue - sorties.total),
+      recettes,
+      caisse,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Erreur serveur'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
-  const topProducts = Object.entries(productMap)
-    .map(([name, d]) => ({ name, qty: d.qty, revenue: d.revenue }))
-    .sort((a, b) => b.revenue - a.revenue)
-    .slice(0, 10)
-
-  // By day — revenue = net (after commission)
-  const dayMap: Record<string, { revenue: number; count: number }> = {}
-  for (const o of orders) {
-    const day = new Date(o.createdAt as Date).toISOString().slice(0, 10)
-    if (!dayMap[day]) dayMap[day] = { revenue: 0, count: 0 }
-    dayMap[day].revenue += orderNet(o)
-    dayMap[day].count++
-  }
-  const byDay = Object.entries(dayMap)
-    .map(([date, d]) => ({ date, revenue: d.revenue, count: d.count }))
-    .sort((a, b) => a.date.localeCompare(b.date))
-
-  // By status
-  const byStatus = {
-    pending: orders.filter((o) => o.status === 'pending').length,
-    confirmed: orders.filter((o) => o.status === 'confirmed').length,
-    preparing: orders.filter((o) => o.status === 'preparing').length,
-    ready: orders.filter((o) => o.status === 'ready').length,
-    delivered: orders.filter((o) => o.status === 'delivered').length,
-  }
-
-  // By hour (0–23) — revenue = net (after commission)
-  const hourArray: { hour: number; revenue: number; count: number }[] = Array.from({ length: 24 }, (_, h) => ({
-    hour: h,
-    revenue: 0,
-    count: 0,
-  }))
-  for (const o of orders) {
-    const h = new Date(o.createdAt as Date).getHours()
-    hourArray[h].revenue += orderNet(o)
-    hourArray[h].count++
-  }
-
-  // Delivery financial summary
-  const deliveryGross = delivery.reduce((s, o) => s + (o.total || 0), 0)
-  const deliveryNet = byDeliveryCompany.reduce((s, c) => s + c.net, 0)
-  const deliveryCommissionAmount = deliveryGross - deliveryNet
-  const pickupRevenue = pickup.reduce((s, o) => s + (o.total || 0), 0)
-
-  // Net total = what the restaurant actually receives (pickup full + delivery after commission)
-  const netTotalRevenue = pickupRevenue + deliveryNet
-
-  // Average net order value
-  const avgOrder = orderCount > 0 ? netTotalRevenue / orderCount : 0
-
-  return NextResponse.json({
-    totalRevenue,
-    netTotalRevenue,
-    orderCount,
-    avgOrder,
-    byType: {
-      delivery: { count: delivery.length, revenue: deliveryGross },
-      pickup: { count: pickup.length, revenue: pickupRevenue },
-    },
-    deliverySummary: {
-      gross: deliveryGross,
-      commissionAmount: deliveryCommissionAmount,
-      net: deliveryNet,
-    },
-    bySource,
-    byDeliveryCompany,
-    topProducts,
-    byDay,
-    byHour: hourArray,
-    byStatus,
-  })
 }
