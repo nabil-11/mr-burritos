@@ -5,7 +5,8 @@ import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
-import { ORDER_SOURCE_LABELS } from '@/lib/orderSource'
+import { openStateAt } from '@/lib/hours'
+import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
 import { isDuplicateKey, nextOrderNumber } from '@/lib/orderNumber'
 import { OrderInputError, priceOrder } from '@/lib/orderPricing'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
@@ -59,6 +60,18 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => null)
     if (!body || typeof body !== 'object') {
       return NextResponse.json({ error: 'Commande illisible' }, { status: 400 })
+    }
+    // Nobody is in the kitchen to confirm an order placed at three in the
+    // morning: it would sit "en attente" until someone found it. The site says
+    // it is closed; this is where that is held, whatever the page thought.
+    if (normalizeOrderSource((body as Record<string, unknown>).source) === 'website') {
+      const now = openStateAt(new Date())
+      if (!now.open) {
+        return NextResponse.json(
+          { error: `Nous sommes fermés — les commandes en ligne reprennent à ${now.at}`, closed: true, opensAt: now.at },
+          { status: 409 }
+        )
+      }
     }
     const { doc, claimedTotal } = await priceOrder(body as Record<string, unknown>)
 

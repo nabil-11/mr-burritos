@@ -1,82 +1,96 @@
 'use client'
 
+import Link from 'next/link'
+import { ShoppingBag, ArrowRight, BadgePercent } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useCart } from '@/contexts/CartContext'
-import { Trash2, Plus, Minus, ShoppingBag } from 'lucide-react'
-import Link from 'next/link'
+import { useCartQuote } from '@/hooks/useCartQuote'
 import { WEB_PROMO, applyWebPromo } from '@/lib/promo'
+import CartLine from './CartLine'
 
-export default function CartDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { items, removeItem, updateQty, total } = useCart()
+/**
+ * The basket, one tap from anywhere. Opened by the navbar, the mobile cart bar
+ * and the "ajouté" toast, all through the cart context.
+ */
+export default function CartDrawer() {
+  const { items, total, itemCount, drawerOpen, setDrawerOpen } = useCart()
+  const { problems, blocking } = useCartQuote(drawerOpen)
   const { discount, total: payable } = applyWebPromo(total)
+  const close = () => setDrawerOpen(false)
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="right" className="w-full max-w-sm flex flex-col p-0">
-        <SheetHeader className="px-5 py-4 border-b bg-[#1A1A1A] text-white">
-          <SheetTitle className="text-white flex items-center gap-2">
-            <ShoppingBag size={18} className="text-[#F5A800]" /> Mon Panier
+    <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
+      <SheetContent side="right" className="data-[side=right]:w-full data-[side=right]:sm:max-w-md flex flex-col gap-0 p-0 bg-background">
+        <SheetHeader className="px-5 py-4 border-b border-border">
+          <SheetTitle className="flex items-center gap-2 text-foreground">
+            <ShoppingBag size={18} className="text-[#F5A800]" /> Mon panier
+            {itemCount > 0 && (
+              <span className="ml-1 rounded-full bg-[#F5A800] text-black text-[11px] font-black px-2 py-0.5 tabular-nums">
+                {itemCount}
+              </span>
+            )}
           </SheetTitle>
         </SheetHeader>
 
         {items.length === 0 ? (
-          <div className="flex-1 flex flex-col items-center justify-center gap-3 text-muted-foreground">
-            <ShoppingBag size={48} className="text-gray-200" />
-            <p className="font-medium">Votre panier est vide</p>
-            <Link href="/#composer" onClick={onClose}
-              className="text-sm bg-[#F5A800] text-black font-bold px-4 py-2 rounded-full hover:bg-[#FF6B00] transition-colors">
-              Voir le menu
+          <div className="flex-1 flex flex-col items-center justify-center gap-3 px-8 text-center">
+            <div className="w-20 h-20 rounded-full bg-muted grid place-items-center text-4xl">🌯</div>
+            <p className="font-black text-foreground">Votre panier est vide</p>
+            <p className="text-sm text-muted-foreground">
+              Composez un tacos ou un burrito — {WEB_PROMO.badge} sur toute commande en ligne.
+            </p>
+            <Link
+              href="/#composer"
+              onClick={close}
+              className="mt-2 inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-5 py-2.5 rounded-full text-sm transition-colors"
+            >
+              Voir le menu <ArrowRight size={15} />
             </Link>
           </div>
         ) : (
           <>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-              {items.map((item) => {
-                const suppTotal = item.selectedSupplements.reduce((s, x) => s + x.price, 0)
-                const lineTotal = (item.price + suppTotal) * item.quantity
-                return (
-                  <div key={item.id} className="flex items-start gap-3 bg-gray-50 rounded-xl p-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="font-semibold text-sm truncate">{item.name.fr}</p>
-                      {item.selectedSupplements.length > 0 && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          + {item.selectedSupplements.map((s) => s.name.fr).join(', ')}
-                        </p>
-                      )}
-                      <p className="text-[#F5A800] font-bold text-sm mt-1">{lineTotal.toFixed(2)} DT</p>
-                    </div>
-                    <div className="flex flex-col items-center gap-1">
-                      <div className="flex items-center gap-1 bg-white rounded-lg border p-0.5">
-                        <button onClick={() => item.quantity > 1 ? updateQty(item.id, item.quantity - 1) : removeItem(item.id)}
-                          className="p-1 rounded hover:bg-gray-100"><Minus size={12} /></button>
-                        <span className="w-5 text-center text-xs font-bold">{item.quantity}</span>
-                        <button onClick={() => updateQty(item.id, item.quantity + 1)}
-                          className="p-1 rounded hover:bg-gray-100"><Plus size={12} /></button>
-                      </div>
-                      <button onClick={() => removeItem(item.id)} className="text-red-400 hover:text-red-600 p-1">
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                  </div>
-                )
-              })}
+            <div className="flex-1 overflow-y-auto px-4 py-4 space-y-2.5">
+              {items.map((item) => (
+                <CartLine key={item.id} item={item} problem={problems[item.id]} compact />
+              ))}
+              <Link
+                href="/#composer"
+                onClick={close}
+                className="block text-center text-sm font-bold text-muted-foreground hover:text-[#F5A800] py-2 transition-colors"
+              >
+                + Ajouter autre chose
+              </Link>
             </div>
 
-            <div className="border-t px-4 pt-4 pb-5 bg-white space-y-3">
+            <div className="border-t border-border px-5 pt-4 pb-5 space-y-2 bg-card">
               <div className="flex justify-between text-sm text-muted-foreground">
-                <span>Sous-total</span><span>{total.toFixed(2)} DT</span>
+                <span>Sous-total</span>
+                <span className="tabular-nums">{total.toFixed(2)} DT</span>
               </div>
               <div className="flex justify-between text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                <span>{WEB_PROMO.label} ({WEB_PROMO.badge})</span>
-                <span>− {discount.amount.toFixed(2)} DT</span>
+                <span className="flex items-center gap-1.5">
+                  <BadgePercent size={14} /> {WEB_PROMO.label} ({WEB_PROMO.badge})
+                </span>
+                <span className="tabular-nums">− {discount.amount.toFixed(2)} DT</span>
               </div>
-              <div className="flex justify-between font-black text-lg">
-                <span>Total</span>
-                <span className="text-[#F5A800]">{payable.toFixed(2)} DT</span>
+              <div className="flex justify-between items-baseline pt-1">
+                <span className="font-black text-foreground">Total</span>
+                <span className="font-black text-xl text-[#F5A800] tabular-nums">{payable.toFixed(2)} DT</span>
               </div>
-              <Link href="/cart" onClick={onClose}
-                className="block w-full text-center bg-[#F5A800] hover:bg-[#FF6B00] text-black font-bold py-3 rounded-xl transition-colors text-sm">
-                Commander →
+              {blocking && (
+                <p className="text-xs font-bold text-red-600 dark:text-red-400">
+                  Retirez les articles indisponibles pour commander.
+                </p>
+              )}
+              <Link
+                href="/cart"
+                onClick={close}
+                aria-disabled={blocking}
+                className={`mt-2 flex items-center justify-center gap-2 w-full bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black py-3.5 rounded-xl transition-colors text-sm ${
+                  blocking ? 'pointer-events-none opacity-50' : ''
+                }`}
+              >
+                Commander <ArrowRight size={16} />
               </Link>
             </div>
           </>

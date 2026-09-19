@@ -7,8 +7,8 @@ import { Navigation } from 'lucide-react'
 const LocationMapContent = dynamic(() => import('./LocationMapContent'), {
   ssr: false,
   loading: () => (
-    <div className="w-full h-64 bg-gray-200 rounded-2xl animate-pulse flex items-center justify-center">
-      <span className="text-gray-400">Chargement de la carte...</span>
+    <div className="w-full h-64 bg-muted rounded-2xl animate-pulse flex items-center justify-center">
+      <span className="text-muted-foreground text-sm">Chargement de la carte…</span>
     </div>
   ),
 })

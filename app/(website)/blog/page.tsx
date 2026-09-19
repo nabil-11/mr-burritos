@@ -3,6 +3,14 @@ import { Post } from '@/lib/models/Post'
 import Link from 'next/link'
 import Image from 'next/image'
 
+/** A post published in backoffice shows up within five minutes, not at the next deploy. */
+export const revalidate = 300
+
+export const metadata = {
+  title: 'Blog — Mr. Burritos',
+  description: 'Actualités, nouveautés et recettes de Mr. Burritos, tacos et burritos à Ariana.',
+}
+
 async function getPosts() {
   await connectDB()
   return Post.find({ isPublished: true }).sort({ publishedAt: -1 }).lean()

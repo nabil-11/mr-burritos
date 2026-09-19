@@ -1,6 +1,5 @@
 'use client'
 
-import { useEffect, useState } from 'react'
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet'
 import 'leaflet/dist/leaflet.css'
 import L from 'leaflet'
@@ -39,20 +38,8 @@ interface MapProps {
 }
 
 export default function LocationMapContent({ lat, lng, popupText = 'Mr. Burritos' }: MapProps) {
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  if (!isMounted) {
-    return (
-      <div className="w-full h-64 bg-gray-200 rounded-2xl animate-pulse flex items-center justify-center">
-        <span className="text-gray-400">Chargement de la carte...</span>
-      </div>
-    )
-  }
-
+  // Only ever loaded in the browser (LocationMap imports it with ssr: false),
+  // so there is no server render to wait out here.
   return (
     <div className="w-full h-64 rounded-2xl overflow-hidden shadow-lg">
       <MapContainer

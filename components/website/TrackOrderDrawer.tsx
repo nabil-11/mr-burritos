@@ -1,209 +1,194 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import Link from 'next/link'
+import { useCallback, useEffect, useState } from 'react'
+import { Search, PackageSearch, ChevronRight, RefreshCw } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { Search, Clock, CheckCircle2, ChefHat, Package, XCircle, Timer, PackageSearch } from 'lucide-react'
-import { toast } from 'sonner'
-import type { LucideIcon } from 'lucide-react'
+import { normalizeTnPhone } from '@/lib/phone'
+import { STATUS_SHORT, TrackedOrder, isFinal, readyAt, shopClock } from '@/lib/orderProgress'
+import { loadCustomer, loadOrders } from '@/lib/webMemory'
 
-type Order = {
-  _id: string
-  orderNumber: string
-  status: string
-  total: number
-  type: string
-  createdAt: string
-  confirmedAt?: string
-  preparationDuration?: number
+const BADGE: Record<string, string> = {
+  pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
+  confirmed: 'bg-sky-500/15 text-sky-700 dark:text-sky-300',
+  preparing: 'bg-orange-500/15 text-orange-700 dark:text-orange-300',
+  ready: 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300',
+  delivered: 'bg-muted text-muted-foreground',
+  cancelled: 'bg-red-500/15 text-red-700 dark:text-red-300',
 }
 
-type StatusInfo = { label: string; color: string; icon: LucideIcon }
+const fmtDay = (d: string) =>
+  new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', timeZone: 'Africa/Tunis' }) +
+  ' · ' +
+  shopClock(new Date(d))
 
-const STATUS: Record<string, StatusInfo> = {
-  pending:   { label: 'En attente',     color: 'bg-yellow-100 text-yellow-700',   icon: Clock },
-  confirmed: { label: 'Confirmée',       color: 'bg-blue-100 text-blue-700',       icon: CheckCircle2 },
-  preparing: { label: 'En préparation', color: 'bg-orange-100 text-orange-700',   icon: ChefHat },
-  ready:     { label: 'Prête',          color: 'bg-green-100 text-green-700',      icon: Package },
-  delivered: { label: 'Livrée ✓',       color: 'bg-emerald-100 text-emerald-700', icon: CheckCircle2 },
-  cancelled: { label: 'Annulée',        color: 'bg-red-100 text-red-600',         icon: XCircle },
-}
-const FALLBACK_STATUS: StatusInfo = { label: 'En attente', color: 'bg-gray-100 text-gray-600', icon: Clock }
-
-function CountdownTimer({ confirmedAt, duration }: { confirmedAt: string; duration: number }) {
-  const [remaining, setRemaining] = useState<number>(0)
-
-  useEffect(() => {
-    const calcRemaining = () => {
-      const confirmed = new Date(confirmedAt).getTime()
-      const end = confirmed + duration * 60 * 1000
-      const now = Date.now()
-      return Math.max(0, Math.floor((end - now) / 1000))
-    }
-    setRemaining(calcRemaining())
-    const interval = setInterval(() => setRemaining(calcRemaining()), 1000)
-    return () => clearInterval(interval)
-  }, [confirmedAt, duration])
-
-  const mins = Math.floor(remaining / 60)
-  const secs = remaining % 60
-
-  if (remaining === 0) {
-    return (
-      <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-red-100 text-red-700 animate-pulse">
-        <Timer size={10} />
-        En retard!
-      </span>
-    )
-  }
-
+function OrderRow({ order, onOpen }: { order: TrackedOrder; onOpen: () => void }) {
+  const eta = readyAt(order)
   return (
-    <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-green-100 text-green-700">
-      <Timer size={10} />
-      {mins}:{secs.toString().padStart(2, '0')}
-    </span>
+    <Link
+      href={`/order/${order._id}`}
+      onClick={onOpen}
+      className="flex items-center gap-3 px-5 py-3.5 hover:bg-muted/60 transition-colors"
+    >
+      <span className="w-10 h-10 rounded-xl bg-[#F5A800]/12 grid place-items-center text-lg shrink-0">
+        {order.type === 'delivery' ? '🛵' : '🏪'}
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className="block font-black text-sm text-foreground truncate">{order.orderNumber}</span>
+        <span className="block text-[11px] text-muted-foreground mt-0.5">{fmtDay(order.createdAt)}</span>
+      </span>
+      <span className="flex flex-col items-end gap-1 shrink-0">
+        <span className={`text-[10px] font-black px-2 py-0.5 rounded-full ${BADGE[order.status] ?? BADGE.pending}`}>
+          {STATUS_SHORT[order.status] ?? 'En attente'}
+          {eta ? ` · ${shopClock(eta)}` : ''}
+        </span>
+        <span className="text-xs font-black text-foreground tabular-nums">{Number(order.total ?? 0).toFixed(2)} DT</span>
+      </span>
+      <ChevronRight size={16} className="text-muted-foreground shrink-0" />
+    </Link>
   )
 }
 
+/**
+ * "Where is my order?" — answered without a form for anyone who ordered from
+ * this device (the browser remembers which orders it placed), and with a phone
+ * number for everyone else. Every row opens the live order page.
+ */
 export default function TrackOrderDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const [phone, setPhone]     = useState('')
+  const [phone, setPhone] = useState('')
   const [loading, setLoading] = useState(false)
-  const [orders, setOrders]   = useState<Order[] | null>(null)
-  const [refreshKey, setRefreshKey] = useState(0)
+  const [found, setFound] = useState<TrackedOrder[] | null>(null)
+  const [mine, setMine] = useState<TrackedOrder[]>([])
+  const [error, setError] = useState('')
 
-  const verify = async (e?: React.FormEvent) => {
+  const loadMine = useCallback(async () => {
+    const ids = loadOrders().map((o) => o.id)
+    if (!ids.length) return setMine([])
+    try {
+      const res = await fetch(`/api/orders/track?ids=${ids.join(',')}`, { cache: 'no-store' })
+      if (res.ok) setMine(await res.json())
+    } catch {
+      // offline: keep the last list
+    }
+  }, [])
+
+  // Opened: prefill the number used last time and show this device's orders.
+  // While open, refresh every 30 s if any of them is still moving.
+  useEffect(() => {
+    if (!open) return
+    const saved = loadCustomer()
+    if (saved?.phone) setPhone((p) => p || saved.phone)
+    const first = setTimeout(loadMine, 0)
+    const id = setInterval(loadMine, 30_000)
+    return () => {
+      clearTimeout(first)
+      clearInterval(id)
+    }
+  }, [open, loadMine])
+
+  const search = async (e?: React.FormEvent) => {
     e?.preventDefault()
-    if (!phone.trim()) return toast.error('Entrez votre numéro de téléphone')
+    const digits = normalizeTnPhone(phone)
+    if (!digits) return setError('Entrez un numéro à 8 chiffres.')
+    setError('')
     setLoading(true)
     try {
-      const res  = await fetch(`/api/orders/track?phone=${encodeURIComponent(phone.trim())}`)
-      const data: Order[] = await res.json()
-      setOrders(Array.isArray(data) ? data : [])
-      if (!Array.isArray(data) || data.length === 0) toast.info('Aucune commande trouvée')
+      const res = await fetch(`/api/orders/track?phone=${digits}`, { cache: 'no-store' })
+      const data = await res.json()
+      setFound(Array.isArray(data) ? data : [])
     } catch {
-      toast.error('Erreur, réessayez')
+      setError('Connexion impossible, réessayez.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Auto-refresh every 30 seconds while the drawer is open and showing orders
-  useEffect(() => {
-    if (!open || !orders || orders.length === 0) return
-    const interval = setInterval(() => setRefreshKey((k) => k + 1), 30000)
-    return () => clearInterval(interval)
-  }, [open, orders])
-
-  useEffect(() => {
-    if (!open || !phone.trim()) return
-    fetch(`/api/orders/track?phone=${encodeURIComponent(phone.trim())}`)
-      .then((res) => res.json())
-      .then((data: Order[]) => setOrders(Array.isArray(data) ? data : []))
-      .catch(() => {})
-  }, [refreshKey, open, phone])
-
-  const fmtDate = (d: string) =>
-    new Date(d).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })
+  const activeMine = mine.filter((o) => !isFinal(o.status))
+  const pastMine = mine.filter((o) => isFinal(o.status)).slice(0, 5)
 
   return (
-    <Sheet open={open} onOpenChange={onClose}>
-      <SheetContent side="left" className="w-full max-w-sm flex flex-col p-0">
-        <SheetHeader className="px-5 py-4 border-b bg-[#1A1A1A] text-white">
-          <SheetTitle className="text-white flex items-center gap-2">
+    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
+      <SheetContent
+        side="left"
+        className="data-[side=left]:w-full data-[side=left]:sm:max-w-md flex flex-col gap-0 p-0 bg-background"
+      >
+        <SheetHeader className="px-5 py-4 border-b border-border">
+          <SheetTitle className="flex items-center gap-2 text-foreground">
             <PackageSearch size={18} className="text-[#F5A800]" /> Suivre ma commande
           </SheetTitle>
         </SheetHeader>
 
-        {/* Search form */}
-        <form onSubmit={verify} className="px-5 py-4 border-b space-y-2">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
-            Numéro de téléphone
-          </label>
-          <div className="flex gap-2">
-            <input
-              type="tel"
-              placeholder="Ex : 99 123 456"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              className="flex-1 min-w-0 px-3 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-[#1A1A1A] placeholder:text-gray-300 outline-none focus:border-[#F5A800] transition-colors"
-            />
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-60 text-black font-black px-4 rounded-xl text-sm transition-colors whitespace-nowrap"
-            >
-              <Search size={15} />
-              {loading ? '…' : 'Vérifier'}
-            </button>
-          </div>
-        </form>
-
-        {/* Results */}
         <div className="flex-1 overflow-y-auto">
-          {orders === null ? (
-            <div className="h-full flex flex-col items-center justify-center gap-3 text-center px-6 text-muted-foreground">
-              <PackageSearch size={48} className="text-gray-200" />
-              <p className="text-sm">Entrez votre numéro pour suivre vos commandes en temps réel.</p>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="h-full flex flex-col items-center justify-center gap-2 text-center px-6">
-              <p className="text-3xl mb-1">🔍</p>
-              <p className="font-bold text-[#1A1A1A] text-sm">Aucune commande trouvée</p>
-              <p className="text-xs text-gray-400">Vérifiez le numéro saisi</p>
-            </div>
-          ) : (
-            <>
-              <div className="px-5 py-3 flex items-center justify-between sticky top-0 bg-white border-b border-gray-50">
-                <p className="text-xs font-black text-gray-500 uppercase tracking-widest">
-                  {orders.length} commande{orders.length > 1 ? 's' : ''}
+          {mine.length > 0 && (
+            <section className="border-b border-border">
+              <div className="px-5 pt-4 pb-1 flex items-center justify-between">
+                <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  Commandes de cet appareil
                 </p>
                 <button
-                  type="button"
-                  onClick={() => setRefreshKey((k) => k + 1)}
-                  className="text-gray-400 hover:text-gray-600 text-xs font-bold"
+                  onClick={loadMine}
+                  className="text-muted-foreground hover:text-foreground p-1"
+                  aria-label="Actualiser"
                 >
-                  ↻ Actualiser
+                  <RefreshCw size={13} />
                 </button>
               </div>
-              <div className="divide-y divide-gray-50">
-                {orders.map((order) => {
-                  const s = STATUS[order.status] ?? FALLBACK_STATUS
-                  const Icon = s.icon
-                  return (
-                    <div key={order._id} className="px-5 py-4">
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-9 h-9 rounded-xl bg-[#F5A800]/10 flex items-center justify-center shrink-0 text-base">
-                            {order.type === 'delivery' ? '🛵' : '🏪'}
-                          </div>
-                          <div className="min-w-0">
-                            <p className="font-black text-[#1A1A1A] text-sm">{order.orderNumber}</p>
-                            <p className="text-[10px] text-gray-400 mt-0.5">{fmtDate(order.createdAt)}</p>
-                          </div>
-                        </div>
-                        <p className="font-black text-[#F5A800] text-sm whitespace-nowrap">
-                          {(order.total ?? 0).toFixed(2)} DT
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 flex-wrap mt-2 pl-12">
-                        <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full ${s.color}`}>
-                          <Icon size={10} />
-                          {s.label}
-                        </span>
-                        {order.status === 'confirmed' && order.confirmedAt && order.preparationDuration && (
-                          <CountdownTimer confirmedAt={order.confirmedAt} duration={order.preparationDuration} />
-                        )}
-                        {order.status === 'preparing' && order.preparationDuration && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold px-2.5 py-1 rounded-full bg-orange-100 text-orange-700">
-                            <Timer size={10} />
-                            {order.preparationDuration >= 60 ? '1h' : `${order.preparationDuration} min`}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )
-                })}
+              {[...activeMine, ...pastMine].map((o) => (
+                <OrderRow key={o._id} order={o} onOpen={onClose} />
+              ))}
+            </section>
+          )}
+
+          <form onSubmit={search} className="px-5 py-5 space-y-2">
+            <label htmlFor="track-phone" className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+              {mine.length ? 'Une autre commande ? Votre numéro' : 'Votre numéro de téléphone'}
+            </label>
+            <div className="flex gap-2">
+              <input
+                id="track-phone"
+                type="tel"
+                inputMode="numeric"
+                autoComplete="tel-national"
+                placeholder="99 123 456"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value.replace(/[^\d+ ]/g, ''))}
+                className="flex-1 min-w-0 px-3.5 py-2.5 rounded-xl border border-border bg-card text-sm font-semibold text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-[#F5A800] transition-colors"
+              />
+              <button
+                type="submit"
+                disabled={loading}
+                className="flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-60 text-black font-black px-4 rounded-xl text-sm transition-colors"
+              >
+                <Search size={15} />
+                {loading ? '…' : 'Chercher'}
+              </button>
+            </div>
+            {error && <p className="text-xs font-bold text-red-600 dark:text-red-400">{error}</p>}
+          </form>
+
+          {found !== null &&
+            (found.length === 0 ? (
+              <div className="px-6 pb-8 text-center">
+                <p className="text-3xl mb-2">🔍</p>
+                <p className="font-bold text-foreground text-sm">Aucune commande avec ce numéro</p>
+                <p className="text-xs text-muted-foreground mt-1">Vérifiez le numéro utilisé pour commander.</p>
               </div>
-            </>
+            ) : (
+              <section className="border-t border-border">
+                <p className="px-5 pt-4 pb-1 text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+                  {found.length} commande{found.length > 1 ? 's' : ''}
+                </p>
+                {found.map((o) => (
+                  <OrderRow key={o._id} order={o} onOpen={onClose} />
+                ))}
+              </section>
+            ))}
+
+          {found === null && mine.length === 0 && (
+            <div className="px-8 pb-10 pt-4 flex flex-col items-center text-center gap-3 text-muted-foreground">
+              <PackageSearch size={44} className="opacity-30" />
+              <p className="text-sm">Entrez le numéro utilisé pour commander : vous verrez où en est votre commande, en direct.</p>
+            </div>
           )}
         </div>
       </SheetContent>

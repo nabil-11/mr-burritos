@@ -2,6 +2,18 @@ import { connectDB } from '@/lib/mongodb'
 import { Review } from '@/lib/models/Review'
 import ReviewForm from './ReviewForm'
 
+/**
+ * Rendered per request: a review approved in backoffice appears on the next
+ * visit. Built once at deploy, this page kept showing the reviews that existed
+ * the day it was deployed.
+ */
+export const dynamic = 'force-dynamic'
+
+export const metadata = {
+  title: 'Avis clients — Mr. Burritos',
+  description: 'Ce que nos clients pensent de nos tacos, burritos et burgers à Ariana. Laissez le vôtre.',
+}
+
 async function getApprovedReviews() {
   await connectDB()
   return Review.find({ isApproved: true }).sort({ createdAt: -1 }).lean()
@@ -11,14 +23,20 @@ function Stars({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <span key={s} className={`text-lg ${s <= rating ? 'text-[#F5A800]' : 'text-gray-200'}`}>★</span>
+        <span key={s} className={`text-lg ${s <= rating ? 'text-[#F5A800]' : 'text-muted-foreground/25'}`}>★</span>
       ))}
     </div>
   )
 }
 
-export default async function AvisPage() {
-  const reviews = await getApprovedReviews()
+export default async function AvisPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ commande?: string; nom?: string }>
+}) {
+  const [reviews, query] = await Promise.all([getApprovedReviews(), searchParams])
+  const initialOrder = String(query.commande ?? '').slice(0, 40)
+  const initialName = String(query.nom ?? '').slice(0, 60)
 
   const avg = reviews.length
     ? (reviews.reduce((s, r) => s + (r.rating || 0), 0) / reviews.length).toFixed(1)
@@ -39,7 +57,7 @@ export default async function AvisPage() {
             <div>
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map((s) => (
-                  <span key={s} className={`text-xl ${s <= Math.round(Number(avg)) ? 'text-[#F5A800]' : 'text-gray-200'}`}>★</span>
+                  <span key={s} className={`text-xl ${s <= Math.round(Number(avg)) ? 'text-[#F5A800]' : 'text-muted-foreground/25'}`}>★</span>
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} avis</p>
@@ -55,7 +73,7 @@ export default async function AvisPage() {
           <div className="bg-card rounded-2xl border border-border p-6 sticky top-28">
             <h2 className="font-black text-foreground text-lg mb-1">Laissez un avis</h2>
             <p className="text-xs text-muted-foreground mb-5">Votre avis sera publié après modération.</p>
-            <ReviewForm />
+            <ReviewForm initialName={initialName} initialOrder={initialOrder} />
           </div>
         </div>
 
@@ -93,7 +111,7 @@ export default async function AvisPage() {
                   {rev.comment && (
                     <p className="mt-3 text-muted-foreground text-sm leading-relaxed">{rev.comment}</p>
                   )}
-                  <p className="mt-3 text-[10px] text-gray-300 uppercase tracking-widest">
+                  <p className="mt-3 text-[10px] text-muted-foreground/60 uppercase tracking-widest">
                     {new Date(rev.createdAt).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                   </p>
                 </div>

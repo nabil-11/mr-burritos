@@ -11,6 +11,20 @@ async function getPost(slug: string) {
   return Post.findOne({ slug, isPublished: true }).lean()
 }
 
+/** An edited or unpublished post follows within five minutes. */
+export const revalidate = 300
+
+export async function generateMetadata({ params }: Props) {
+  const { slug } = await params
+  const post = (await getPost(slug)) as { title?: { fr?: string }; excerpt?: { fr?: string }; image?: string } | null
+  if (!post) return { title: 'Article introuvable — Mr. Burritos' }
+  return {
+    title: `${post.title?.fr ?? 'Article'} — Mr. Burritos`,
+    description: post.excerpt?.fr || undefined,
+    openGraph: post.image ? { images: [post.image] } : undefined,
+  }
+}
+
 export default async function BlogPostPage({ params }: Props) {
   const { slug } = await params
   const post = await getPost(slug)

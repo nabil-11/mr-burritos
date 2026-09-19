@@ -315,7 +315,7 @@ export default function ProductBuilder({
 
   // ── Layers 1..n — configure ───────────────────────────────────────────────
   return (
-    <div ref={rootRef} className="bg-white rounded-3xl shadow-xl border border-gray-100 overflow-hidden">
+    <div ref={rootRef} className="bg-card rounded-3xl shadow-xl border border-border overflow-hidden">
 
       {/* Header: the category, shown as pictures rather than dish names */}
       <div className={compact ? 'relative h-28' : 'relative h-40 sm:h-48'}>
@@ -372,16 +372,16 @@ export default function ProductBuilder({
               <span
                 className={`w-6 h-6 rounded-full grid place-items-center text-[10px] font-black transition-all ${
                   current ? 'bg-[#F5A800] text-black scale-110'
-                  : done ? 'bg-[#1A1A1A] text-white'
-                  : 'bg-gray-100 text-gray-400'
+                  : done ? 'bg-foreground text-background'
+                  : 'bg-muted text-muted-foreground'
                 }`}
               >
                 {done ? <Check size={11} /> : i + 1}
               </span>
-              <span className={`text-xs font-bold ${current ? 'text-[#1A1A1A]' : 'text-gray-400'}`}>
+              <span className={`text-xs font-bold ${current ? 'text-foreground' : 'text-muted-foreground'}`}>
                 {STEP_LABELS[key]}
               </span>
-              {i < steps.length - 1 && <span className="w-4 sm:w-8 h-px bg-gray-200 mx-1" />}
+              {i < steps.length - 1 && <span className="w-4 sm:w-8 h-px bg-border mx-1" />}
             </button>
           )
         })}
@@ -403,7 +403,7 @@ export default function ProductBuilder({
                 extras={extras}
                 compact={compact}
               />
-              <p className="text-center text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-3">
+              <p className="text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-3">
                 {size ? shortSize(size.name.fr) : ''} · {chosenMeats.length}/{quota} viande
                 {quota > 1 ? 's' : ''}
               </p>
@@ -421,14 +421,14 @@ export default function ProductBuilder({
                 <div
                   key={p._id}
                   className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
-                    activeItem ? 'border-[#F5A800] shadow-md' : 'border-gray-200 hover:border-[#F5A800]/50'
+                    activeItem ? 'border-[#F5A800] shadow-md' : 'border-border hover:border-[#F5A800]/50'
                   }`}
                 >
                 <button
                   onClick={() => pickProduct(p)}
                   className="block w-full text-left"
                 >
-                  <div className="relative h-24 sm:h-28 bg-gray-100">
+                  <div className="relative h-24 sm:h-28 bg-muted">
                     {p.image ? (
                       <Image src={p.image} alt={p.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
                     ) : (
@@ -441,7 +441,7 @@ export default function ProductBuilder({
                     )}
                   </div>
                   <div className="p-2.5 pr-9">
-                    <p className="text-xs font-bold text-[#1A1A1A] leading-tight">{p.name.fr}</p>
+                    <p className="text-xs font-bold text-foreground leading-tight">{p.name.fr}</p>
                     <p className="text-[#F5A800] font-black text-xs mt-1">{p.price.toFixed(2)} DT</p>
                   </div>
                 </button>
@@ -450,7 +450,7 @@ export default function ProductBuilder({
                   title={`${p.name.fr} — Mr. Burritos`}
                   description={`${p.description.fr || category.name.fr} · ${p.price.toFixed(2)} DT`}
                   image={p.image}
-                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full grid place-items-center text-gray-400 hover:text-[#F5A800] hover:bg-gray-100"
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full grid place-items-center text-muted-foreground hover:text-[#F5A800] hover:bg-muted"
                 />
                 </div>
               )
@@ -469,16 +469,16 @@ export default function ProductBuilder({
                   className={`p-4 sm:p-5 rounded-2xl border-2 transition-all duration-200 text-center ${
                     activeSize
                       ? 'border-[#F5A800] bg-[#F5A800]/10 shadow-md scale-[1.02]'
-                      : 'border-gray-200 hover:border-[#F5A800]/50 bg-white'
+                      : 'border-border hover:border-[#F5A800]/50 bg-card'
                   }`}
                 >
-                  <p className={`font-black text-2xl sm:text-3xl ${activeSize ? 'text-[#F5A800]' : 'text-[#1A1A1A]'}`}>
+                  <p className={`font-black text-2xl sm:text-3xl ${activeSize ? 'text-[#F5A800]' : 'text-foreground'}`}>
                     {shortSize(s.name.fr)}
                   </p>
-                  <p className="text-[11px] font-bold text-gray-500 mt-1.5">
+                  <p className="text-[11px] font-bold text-muted-foreground mt-1.5">
                     {meatLabel(s.meatCount ?? 1)}
                   </p>
-                  <p className={`text-sm font-black mt-2 ${activeSize ? 'text-[#1A1A1A]' : 'text-gray-400'}`}>
+                  <p className={`text-sm font-black mt-2 ${activeSize ? 'text-foreground' : 'text-muted-foreground'}`}>
                     {configuredPrice(active?.price ?? 0, [s]).toFixed(2)} DT
                   </p>
                 </button>
@@ -490,17 +490,17 @@ export default function ProductBuilder({
         {step === 'viande' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <p className="text-sm font-bold text-[#1A1A1A]">
+              <p className="text-sm font-bold text-foreground">
                 Choisissez {quota === 1 ? 'votre viande' : `vos ${quota} viandes`}
               </p>
               <span className={`text-xs font-black px-3 py-1 rounded-full ${
-                meatTotal === quota ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'
+                meatTotal === quota ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300' : 'bg-muted text-muted-foreground'
               }`}>
                 {meatTotal} / {quota}
               </span>
             </div>
             {quota > 1 && (
-              <p className="text-xs text-gray-400 mb-4">
+              <p className="text-xs text-muted-foreground mb-4">
                 Vous pouvez prendre deux fois la même — un {shortSize(size?.name.fr ?? '')} double escalope, par exemple.
               </p>
             )}
@@ -512,13 +512,13 @@ export default function ProductBuilder({
                   <div
                     key={v._id}
                     className={`rounded-2xl border-2 overflow-hidden transition-all ${
-                      picked ? 'border-[#F5A800] shadow-md' : 'border-gray-200'
+                      picked ? 'border-[#F5A800] shadow-md' : 'border-border'
                     }`}
                   >
                     <button
                       onClick={() => (quota === 1 ? pickSingleMeat(v._id) : bumpMeat(v._id, 1))}
                       disabled={quota > 1 && meatTotal >= quota && count === 0}
-                      className="relative block w-full h-24 sm:h-28 bg-gray-100 disabled:opacity-40 transition-opacity"
+                      className="relative block w-full h-24 sm:h-28 bg-muted disabled:opacity-40 transition-opacity"
                     >
                       {v.image ? (
                         <Image src={v.image} alt={v.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
@@ -532,13 +532,13 @@ export default function ProductBuilder({
                       )}
                     </button>
                     <div className="p-2.5 flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-[#1A1A1A] leading-tight">{v.name.fr}</p>
+                      <p className="text-xs font-bold text-foreground leading-tight">{v.name.fr}</p>
                       {quota > 1 && (
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => bumpMeat(v._id, -1)}
                             disabled={count === 0}
-                            className="w-6 h-6 rounded-md bg-gray-100 hover:bg-gray-200 disabled:opacity-30 grid place-items-center transition-colors"
+                            className="w-6 h-6 rounded-md bg-muted hover:bg-muted/70 disabled:opacity-30 grid place-items-center transition-colors"
                             aria-label={`Retirer ${v.name.fr}`}
                           >
                             <Minus size={11} />
@@ -546,7 +546,7 @@ export default function ProductBuilder({
                           <button
                             onClick={() => bumpMeat(v._id, 1)}
                             disabled={meatTotal >= quota}
-                            className="w-6 h-6 rounded-md bg-[#1A1A1A] text-white hover:bg-[#F5A800] hover:text-black disabled:opacity-30 grid place-items-center transition-colors"
+                            className="w-6 h-6 rounded-md bg-foreground text-background hover:bg-[#F5A800] hover:text-black disabled:opacity-30 grid place-items-center transition-colors"
                             aria-label={`Ajouter ${v.name.fr}`}
                           >
                             <Plus size={11} />
@@ -563,8 +563,8 @@ export default function ProductBuilder({
 
         {step === 'sauce' && (
           <div>
-            <p className="text-sm font-bold text-[#1A1A1A] mb-1">Vos sauces</p>
-            <p className="text-xs text-gray-400 mb-4">Offertes — prenez-en autant que vous voulez.</p>
+            <p className="text-sm font-bold text-foreground mb-1">Vos sauces</p>
+            <p className="text-xs text-muted-foreground mb-4">Offertes — prenez-en autant que vous voulez.</p>
             <div className="flex flex-wrap gap-2">
               {groups.sauces.map((s) => {
                 const on = !!sauces.find((x) => x._id === s._id)
@@ -575,7 +575,7 @@ export default function ProductBuilder({
                     className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all ${
                       on
                         ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md'
-                        : 'border-gray-200 text-gray-600 hover:border-[#F5A800]/60 bg-white'
+                        : 'border-border text-foreground/80 hover:border-[#F5A800]/60 bg-card'
                     }`}
                   >
                     {on && <Check size={13} />} {s.name.fr}
@@ -588,8 +588,8 @@ export default function ProductBuilder({
 
         {step === 'extra' && (
           <div>
-            <p className="text-sm font-bold text-[#1A1A1A] mb-1">Un petit extra ?</p>
-            <p className="text-xs text-gray-400 mb-4">Optionnel — ajouté au prix.</p>
+            <p className="text-sm font-bold text-foreground mb-1">Un petit extra ?</p>
+            <p className="text-xs text-muted-foreground mb-4">Optionnel — ajouté au prix.</p>
             <div className="flex flex-wrap gap-2">
               {groups.extras.map((s) => {
                 const on = !!extras.find((x) => x._id === s._id)
@@ -600,7 +600,7 @@ export default function ProductBuilder({
                     className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full border-2 text-sm font-semibold transition-all ${
                       on
                         ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md'
-                        : 'border-gray-200 text-gray-600 hover:border-[#F5A800]/60 bg-white'
+                        : 'border-border text-foreground/80 hover:border-[#F5A800]/60 bg-card'
                     }`}
                   >
                     {on && <Check size={13} />} {s.name.fr}
@@ -616,16 +616,16 @@ export default function ProductBuilder({
 
         {step === 'recap' && active && (
           <div className="space-y-4">
-            <p className="text-sm font-bold text-[#1A1A1A]">Votre {active.name.fr}</p>
+            <p className="text-sm font-bold text-foreground">Votre {active.name.fr}</p>
             <dl className="text-sm divide-y rounded-2xl border overflow-hidden">
-              <div className="flex justify-between gap-4 px-4 py-3 bg-gray-50">
-                <dt className="text-gray-500 font-semibold">Base</dt>
-                <dd className="font-bold text-[#1A1A1A]">{active.price.toFixed(2)} DT</dd>
+              <div className="flex justify-between gap-4 px-4 py-3 bg-muted/60">
+                <dt className="text-muted-foreground font-semibold">Base</dt>
+                <dd className="font-bold text-foreground">{active.price.toFixed(2)} DT</dd>
               </div>
               {size && (
                 <div className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-gray-500 font-semibold">Taille</dt>
-                  <dd className="font-bold text-[#1A1A1A]">
+                  <dt className="text-muted-foreground font-semibold">Taille</dt>
+                  <dd className="font-bold text-foreground">
                     {shortSize(size.name.fr)}
                     {size.price > 0 && <span className="text-[#F5A800]"> +{size.price} DT</span>}
                   </dd>
@@ -633,8 +633,8 @@ export default function ProductBuilder({
               )}
               {chosenMeats.length > 0 && (
                 <div className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-gray-500 font-semibold">Viandes</dt>
-                  <dd className="font-bold text-[#1A1A1A] text-right">
+                  <dt className="text-muted-foreground font-semibold">Viandes</dt>
+                  <dd className="font-bold text-foreground text-right">
                     {groups.viandes
                       .filter((v) => meats[v._id])
                       .map((v) => (meats[v._id] > 1 ? `${meats[v._id]}× ${v.name.fr}` : v.name.fr))
@@ -644,14 +644,14 @@ export default function ProductBuilder({
               )}
               {sauces.length > 0 && (
                 <div className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-gray-500 font-semibold">Sauces</dt>
-                  <dd className="font-bold text-[#1A1A1A] text-right">{sauces.map((s) => s.name.fr).join(', ')}</dd>
+                  <dt className="text-muted-foreground font-semibold">Sauces</dt>
+                  <dd className="font-bold text-foreground text-right">{sauces.map((s) => s.name.fr).join(', ')}</dd>
                 </div>
               )}
               {extras.length > 0 && (
                 <div className="flex justify-between gap-4 px-4 py-3">
-                  <dt className="text-gray-500 font-semibold">Extras</dt>
-                  <dd className="font-bold text-[#1A1A1A] text-right">
+                  <dt className="text-muted-foreground font-semibold">Extras</dt>
+                  <dd className="font-bold text-foreground text-right">
                     {extras.map((s) => s.name.fr).join(', ')}
                     <span className="text-[#F5A800]"> +{extras.reduce((t, s) => t + s.price, 0)} DT</span>
                   </dd>
@@ -660,19 +660,19 @@ export default function ProductBuilder({
             </dl>
 
             <div className="flex items-center justify-between gap-3">
-              <span className="text-sm font-bold text-gray-500">Quantité</span>
-              <div className="flex items-center gap-1 bg-gray-50 border rounded-xl p-1">
+              <span className="text-sm font-bold text-muted-foreground">Quantité</span>
+              <div className="flex items-center gap-1 bg-muted/60 border rounded-xl p-1">
                 <button
                   onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                  className="p-2 rounded-lg hover:bg-white transition-colors"
+                  className="p-2 rounded-lg hover:bg-background transition-colors"
                   aria-label="Réduire la quantité"
                 >
                   <Minus size={14} />
                 </button>
-                <span className="w-8 text-center font-black text-[#1A1A1A]">{quantity}</span>
+                <span className="w-8 text-center font-black text-foreground">{quantity}</span>
                 <button
                   onClick={() => setQuantity((q) => q + 1)}
-                  className="p-2 rounded-lg hover:bg-white transition-colors"
+                  className="p-2 rounded-lg hover:bg-background transition-colors"
                   aria-label="Augmenter la quantité"
                 >
                   <Plus size={14} />
@@ -685,18 +685,18 @@ export default function ProductBuilder({
       </div>
 
       {/* Footer: running total + navigation */}
-      <div className={`flex items-center gap-3 border-t ${padX} py-4 bg-gray-50/60`}>
+      <div className={`flex items-center gap-3 border-t ${padX} py-4 bg-muted/40`}>
         {safeIndex > 0 && (
           <button
             onClick={() => setStepIndex(safeIndex - 1)}
-            className="p-3 rounded-xl border bg-white hover:bg-gray-100 transition-colors shrink-0"
+            className="p-3 rounded-xl border bg-card hover:bg-muted transition-colors shrink-0"
             aria-label="Étape précédente"
           >
             <ArrowLeft size={16} />
           </button>
         )}
         <div className="leading-none mr-auto">
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Total</p>
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</p>
           <p className="font-black text-[#F5A800] text-xl mt-1">{total.toFixed(2)} DT</p>
         </div>
         {step === 'recap' ? (
@@ -710,7 +710,7 @@ export default function ProductBuilder({
           <button
             onClick={() => setStepIndex(safeIndex + 1)}
             disabled={!canContinue}
-            className="flex items-center gap-2 bg-[#1A1A1A] hover:bg-[#F5A800] text-white hover:text-black disabled:opacity-40 disabled:hover:bg-[#1A1A1A] disabled:hover:text-white font-black px-7 py-3.5 rounded-xl transition-all text-sm"
+            className="flex items-center gap-2 bg-foreground hover:bg-[#F5A800] text-background hover:text-black disabled:opacity-40 disabled:hover:bg-foreground disabled:hover:text-background font-black px-7 py-3.5 rounded-xl transition-all text-sm"
           >
             {step === 'viande' && !canContinue
               ? `Encore ${quota - meatTotal}`

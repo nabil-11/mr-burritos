@@ -1,12 +1,9 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { MapPin, Phone, Mail, Download, Store, Bike } from 'lucide-react'
+import { SITE } from '@/lib/site'
 
-const CONTACT = {
-  phone: '+216 93822570',
-  email: 'mr.burritos.nasr@gmail.com',
-  location: 'V557+F6R, Ariana, Tunis',
-}
+const CONTACT = { ...SITE, location: `${SITE.location}, ${SITE.region}` }
 
 /** Internal Android builds for staff — not customer-facing apps. */
 const STAFF_APPS = [

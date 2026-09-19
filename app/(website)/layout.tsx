@@ -4,6 +4,7 @@ import { CartProvider } from '@/contexts/CartContext'
 import WebNavbar from '@/components/website/Navbar'
 import Footer from '@/components/website/Footer'
 import AmbientBackground from '@/components/website/AmbientBackground'
+import CartBar from '@/components/website/CartBar'
 
 export default function WebsiteLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -13,6 +14,7 @@ export default function WebsiteLayout({ children }: { children: React.ReactNode 
         <WebNavbar />
         <main className="flex-1">{children}</main>
         <Footer />
+        <CartBar />
       </div>
     </CartProvider>
   )

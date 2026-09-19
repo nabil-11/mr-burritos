@@ -3,6 +3,7 @@ import { DeliveryCompany } from './models/DeliveryCompany'
 import { Product } from './models/Product'
 import { Supplement } from './models/Supplement'
 import { normalizeOrderSource, type OrderSource } from './orderSource'
+import { normalizeTnPhone } from './phone'
 import { applyWebPromo } from './promo'
 
 /**
@@ -84,52 +85,121 @@ export interface PricedOrder {
   claimedTotal: number | null
 }
 
-/** Every line priced from the database; a line that cannot be is refused. */
-async function priceItems(rawItems: ItemInput[]) {
+const supplementsOf = (raw: ItemInput) =>
+  (Array.isArray(raw.supplements) ? raw.supplements : []) as { supplement?: unknown }[]
+
+/** The products and supplements a basket names, fetched in two queries whatever its size. */
+async function loadMenuFor(rawItems: ItemInput[]) {
   if (rawItems.length > MAX_ITEMS) throw new OrderInputError("Trop d'articles dans la commande")
-
-  const productIds = rawItems.map((i) => objectId(i.product))
-  if (productIds.some((id) => id === null)) throw new OrderInputError('Article inconnu')
-  const supplementLists = rawItems.map((i) => (Array.isArray(i.supplements) ? i.supplements : []) as { supplement?: unknown }[])
-  const supplementIds = supplementLists.flat().map((s) => objectId(s?.supplement))
-  if (supplementIds.some((id) => id === null)) throw new OrderInputError('Supplement inconnu')
-
+  const productIds = [...new Set(rawItems.map((i) => objectId(i.product)).filter((id): id is string => id !== null))]
+  const supplementIds = [
+    ...new Set(rawItems.flatMap((i) => supplementsOf(i).map((s) => objectId(s?.supplement))).filter((id): id is string => id !== null)),
+  ]
   const [products, supplements] = await Promise.all([
-    Product.find({ _id: { $in: [...new Set(productIds)] } }).lean() as Promise<ProductDoc[]>,
+    productIds.length
+      ? (Product.find({ _id: { $in: productIds } }).lean() as Promise<ProductDoc[]>)
+      : Promise.resolve([] as ProductDoc[]),
     supplementIds.length
-      ? (Supplement.find({ _id: { $in: [...new Set(supplementIds)] } }).lean() as Promise<SupplementDoc[]>)
+      ? (Supplement.find({ _id: { $in: supplementIds } }).lean() as Promise<SupplementDoc[]>)
       : Promise.resolve([] as SupplementDoc[]),
   ])
-  const productById = new Map(products.map((p) => [String(p._id), p]))
-  const supplementById = new Map(supplements.map((s) => [String(s._id), s]))
+  return {
+    productById: new Map(products.map((p) => [String(p._id), p])),
+    supplementById: new Map(supplements.map((s) => [String(s._id), s])),
+  }
+}
 
-  return rawItems.map((raw, i) => {
-    const product = productById.get(String(productIds[i]))
-    if (!product) throw new OrderInputError("Un article de la commande n'existe plus", 409)
-    if (product.isActive === false || product.isAvailable === false) {
-      throw new OrderInputError(`« ${product.name?.fr ?? 'Article'} » n'est plus disponible`, 409)
+type Menu = Awaited<ReturnType<typeof loadMenuFor>>
+
+/** One line priced from the database, or the reason it cannot be sold. */
+function priceLine(raw: ItemInput, { productById, supplementById }: Menu) {
+  const productId = objectId(raw.product)
+  if (!productId) throw new OrderInputError('Article inconnu')
+  const product = productById.get(productId)
+  if (!product) throw new OrderInputError("Un article de la commande n'existe plus", 409)
+  if (product.isActive === false || product.isAvailable === false) {
+    throw new OrderInputError(`« ${product.name?.fr ?? 'Article'} » n'est plus disponible`, 409)
+  }
+  const quantity = Number(raw.quantity)
+  if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY) {
+    throw new OrderInputError('Quantite invalide')
+  }
+  const lineSupplements = supplementsOf(raw).map((s) => {
+    const supplementId = objectId(s?.supplement)
+    if (!supplementId) throw new OrderInputError('Supplement inconnu')
+    const supplement = supplementById.get(supplementId)
+    if (!supplement) throw new OrderInputError("Un supplement de la commande n'existe plus", 409)
+    if (supplement.isActive === false) {
+      throw new OrderInputError(`« ${supplement.name?.fr ?? 'Supplement'} » n'est plus disponible`, 409)
     }
-    const quantity = Number(raw.quantity)
-    if (!Number.isInteger(quantity) || quantity < 1 || quantity > MAX_QTY) {
-      throw new OrderInputError('Quantite invalide')
-    }
-    const lineSupplements = supplementLists[i].map((s) => {
-      const supplement = supplementById.get(String(s?.supplement))
-      if (!supplement) throw new OrderInputError("Un supplement de la commande n'existe plus", 409)
-      if (supplement.isActive === false) {
-        throw new OrderInputError(`« ${supplement.name?.fr ?? 'Supplement'} » n'est plus disponible`, 409)
+    return { supplement: supplement._id, name: supplement.name, price: Number(supplement.price) || 0 }
+  })
+  return {
+    product: product._id,
+    productName: product.name,
+    quantity,
+    unitPrice: Number(product.price) || 0,
+    supplements: lineSupplements,
+    notes: text(raw.notes, 200),
+  }
+}
+
+type PricedLine = ReturnType<typeof priceLine>
+
+const lineTotal = (line: PricedLine) =>
+  (line.unitPrice + line.supplements.reduce((s, x) => s + x.price, 0)) * line.quantity
+
+/** Every line priced from the database; a line that cannot be is refused. */
+async function priceItems(rawItems: ItemInput[]) {
+  const menu = await loadMenuFor(rawItems)
+  return rawItems.map((raw) => priceLine(raw, menu))
+}
+
+export interface WebQuote {
+  /** One entry per posted line, in order: its price now, or why it cannot be ordered. */
+  lines: (
+    | {
+        ok: true
+        unitPrice: number
+        lineTotal: number
+        /** Today's prices, so the browser can correct the ones it saved. */
+        basePrice: number
+        supplementPrices: Record<string, number>
       }
-      return { supplement: supplement._id, name: supplement.name, price: Number(supplement.price) || 0 }
-    })
-    return {
-      product: product._id,
-      productName: product.name,
-      quantity,
-      unitPrice: Number(product.price) || 0,
-      supplements: lineSupplements,
-      notes: text(raw.notes, 200),
+    | { ok: false; error: string }
+  )[]
+  /** Sellable lines only, so the figures match what ordering them would cost. */
+  subtotal: number
+  discount: { label: string; rate: number; amount: number }
+  total: number
+}
+
+/**
+ * What a website basket costs right now, line by line, by the same rules an
+ * order is held to. The cart shows this rather than the prices it saved when
+ * each item was added: a price changed in backoffice, or a dish taken off the
+ * menu, is seen before the customer presses "commander", not after.
+ */
+export async function quoteWebBasket(rawItems: ItemInput[]): Promise<WebQuote> {
+  const menu = await loadMenuFor(rawItems)
+  const lines: WebQuote['lines'] = rawItems.map((raw) => {
+    try {
+      const line = priceLine(raw, menu)
+      return {
+        ok: true,
+        unitPrice: round2(lineTotal(line) / line.quantity),
+        lineTotal: round2(lineTotal(line)),
+        basePrice: line.unitPrice,
+        supplementPrices: Object.fromEntries(line.supplements.map((s) => [String(s.supplement), s.price])),
+      }
+    } catch (err) {
+      if (err instanceof OrderInputError) return { ok: false, error: err.message }
+      throw err
     }
   })
+  const subtotal = round2(lines.reduce((s, l) => s + (l.ok ? l.lineTotal : 0), 0))
+  const { discount, total } = applyWebPromo(subtotal)
+  return { lines, subtotal, discount, total }
 }
 
 /** A platform the till names: its commission is read from its record, not from the request. */
@@ -159,15 +229,26 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
     phone: text(c.phone, 30) || (counter ? '—' : ''),
     email: text(c.email, 120),
     address: text(c.address, 300),
-    ...(latitude !== null && longitude !== null ? { latitude, longitude } : {}),
+    ...(latitude !== null && longitude !== null && Math.abs(latitude) <= 90 && Math.abs(longitude) <= 180
+      ? { latitude, longitude }
+      : {}),
+  }
+
+  // The website is the one channel where the shop has to call the customer
+  // back — to confirm, to find the door — so it is the one channel held to a
+  // number that can be dialled, and to an address when it delivers.
+  if (source === 'website') {
+    if (!customer.name) throw new OrderInputError('Votre nom est requis')
+    const phone = normalizeTnPhone(customer.phone)
+    if (!phone) throw new OrderInputError('Numéro de téléphone invalide — 8 chiffres attendus')
+    customer.phone = phone
+    if (type === 'delivery' && !customer.address) throw new OrderInputError("L'adresse de livraison est requise")
   }
 
   // ── Lines and subtotal ───────────────────────────────────────────────────
   const rawItems = Array.isArray(body.items) ? (body.items as ItemInput[]) : []
   const items = rawItems.length ? await priceItems(rawItems) : []
-  let subtotal = round2(
-    items.reduce((sum, it) => sum + (it.unitPrice + it.supplements.reduce((s, x) => s + x.price, 0)) * it.quantity, 0)
-  )
+  let subtotal = round2(items.reduce((sum, it) => sum + lineTotal(it), 0))
   if (!items.length) {
     // Only the till keys an order in as a bare amount — a delivery platform's
     // ticket. Anyone else posting no items is posting an empty basket.

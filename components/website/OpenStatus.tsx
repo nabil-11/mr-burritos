@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { openStateAt, PREP_MINUTES, OpenState } from '@/lib/hours'
+import { PREP_MINUTES } from '@/lib/hours'
+import { useOpenState } from '@/hooks/useOpenState'
 
 /**
  * Whether you can order right now. Resolved on the client after mount so the
@@ -9,14 +9,7 @@ import { openStateAt, PREP_MINUTES, OpenState } from '@/lib/hours'
  * left open through closing time corrects itself.
  */
 export default function OpenStatus({ compact = false }: { compact?: boolean }) {
-  const [state, setState] = useState<OpenState | null>(null)
-
-  useEffect(() => {
-    const read = () => setState(openStateAt(new Date()))
-    read()
-    const id = setInterval(read, 60_000)
-    return () => clearInterval(id)
-  }, [])
+  const state = useOpenState()
 
   // Nothing until the clock is known — a flash of the wrong status is worse
   // than a beat of nothing.

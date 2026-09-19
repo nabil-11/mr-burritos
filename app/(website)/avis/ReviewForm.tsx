@@ -3,8 +3,9 @@
 import { useState } from 'react'
 import { toast } from 'sonner'
 
-export default function ReviewForm() {
-  const [form, setForm] = useState({ customerName: '', orderNumber: '', rating: 0, comment: '' })
+/** Opened from a delivered order, the form already knows who and which order. */
+export default function ReviewForm({ initialName = '', initialOrder = '' }: { initialName?: string; initialOrder?: string }) {
+  const [form, setForm] = useState({ customerName: initialName, orderNumber: initialOrder, rating: 0, comment: '' })
   const [loading, setLoading] = useState(false)
   const [sent, setSent] = useState(false)
 
@@ -50,7 +51,7 @@ export default function ReviewForm() {
               key={s}
               type="button"
               onClick={() => setForm({ ...form, rating: s })}
-              className={`text-3xl transition-transform hover:scale-110 active:scale-95 ${s <= form.rating ? 'text-[#F5A800]' : 'text-gray-200 hover:text-[#F5A800]/50'}`}
+              className={`text-3xl transition-transform hover:scale-110 active:scale-95 ${s <= form.rating ? 'text-[#F5A800]' : 'text-muted-foreground/25 hover:text-[#F5A800]/50'}`}
             >
               ★
             </button>
@@ -71,7 +72,7 @@ export default function ReviewForm() {
 
       <div>
         <label className="text-xs font-black text-muted-foreground uppercase tracking-widest block mb-1.5">
-          N° de commande <span className="text-gray-300 normal-case font-medium">(facultatif)</span>
+          N° de commande <span className="text-muted-foreground/60 normal-case font-medium">(facultatif)</span>
         </label>
         <input
           type="text"

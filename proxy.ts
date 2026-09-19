@@ -6,7 +6,8 @@ const CORS_HEADERS = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 }
 
-export function middleware(req: NextRequest) {
+// Next 16 renamed the middleware convention to proxy; the behaviour is unchanged.
+export function proxy(req: NextRequest) {
   // Handle preflight — browser sends OPTIONS before every cross-origin request
   if (req.method === 'OPTIONS') {
     return new NextResponse(null, { status: 204, headers: CORS_HEADERS })

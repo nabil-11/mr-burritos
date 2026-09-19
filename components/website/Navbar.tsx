@@ -9,6 +9,7 @@ import CartDrawer from './CartDrawer'
 import TrackOrderDrawer from './TrackOrderDrawer'
 import OpenStatus from './OpenStatus'
 import ThemeToggle from '@/components/ThemeToggle'
+import { applyWebPromo } from '@/lib/promo'
 
 /**
  * Three jobs, nothing else: say whether we're open, let you find an order in
@@ -18,9 +19,10 @@ import ThemeToggle from '@/components/ThemeToggle'
 export default function WebNavbar() {
   // `hydrated` is the cart's own flag for "localStorage has been read", which
   // is exactly the guard the badge needs — no second mounted state required.
-  const { itemCount, total, hydrated } = useCart()
-  const [cartOpen, setCartOpen] = useState(false)
+  const { itemCount, total, hydrated, setDrawerOpen } = useCart()
   const [trackOpen, setTrackOpen] = useState(false)
+  // The same figure the drawer and the mobile bar end on: what will be paid.
+  const payable = applyWebPromo(total).total
 
   return (
     <>
@@ -36,7 +38,7 @@ export default function WebNavbar() {
             </span>
           </Link>
 
-          <div className="hidden xs:block sm:block">
+          <div className="hidden sm:block">
             <OpenStatus compact />
           </div>
 
@@ -52,17 +54,18 @@ export default function WebNavbar() {
             </button>
 
             <button
-              onClick={() => setCartOpen(true)}
+              onClick={() => setDrawerOpen(true)}
+              aria-label={hydrated && itemCount > 0 ? `Panier, ${itemCount} article(s)` : 'Panier'}
               className="relative flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-4 py-2 rounded-full text-xs transition-colors"
             >
               <ShoppingCart size={14} />
               {hydrated && itemCount > 0 ? (
-                <span className="tabular-nums">{total.toFixed(2)} DT</span>
+                <span className="tabular-nums">{payable.toFixed(2)} DT</span>
               ) : (
                 <span className="hidden sm:inline">Panier</span>
               )}
               {hydrated && itemCount > 0 && (
-                <span className="absolute -top-1.5 -right-1.5 bg-[#1A1A1A] text-foreground text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black ring-2 ring-background">
+                <span className="absolute -top-1.5 -right-1.5 bg-[#1A1A1A] text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-black ring-2 ring-background">
                   {itemCount}
                 </span>
               )}
@@ -71,7 +74,7 @@ export default function WebNavbar() {
         </div>
       </nav>
 
-      <CartDrawer open={cartOpen} onClose={() => setCartOpen(false)} />
+      <CartDrawer />
       <TrackOrderDrawer open={trackOpen} onClose={() => setTrackOpen(false)} />
     </>
   )
