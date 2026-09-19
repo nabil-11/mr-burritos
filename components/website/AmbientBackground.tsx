@@ -1,4 +1,3 @@
-import VideoBackground from './VideoBackground'
 
 /**
  * Slow drifting brand light behind the page.
@@ -63,10 +62,6 @@ export default function AmbientBackground() {
           style={b.style}
         />
       ))}
-
-      {/* Portrait phones only, and only once play() is called — see
-          VideoBackground, which carries its own scrim. */}
-      <VideoBackground />
     </div>
   )
 }

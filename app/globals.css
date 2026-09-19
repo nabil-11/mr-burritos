@@ -11,6 +11,7 @@
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
   --font-heading: var(--font-sans);
+  --font-display: var(--font-marker), var(--font-sans);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -192,10 +193,52 @@
   .ambient-blob { animation: none !important; }
 }
 
-/* The burger loop plays on every viewport. It is a portrait file (834x1112),
-   so on wide screens it is upscaled and cropped hard — kept at low opacity
-   behind a scrim, that reads as texture rather than as a blurry video.
-   Motion is still decoration: anyone who asked for less gets none. */
+
+/* ── Brand lettering ────────────────────────────────────────────────────────
+   The banners set the tone: a black brush stroke carrying white capitals
+   ("GOURMET BURRITOS & MORE"), and hand-drawn orange underlines. Both are
+   plain CSS shapes, so they scale with the text and cost no image. */
+.brush-tag {
+  display: inline-block;
+  background: #111;
+  color: #fff;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  padding: 0.35em 1.1em 0.4em;
+  clip-path: polygon(2% 14%, 18% 4%, 46% 10%, 74% 2%, 98% 12%, 100% 58%, 97% 92%, 70% 100%, 38% 92%, 12% 100%, 0% 80%, 1% 40%);
+}
+.dark .brush-tag,
+.brush-tag.brush-tag-yellow {
+  background: #F5A800;
+  color: #111;
+}
+.marker-underline {
+  position: relative;
+  white-space: nowrap;
+  z-index: 0;
+}
+.marker-underline::after {
+  content: '';
+  position: absolute;
+  left: -0.08em;
+  right: -0.08em;
+  bottom: 0.02em;
+  height: 0.32em;
+  z-index: -1;
+  background: #FF6B00;
+  opacity: 0.85;
+  border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%;
+  transform: rotate(-1.5deg);
+}
+
+/* A gentle wobble for the hero's doodles — decoration, so it stops for anyone
+   who asked for less motion. */
+@keyframes doodle-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50%      { transform: translateY(-4px) rotate(6deg); }
+}
+.doodle { animation: doodle-bob 5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .bg-video { display: none !important; }
+  .doodle { animation: none; }
 }

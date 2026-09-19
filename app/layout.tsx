@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans } from "next/font/google";
+import { Permanent_Marker, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
@@ -8,6 +8,17 @@ const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
   weight: ["400", "500", "600", "700", "800"],
   variable: "--font-sans",
+  display: "swap",
+});
+
+/**
+ * The hand-lettered voice of the brand — the brush "MR BURRITOS" on the sign and
+ * the banners. Headlines only, a few words at a time; body text stays Jakarta.
+ */
+const marker = Permanent_Marker({
+  subsets: ["latin"],
+  weight: "400",
+  variable: "--font-marker",
   display: "swap",
 });
 
@@ -57,7 +68,7 @@ export default function RootLayout({
       lang="fr"
       dir="ltr"
       suppressHydrationWarning
-      className={`${jakarta.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${marker.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-background text-foreground font-sans">
         <ThemeProvider>

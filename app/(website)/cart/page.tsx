@@ -188,7 +188,7 @@ export default function CartPage() {
           Composez votre tacos ou votre burrito — {WEB_PROMO.badge} sur toute commande en ligne.
         </p>
         <Link
-          href="/#composer"
+          href="/#menu"
           className="bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-8 py-3 rounded-full transition-colors"
         >
           Voir le menu
@@ -208,7 +208,7 @@ export default function CartPage() {
     <div className="pt-24 pb-28 lg:pb-16">
       <div className="max-w-5xl mx-auto px-4">
         <Link
-          href="/#composer"
+          href="/#menu"
           className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-[#F5A800] transition-colors"
         >
           <ArrowLeft size={15} /> Continuer mes achats
@@ -375,7 +375,7 @@ export default function CartPage() {
               <h2 className="font-black text-foreground flex items-center gap-2">
                 <ShoppingBag size={16} className="text-[#F5A800]" /> 3. Votre panier
               </h2>
-              <Link href="/#composer" className="text-xs font-bold text-muted-foreground hover:text-[#F5A800]">
+              <Link href="/#menu" className="text-xs font-bold text-muted-foreground hover:text-[#F5A800]">
                 + Ajouter
               </Link>
             </div>

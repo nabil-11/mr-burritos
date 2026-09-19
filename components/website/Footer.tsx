@@ -54,7 +54,7 @@ export default function Footer() {
             </div>
 
             <div className="flex gap-4 mt-5 text-sm">
-              <Link href="/#composer" className="text-muted-foreground hover:text-[#F5A800] transition-colors">
+              <Link href="/#menu" className="text-muted-foreground hover:text-[#F5A800] transition-colors">
                 Commander
               </Link>
               <Link href="/blog" className="text-muted-foreground hover:text-[#F5A800] transition-colors">

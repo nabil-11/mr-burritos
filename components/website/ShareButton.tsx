@@ -55,7 +55,9 @@ export default function ShareButton({
   }
 
   const share = async () => {
-    const link = url ?? (typeof window !== 'undefined' ? window.location.href : '')
+    // A path ("/#menu-tacos") is resolved against the site, so a category can
+    // be shared as a link that opens straight on it.
+    const link = url ? new URL(url, window.location.href).href : window.location.href
     const text = description ? `${description}\n\n${link}` : link
 
     if (typeof navigator !== 'undefined' && navigator.share) {

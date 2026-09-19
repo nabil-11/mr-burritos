@@ -70,20 +70,37 @@ const shortSize = (fr: string) =>
 const meatLabel = (n: number) =>
   n === 1 ? '1 viande' : n === 2 ? '2 viandes · double' : `${n} viandes · triple`
 
+/** The price a category is announced at: its base, or its cheapest dish. */
+export const categoryFrom = (cat: BuilderCategory) =>
+  cat.base ? cat.base.price : Math.min(...cat.products.map((p) => p.price))
+
 export default function ProductBuilder({
   categories,
   onAdd,
   compact = false,
+  initialSlug,
+  onCategoryChange,
 }: {
   categories: BuilderCategory[]
   onAdd: (pick: BuilderPick) => void
   /** Tighter spacing for the backoffice panel, where space is scarce. */
   compact?: boolean
+  /**
+   * Open on this category instead of the grid — a menu chip or a shared
+   * "#menu-tacos" link. The parent remounts the builder (a new `key`) to
+   * jump to another one.
+   */
+  initialSlug?: string
+  /** Told whenever the customer enters a category or goes back to the grid. */
+  onCategoryChange?: (slug: string | null) => void
 }) {
-  const [category, setCategory] = useState<BuilderCategory | null>(null)
+  const initial = initialSlug ? (categories.find((c) => c.slug === initialSlug) ?? null) : null
+  const [category, setCategory] = useState<BuilderCategory | null>(initial)
   const [product, setProduct] = useState<BuilderProduct | null>(null)
   const [stepIndex, setStepIndex] = useState(0)
-  const [size, setSize] = useState<BuilderSupplement | null>(null)
+  const [size, setSize] = useState<BuilderSupplement | null>(
+    () => groupSupplements(initial?.base?.supplements ?? []).sizes[0] ?? null
+  )
   const [meats, setMeats] = useState<Record<string, number>>({})
   const [sauces, setSauces] = useState<BuilderSupplement[]>([])
   const [extras, setExtras] = useState<BuilderSupplement[]>([])
@@ -167,12 +184,14 @@ export default function ProductBuilder({
     setCategory(null)
     setProduct(null)
     resetConfig()
+    onCategoryChange?.(null)
   }
 
   const openCategory = (cat: BuilderCategory) => {
     resetConfig()
     setProduct(null)
     setCategory(cat)
+    onCategoryChange?.(cat.slug)
     const firstSize = groupSupplements(cat.base?.supplements ?? []).sizes[0]
     setSize(firstSize ?? null)
   }
@@ -242,12 +261,91 @@ export default function ProductBuilder({
   const showStack = !!category?.base && groups.viandes.length > 0
 
   // ── Layer 0 — pick a category ─────────────────────────────────────────────
+  if (!category && !compact) {
+    // What the shop is built around — the wraps you compose — gets the big
+    // cards; everything picked off a list shares a denser grid below, so the
+    // whole menu fits in about two screens on a phone instead of eight.
+    const featured = categories.filter((c) => c.base)
+    const others = categories.filter((c) => !c.base)
+    return (
+      <div ref={rootRef} className="space-y-4">
+        {featured.length > 0 && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            {featured.map((cat) => (
+              <div
+                key={cat._id}
+                id={`menu-card-${cat.slug}`}
+                className="group relative h-72 sm:h-96 rounded-[2rem] overflow-hidden shadow-xl shadow-black/20 hover:shadow-2xl transition-all duration-500 hover:-translate-y-1"
+              >
+                <button onClick={() => openCategory(cat)} className="absolute inset-0 w-full h-full text-left" aria-label={`Composer ${cat.name.fr}`}>
+                  <Diaporama images={cat.gallery} alt={cat.name.fr} sizes="(max-width: 640px) 100vw, 520px" className="absolute inset-0" preload />
+                  <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 p-6">
+                    <span className="inline-flex items-center gap-1.5 bg-[#F5A800] text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
+                      <Sparkles size={11} /> À composer
+                    </span>
+                    <h3 className="font-display text-white text-4xl sm:text-5xl leading-none mt-3 flex items-center gap-2">
+                      {cat.name.fr} <span className="text-3xl">{cat.emoji}</span>
+                    </h3>
+                    <p className="text-white/70 text-sm mt-2 line-clamp-2 max-w-sm">{cat.base!.description.fr}</p>
+                    <div className="mt-4 flex items-center justify-between gap-3">
+                      <p className="text-white font-black">
+                        <span className="text-white/50 text-xs font-bold uppercase tracking-wider mr-1.5">dès</span>
+                        <span className="text-2xl text-[#F5A800]">{cat.base!.price.toFixed(2)}</span>
+                        <span className="text-sm text-[#F5A800]"> DT</span>
+                        <span className="block text-white/50 text-xs font-semibold mt-0.5">M, XL ou XXL · 1 à 3 viandes</span>
+                      </p>
+                      <span className="shrink-0 inline-flex items-center gap-1.5 bg-white text-black font-black text-sm px-4 py-2.5 rounded-full group-hover:bg-[#F5A800] transition-colors">
+                        Composer →
+                      </span>
+                    </div>
+                  </div>
+                </button>
+                <ShareButton
+                  title={`${cat.emoji} ${cat.name.fr} — Mr. Burritos`}
+                  description={cat.base!.description.fr}
+                  image={cat.gallery[0]}
+                  url={`/#menu-${cat.slug}`}
+                  className="absolute top-4 right-4 z-10 w-9 h-9 rounded-full grid place-items-center bg-black/45 backdrop-blur-md text-white/80 hover:text-[#F5A800] hover:bg-black/65 border border-white/15"
+                />
+              </div>
+            ))}
+          </div>
+        )}
+        {others.length > 0 && (
+          <div className="grid gap-3 grid-cols-2 sm:grid-cols-3">
+            {others.map((cat) => (
+              <button
+                key={cat._id}
+                id={`menu-card-${cat.slug}`}
+                onClick={() => openCategory(cat)}
+                aria-label={`Choisir ${cat.name.fr}`}
+                className="group relative h-40 sm:h-48 rounded-3xl overflow-hidden text-left shadow-lg shadow-black/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
+              >
+                <Diaporama images={cat.gallery} alt={cat.name.fr} sizes="(max-width: 640px) 50vw, 340px" className="absolute inset-0" />
+                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
+                  <p className="text-white font-black text-lg sm:text-xl leading-none flex items-center gap-1.5">
+                    <span>{cat.emoji}</span> {cat.name.fr}
+                  </p>
+                  <p className="text-[11px] sm:text-xs mt-1.5 font-bold text-white/60">
+                    {cat.products.length} choix · <span className="text-[#F5A800]">dès {categoryFrom(cat).toFixed(2)} DT</span>
+                  </p>
+                </div>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
   if (!category) {
     return (
       <div ref={rootRef} className={`grid gap-4 ${compact ? 'grid-cols-2 sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
         {categories.map((cat) => {
           const composable = !!cat.base
-          const from = composable ? cat.base!.price : Math.min(...cat.products.map((p) => p.price))
+          const from = categoryFrom(cat)
           const blurb = composable
             ? cat.base!.description.fr
             : `${cat.products.length} choix — dès ${from.toFixed(2)} DT`

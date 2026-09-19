@@ -40,7 +40,7 @@ export default function CartDrawer() {
               Composez un tacos ou un burrito — {WEB_PROMO.badge} sur toute commande en ligne.
             </p>
             <Link
-              href="/#composer"
+              href="/#menu"
               onClick={close}
               className="mt-2 inline-flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-5 py-2.5 rounded-full text-sm transition-colors"
             >
@@ -54,7 +54,7 @@ export default function CartDrawer() {
                 <CartLine key={item.id} item={item} problem={problems[item.id]} compact />
               ))}
               <Link
-                href="/#composer"
+                href="/#menu"
                 onClick={close}
                 className="block text-center text-sm font-bold text-muted-foreground hover:text-[#F5A800] py-2 transition-colors"
               >
