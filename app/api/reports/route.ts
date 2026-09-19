@@ -141,6 +141,21 @@ export async function GET(req: NextRequest) {
       bySource[key].net += orderNet(o)
     }
 
+    // By payment — what the till recorded. Web orders and orders from before
+    // it asked read as "non renseigne", never as cash.
+    const byPayment = {
+      cash: { count: 0, revenue: 0 },
+      card: { count: 0, revenue: 0 },
+      other: { count: 0, revenue: 0 },
+      unknown: { count: 0, revenue: 0 },
+    }
+    for (const o of orders) {
+      const m = (o.payment as { method?: string } | undefined)?.method
+      const key = m === 'cash' || m === 'card' || m === 'other' ? m : 'unknown'
+      byPayment[key].count++
+      byPayment[key].revenue = round2(byPayment[key].revenue + (o.total || 0))
+    }
+
     // Top products — from every order that lists its items: caisse, borne and
     // web alike, delivered or not. Platform orders keyed in at the till carry
     // an amount rather than items, and simply add nothing here.
@@ -295,6 +310,7 @@ export async function GET(req: NextRequest) {
         net: deliveryNet,
       },
       bySource,
+      byPayment,
       byDeliveryCompany,
       topProducts,
       byDay,

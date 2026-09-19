@@ -1,20 +1,15 @@
+import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import '@/lib/models/User' // register User schema so populate('assignedDelivery') resolves
 import { sendPushToAll } from '@/lib/fcm'
 import { orderBus } from '@/lib/orderBus'
-import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
+import { ORDER_SOURCE_LABELS } from '@/lib/orderSource'
+import { isDuplicateKey, nextOrderNumber } from '@/lib/orderNumber'
+import { OrderInputError, priceOrder } from '@/lib/orderPricing'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
 import { getOpenRecette } from '@/lib/recette'
-
-function generateOrderNumber(): string {
-  const now = new Date()
-  const date = now.toISOString().slice(0, 10).replace(/-/g, '')
-  const rand = Math.floor(Math.random() * 10000).toString().padStart(4, '0')
-  return `MB-${date}-${rand}`
-}
-
 
 export async function GET(req: NextRequest) {
   try {
@@ -50,47 +45,75 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * POST /api/orders — the website, the kiosk and the till all place orders here.
+ *
+ * The order is built by lib/orderPricing from what the menu says, not from
+ * what the client says: prices, promo, remise bounds and the fields a channel
+ * may set are all decided server-side. A client whose total disagreed is told
+ * so in `repriced` — the order itself is never lost over it.
+ */
 export async function POST(req: NextRequest) {
   try {
     await connectDB()
-    const body = await req.json()
-    const orderNumber = generateOrderNumber()
-    // An unknown or missing source falls back to the public site — the only
-    // caller that has no reason to announce itself.
-    const source = normalizeOrderSource(body.source)
-    // An order created already confirmed (caisse, borne) never passes through
-    // the status route, so nothing else would ever stamp `confirmedAt` — and
-    // that stamp is what the preparation countdown and the overdue sweep both
-    // count from.
-    const startedNow = body.status === 'confirmed' || body.status === 'preparing'
-    const confirmedAt = body.confirmedAt ?? (startedNow ? new Date() : undefined)
+    const body = await req.json().catch(() => null)
+    if (!body || typeof body !== 'object') {
+      return NextResponse.json({ error: 'Commande illisible' }, { status: 400 })
+    }
+    const { doc, claimedTotal } = await priceOrder(body as Record<string, unknown>)
+
+    // An order created already in hand (caisse, borne) never passes through
+    // the status route, so nothing else would stamp `confirmedAt` — and that
+    // stamp is what the preparation countdown and the overdue sweep count from.
+    const confirmedAt = doc.status === 'confirmed' || doc.status === 'preparing' ? new Date() : undefined
     // The order falls into whichever till session is open right now. None open
     // means none stamped: a sale is never refused because the caisse was not
     // started, it simply lands outside the day's recette.
     const recette = await getOpenRecette()
-    const order = await Order.create({
-      ...body,
-      source,
-      confirmedAt,
-      recette: recette?._id ?? null,
-      orderNumber,
-    })
+
+    let order
+    for (let attempt = 0; ; attempt++) {
+      try {
+        order = await Order.create({
+          ...doc,
+          confirmedAt,
+          recette: recette?._id ?? null,
+          orderNumber: await nextOrderNumber(),
+        })
+        break
+      } catch (err) {
+        if (isDuplicateKey(err) && attempt < 5) continue
+        throw err
+      }
+    }
 
     // ── Instant in-process push to all connected SSE streams ──────────────
-    // Emitting synchronously here means any manager with an open SSE connection
-    // on the SAME server instance receives the notification in < 10 ms.
     orderBus.emit('new-order', order.toObject())
 
     // ── FCM push (fire-and-forget) — reaches managers on other instances ───
-    const typeLabel = body.type === 'delivery' ? 'Livraison' : 'À emporter'
+    const typeLabel = doc.type === 'delivery' ? 'Livraison' : 'À emporter'
     sendPushToAll(
       '🌯 Nouvelle commande !',
-      `#${orderNumber} — ${ORDER_SOURCE_LABELS[source]} — ${typeLabel} — ${body.total ?? '?'} DT`,
-      { orderId: String(order._id), orderNumber }
+      `#${order.orderNumber} — ${ORDER_SOURCE_LABELS[doc.source]} — ${typeLabel} — ${doc.total} DT`,
+      { orderId: String(order._id), orderNumber: order.orderNumber }
     ).catch(() => {})
 
-    return NextResponse.json(order, { status: 201 })
+    const saved = order.toObject()
+    return NextResponse.json(
+      claimedTotal !== null ? { ...saved, repriced: { claimed: claimedTotal, total: doc.total } } : saved,
+      { status: 201 }
+    )
   } catch (e: unknown) {
+    if (e instanceof OrderInputError) return NextResponse.json({ error: e.message }, { status: e.status })
+    // A field the schema requires is missing — a customer with no name, say.
+    // The caller's mistake, answered as one: not a server error.
+    if (e instanceof mongoose.Error.ValidationError) {
+      const fields = Object.keys(e.errors)
+      const error = fields.some((f) => f.startsWith('customer.'))
+        ? 'Nom et telephone du client requis'
+        : `Commande incomplete (${fields.join(', ')})`
+      return NextResponse.json({ error }, { status: 400 })
+    }
     const msg = e instanceof Error ? e.message : 'Erreur serveur'
     return NextResponse.json({ error: msg }, { status: 500 })
   }

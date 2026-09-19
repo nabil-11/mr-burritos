@@ -86,6 +86,14 @@ const OrderSchema = new Schema(
     // order accepted at the till would sit in "en préparation" until the
     // overdue sweep cancelled it.
     autoReady: { type: Boolean, default: false },
+    // How the customer paid, when the till recorded it. Absent on web orders
+    // and on anything taken before the till asked: such an order reads as "not
+    // recorded", never as cash. `change` is what the cashier handed back.
+    payment: {
+      method: { type: String, enum: ['cash', 'card', 'other'] },
+      received: { type: Number },
+      change: { type: Number },
+    },
     // Till session this order belongs to. Stamped at creation: the order falls
     // into whichever recette was open at that instant and never moves to
     // another one. `null` means no session was open when it came in — a sale is

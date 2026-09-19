@@ -29,6 +29,8 @@ const TotalsSchema = new Schema(
     // here would quietly rewrite its drawer as empty. See normalizeTotals.
     /** Cash taken on the premises — caisse and borne, no delivery platform. */
     cashSales: { type: Number },
+    /** Sales paid by card — takings that never reach the drawer. */
+    cardSales: { type: Number },
     achats: { type: Number },
     depenses: { type: Number },
     /** Net takings minus achats and dépenses. */

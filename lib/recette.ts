@@ -55,14 +55,15 @@ export interface RecetteTotals {
   deliveryFees: number
   commission: number
   /**
-   * Cash taken on the premises.
+   * Sales paid in cash — what went into the drawer.
    *
-   * Payment method is not recorded anywhere, so this is the honest
-   * approximation: orders taken on the premises (caisse, borne) that no
-   * delivery platform was involved in — the ones that are paid in cash at the
-   * counter.
+   * Read off the payment the till records. Orders from before it asked keep
+   * the approximation they were counted with: taken on the premises (caisse,
+   * borne), no delivery platform involved.
    */
   cashSales: number
+  /** Sales paid by card: takings that never touch the drawer. */
+  cardSales: number
   /** Goods paid for out of the drawer — cancelled entries excluded. */
   achats: number
   /** Everything else paid out of the drawer — cancelled entries excluded. */
@@ -84,6 +85,7 @@ type OrderLike = {
   discount?: { amount?: number } | null
   surcharge?: { amount?: number } | null
   deliveryCompany?: { name?: string; commission?: number } | null
+  payment?: { method?: string } | null
 }
 
 type MovementLike = {
@@ -106,6 +108,7 @@ export function emptyTotals(): RecetteTotals {
     deliveryFees: 0,
     commission: 0,
     cashSales: 0,
+    cardSales: 0,
     achats: 0,
     depenses: 0,
     cashExpected: 0,
@@ -119,7 +122,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 
 const MONEY_KEYS = [
   'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
-  'cashSales', 'achats', 'depenses', 'cashExpected', 'solde',
+  'cashSales', 'cardSales', 'achats', 'depenses', 'cashExpected', 'solde',
 ] as const
 
 /**
@@ -159,8 +162,11 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
     totals.bySource[source].count++
     totals.bySource[source].revenue += total
 
+    const method = order.payment?.method
     const onPremises = source === 'counter' || source === 'kiosk'
-    if (onPremises && !order.deliveryCompany?.name) totals.cashSales += total
+    const inDrawer = method ? method === 'cash' : onPremises && !order.deliveryCompany?.name
+    if (inDrawer) totals.cashSales += total
+    if (method === 'card') totals.cardSales += total
   }
 
   // A cancelled entry stays on the record but moves no money.
@@ -203,14 +209,12 @@ export async function recetteOrders(id: unknown) {
 function normalizeTotals(raw: RecetteTotals): RecetteTotals {
   const withToObject = raw as unknown as { toObject?: () => RecetteTotals }
   const totals = typeof withToObject.toObject === 'function' ? withToObject.toObject() : raw
-  if (typeof totals.cashSales === 'number') return totals
-  return {
-    ...totals,
-    cashSales: totals.cashExpected ?? 0,
-    achats: 0,
-    depenses: 0,
-    solde: totals.net ?? 0,
-  }
+  const base =
+    typeof totals.cashSales === 'number'
+      ? totals
+      : { ...totals, cashSales: totals.cashExpected ?? 0, achats: 0, depenses: 0, solde: totals.net ?? 0 }
+  // Card payments were not recorded before cardSales existed.
+  return { ...base, cardSales: base.cardSales ?? 0 }
 }
 
 /**

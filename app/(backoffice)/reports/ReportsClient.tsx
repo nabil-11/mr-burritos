@@ -29,8 +29,18 @@ type ReportData = {
 
 type Preset = 'today' | 'week' | 'month' | 'thisMonth' | 'custom'
 
+/**
+ * YYYY-MM-DD on the shop's clock. toISOString() gives the UTC date: a day
+ * behind in the first hour after midnight, and — for "Ce mois-ci" — the 1st
+ * at local midnight becomes the last day of the month before.
+ */
+function dayString(d: Date) {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+}
+
 function todayStr() {
-  return new Date().toISOString().slice(0, 10)
+  return dayString(new Date())
 }
 
 function getDateRange(preset: Preset, customFrom?: string, customTo?: string): { from: string; to: string } {
@@ -39,15 +49,15 @@ function getDateRange(preset: Preset, customFrom?: string, customTo?: string): {
   if (preset === 'today') return { from: today, to: today }
   if (preset === 'week') {
     const d = new Date(now); d.setDate(d.getDate() - 6)
-    return { from: d.toISOString().slice(0, 10), to: today }
+    return { from: dayString(d), to: today }
   }
   if (preset === 'month') {
     const d = new Date(now); d.setDate(d.getDate() - 29)
-    return { from: d.toISOString().slice(0, 10), to: today }
+    return { from: dayString(d), to: today }
   }
   if (preset === 'thisMonth') {
     const first = new Date(now.getFullYear(), now.getMonth(), 1)
-    return { from: first.toISOString().slice(0, 10), to: today }
+    return { from: dayString(first), to: today }
   }
   // custom
   return { from: customFrom || today, to: customTo || today }

@@ -121,7 +121,12 @@ export default function CartPage() {
         // after the online discount.
         body: JSON.stringify({ customer: { name: form.name, phone: form.phone, address: form.address }, items: orderItems, subtotal: total, discount, total: payable, type, source: 'website', notes: form.notes, deliveryFee: 0 }),
       })
-      if (!res.ok) throw new Error()
+      // The server says why an order was refused (an item no longer on the
+      // menu, an empty basket) — worth more to the customer than "try again".
+      if (!res.ok) {
+        const refusal = await res.json().catch(() => null)
+        throw new Error(refusal?.error || 'Une erreur est survenue, réessayez')
+      }
       const order = await res.json()
       clearCart()
 
@@ -129,11 +134,15 @@ export default function CartPage() {
       const waPhone = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? '').replace(/\D/g, '')
       if (waPhone) {
         const typeLabel = type === 'delivery' ? 'Livraison' : 'À emporter'
-        const itemLines = items.map((item) => {
-          const suppTotal = item.selectedSupplements.reduce((s, x) => s + x.price, 0)
-          const lineTotal = ((item.price + suppTotal) * item.quantity).toFixed(2)
-          const supps = item.selectedSupplements.length ? ` (${item.selectedSupplements.map((s) => s.name.fr).join(', ')})` : ''
-          return `- ${item.quantity}x ${item.name.fr}${supps} = ${lineTotal} DT`
+        // Written from the order the server kept — its prices are the ones
+        // the shop will charge, whatever the basket in this browser said.
+        type SavedLine = { quantity: number; unitPrice: number; productName?: { fr?: string }; supplements?: { price?: number; name?: { fr?: string } }[] }
+        const itemLines = (order.items as SavedLine[]).map((item) => {
+          const supps = item.supplements ?? []
+          const suppTotal = supps.reduce((s, x) => s + (x.price ?? 0), 0)
+          const lineTotal = ((item.unitPrice + suppTotal) * item.quantity).toFixed(2)
+          const names = supps.length ? ` (${supps.map((s) => s.name?.fr).filter(Boolean).join(', ')})` : ''
+          return `- ${item.quantity}x ${item.productName?.fr ?? ''}${names} = ${lineTotal} DT`
         }).join('\n')
         const waText =
           `🌯 Nouvelle commande!\n` +
@@ -143,15 +152,15 @@ export default function CartPage() {
           (form.address ? `\nAdresse: ${form.address}` : '') +
           `\n\nArticles:\n${itemLines}` +
           (form.notes ? `\n\nNotes: ${form.notes}` : '') +
-          `\n\nSous-total: ${total.toFixed(2)} DT` +
-          `\n${WEB_PROMO.label} (${WEB_PROMO.badge}): -${discount.amount.toFixed(2)} DT` +
-          `\nTotal: ${payable.toFixed(2)} DT`
+          `\n\nSous-total: ${Number(order.subtotal).toFixed(2)} DT` +
+          `\n${WEB_PROMO.label} (${WEB_PROMO.badge}): -${Number(order.discount?.amount ?? 0).toFixed(2)} DT` +
+          `\nTotal: ${Number(order.total).toFixed(2)} DT`
         window.open(`https://wa.me/${waPhone}?text=${encodeURIComponent(waText)}`, '_blank')
       }
 
       router.push(`/order/${order._id}`)
-    } catch {
-      toast.error('Une erreur est survenue, réessayez')
+    } catch (e) {
+      toast.error(e instanceof Error && e.message ? e.message : 'Une erreur est survenue, réessayez')
     } finally {
       setLoading(false)
     }

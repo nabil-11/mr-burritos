@@ -70,6 +70,18 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // Added at the counter rather than taken off — see the Order model.
   const surcharge = (order.surcharge ?? {}) as { label?: string; amount?: number }
   const surchargeAmount = Number(surcharge.amount ?? 0)
+  // How it was paid, when the till recorded it: the customer checks their
+  // change against the paper, not against the cashier's memory.
+  const payment = (order.payment ?? {}) as { method?: string; received?: number | null; change?: number | null }
+  const paidAs = payment.method === 'cash' ? 'ESPECES' : payment.method === 'card' ? 'CARTE' : payment.method === 'other' ? 'AUTRE' : ''
+  const paymentHtml = paidAs
+    ? `<tr><td class="tot-label" style="font-weight:400">PAYE ${paidAs}</td><td class="tot-val" style="font-weight:400">${
+        typeof payment.received === 'number' ? `${payment.received.toFixed(2)} DT` : ''
+      }</td></tr>` +
+      (typeof payment.change === 'number' && payment.change > 0
+        ? `<tr><td class="tot-label">RENDU</td><td class="tot-val">${payment.change.toFixed(2)} DT</td></tr>`
+        : '')
+    : ''
   const notes = order.notes as string | undefined
   const prepMinutes = prepParam ? Number(prepParam) : Number(order.preparationDuration ?? 0)
 
@@ -214,7 +226,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     <table class="info-table"><tbody><tr><td><div class="lbl">CLIENT</div><div class="val">${esc(customer.name)}</div></td>
     <td style="text-align:right"><div class="lbl">TEL</div><div class="val">${esc(customer.phone)}</div></td></tr>${addrHtml}</tbody></table><hr class="dash">
     <div class="section-head">Articles commandes</div><table class="items"><tbody>${rows}</tbody></table><hr class="dash">
-    <table style="width:100%"><tbody>${discountAmount > 0 || surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">SOUS-TOTAL</td><td class="tot-val" style="font-weight:400">${subtotal.toFixed(2)} DT</td></tr>` : ''}${discountAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(discount.label || 'REMISE')}${discount.rate ? ` (-${Math.round(discount.rate * 100)}%)` : ''}</td><td class="tot-val" style="font-weight:400">-${discountAmount.toFixed(2)} DT</td></tr>` : ''}${surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(surcharge.label || 'SUPPLEMENT')}</td><td class="tot-val" style="font-weight:400">+${surchargeAmount.toFixed(2)} DT</td></tr>` : ''}<tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr></tbody></table>
+    <table style="width:100%"><tbody>${discountAmount > 0 || surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">SOUS-TOTAL</td><td class="tot-val" style="font-weight:400">${subtotal.toFixed(2)} DT</td></tr>` : ''}${discountAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(discount.label || 'REMISE')}${discount.rate ? ` (-${Math.round(discount.rate * 100)}%)` : ''}</td><td class="tot-val" style="font-weight:400">-${discountAmount.toFixed(2)} DT</td></tr>` : ''}${surchargeAmount > 0 ? `<tr><td class="tot-label" style="font-weight:400">${esc(surcharge.label || 'SUPPLEMENT')}</td><td class="tot-val" style="font-weight:400">+${surchargeAmount.toFixed(2)} DT</td></tr>` : ''}<tr><td class="tot-label">TOTAL</td><td class="tot-val">${total.toFixed(2)} DT</td></tr>${paymentHtml}</tbody></table>
     ${notesHtml}<hr class="dash"><div class="thanks">Merci pour votre commande !</div>${promo?.html ?? ''}
     <button class="printbtn" onclick="window.print()">🖨️ Imprimer</button>
     ${autoprint ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},350)})</script>' : ''}
