@@ -11,6 +11,7 @@ import {
   headline,
   isFinal,
   progressSteps,
+  payableTotal,
   readyAt,
   shopClock,
   stepIndex,
@@ -134,7 +135,7 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
   const reached = stepIndex(order.status)
   const cancelled = order.status === 'cancelled'
   const delivery = order.type === 'delivery'
-  const toPay = Math.round((order.total + (delivery ? order.deliveryFee : 0)) * 100) / 100
+  const toPay = payableTotal(order)
 
   const waText =
     `🌯 Commande ${order.orderNumber}\n` +

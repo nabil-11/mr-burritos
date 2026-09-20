@@ -27,6 +27,13 @@ export interface TrackedOrder {
 
 const SHOP_TZ = 'Africa/Tunis'
 
+/**
+ * What the customer actually hands over: the food, plus the delivery fee once
+ * the shop has set it. The tracker and the order page must not disagree.
+ */
+export const payableTotal = (order: Pick<TrackedOrder, 'total' | 'deliveryFee' | 'type'>) =>
+  Math.round((Number(order.total ?? 0) + (order.type === 'delivery' ? Number(order.deliveryFee ?? 0) : 0)) * 100) / 100
+
 /** Nothing changes on an order once it is here, so the tracker stops asking. */
 export const isFinal = (status: string) => status === 'delivered' || status === 'cancelled'
 

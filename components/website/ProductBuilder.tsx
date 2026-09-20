@@ -454,7 +454,7 @@ export default function ProductBuilder({
       </div>
 
       {/* Step rail — a completed layer stays clickable so nothing is a dead end */}
-      <div className={`flex items-center gap-1 ${padX} py-4 border-b overflow-x-auto`}>
+      <div className={`flex items-center gap-1 ${padX} py-4 border-b overflow-x-auto scrollbar-hide`}>
         {steps.map((key, i) => {
           const done = i < safeIndex
           const current = i === safeIndex

@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Search, PackageSearch, ChevronRight, RefreshCw } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { normalizeTnPhone } from '@/lib/phone'
-import { STATUS_SHORT, TrackedOrder, isFinal, readyAt, shopClock } from '@/lib/orderProgress'
+import { STATUS_SHORT, TrackedOrder, isFinal, payableTotal, readyAt, shopClock } from '@/lib/orderProgress'
 import { loadCustomer, loadOrders } from '@/lib/webMemory'
 
 const BADGE: Record<string, string> = {
@@ -42,7 +42,7 @@ function OrderRow({ order, onOpen }: { order: TrackedOrder; onOpen: () => void }
           {STATUS_SHORT[order.status] ?? 'En attente'}
           {eta ? ` · ${shopClock(eta)}` : ''}
         </span>
-        <span className="text-xs font-black text-foreground tabular-nums">{Number(order.total ?? 0).toFixed(2)} DT</span>
+        <span className="text-xs font-black text-foreground tabular-nums">{payableTotal(order).toFixed(2)} DT</span>
       </span>
       <ChevronRight size={16} className="text-muted-foreground shrink-0" />
     </Link>

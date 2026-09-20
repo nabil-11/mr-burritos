@@ -167,10 +167,11 @@ export default async function HomePage() {
               <span className="brush-tag brush-tag-yellow text-[10px] sm:text-[11px]">Tacos · Burritos · Burgers</span>
             </div>
 
-            <h1 className="font-display text-[2.9rem] leading-[0.98] sm:text-6xl lg:text-[4.25rem] mt-4">
-              Composez-le.
-              <br />
-              <span className="text-[#F5A800]">On le charge.</span>
+            {/* Each line held whole: the marker face is wide, and "Composez-" /
+                "le." split at the hyphen on a phone. */}
+            <h1 className="font-display text-[2.35rem] leading-[1.02] sm:text-6xl lg:text-[4.25rem] mt-4">
+              <span className="block whitespace-nowrap">Composez-le.</span>
+              <span className="block whitespace-nowrap text-[#F5A800]">On le charge.</span>
             </h1>
 
             <p className="mt-4 text-white/80 text-base sm:text-lg max-w-md leading-relaxed">
@@ -222,7 +223,7 @@ export default async function HomePage() {
           The chips stay under the navbar while the menu scrolls, and any of
           them opens its category directly. */}
       <section id="menu" className="px-4 pb-20 scroll-mt-16">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <div className="mb-5">
             <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A800]">Le menu</p>
             <h2 className="font-display text-4xl sm:text-5xl text-foreground mt-1 leading-tight">
@@ -250,7 +251,7 @@ export default async function HomePage() {
 
       {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────── */}
       <section className="px-4 pb-20">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className="font-display text-3xl sm:text-4xl text-foreground text-center">Comment ça marche</h2>
           <ol className="mt-8 grid md:grid-cols-3 gap-4 relative">
             {STEPS.map((s, i) => (
@@ -280,14 +281,14 @@ export default async function HomePage() {
           The shop's posters, whole: their lettering runs to the edges, so
           they are shown at their own shape, side by side, never cropped. */}
       <section className="pb-20">
-        <div className="max-w-5xl mx-auto px-4 flex items-end justify-between gap-4 mb-5">
+        <div className="max-w-6xl mx-auto px-4 flex items-end justify-between gap-4 mb-5">
           <div>
             <p className="brush-tag text-[10px] sm:text-[11px]">Fresh · Loaded · Irresistible</p>
             <h2 className="font-display text-3xl sm:text-4xl text-foreground mt-3">L&apos;univers Mr. Burritos</h2>
           </div>
           <DoodleHeart className="doodle w-8 h-8 text-[#FF6B00] shrink-0 mb-1" />
         </div>
-        <div className="max-w-5xl mx-auto px-4 flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
+        <div className="max-w-6xl mx-auto px-4 flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
           {POSTERS.map((p) => (
             <div key={p.src} className="snap-start shrink-0 overflow-hidden rounded-3xl border border-border shadow-lg shadow-black/10">
               <Image
@@ -307,7 +308,7 @@ export default async function HomePage() {
           Approved reviews and real order counts only — nothing decorative. */}
       {(reviews.count > 0 || stats.prepared > 0) && (
         <section className="px-4 pb-20">
-          <div className="max-w-5xl mx-auto rounded-[2rem] border border-border bg-card p-6 sm:p-8">
+          <div className="max-w-6xl mx-auto rounded-[2rem] border border-border bg-card p-6 sm:p-8">
             <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
               <div>
                 <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A800]">Ils en parlent</p>
@@ -367,7 +368,7 @@ export default async function HomePage() {
 
       {/* ── NOUS TROUVER ──────────────────────────────────────────────── */}
       <section id="infos" className="px-4 pb-20 scroll-mt-16">
-        <div className="max-w-5xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <h2 className="font-display text-3xl sm:text-4xl text-foreground mb-6">Nous trouver</h2>
           <div className="grid md:grid-cols-2 gap-5 items-start">
             <div className="rounded-3xl overflow-hidden border border-border">
@@ -438,7 +439,11 @@ export default async function HomePage() {
 
       {/* ── DERNIER APPEL ─────────────────────────────────────────────── */}
       <section className="px-4 pb-24">
-        <div className="relative max-w-5xl mx-auto overflow-hidden rounded-[2rem] bg-linear-to-br from-[#FF6B00] via-[#F58A00] to-[#F5A800] px-6 py-10 sm:px-12 sm:py-12 text-black">
+        <div className="relative max-w-6xl mx-auto overflow-hidden rounded-[2rem] bg-linear-to-br from-[#FF6B00] via-[#F58A00] to-[#F5A800] px-6 py-10 sm:px-12 sm:py-12 text-black">
+          {/* The tacos again, tilted like a polaroid — the band's reason to be clicked. */}
+          <div className="hidden md:block absolute right-10 top-1/2 -translate-y-1/2 rotate-6 w-72 lg:w-80 aspect-4/3 rounded-3xl overflow-hidden border-[6px] border-white shadow-2xl shadow-black/30">
+            <Image src="/hero-tacos.jpg" alt="" fill sizes="320px" className="object-cover object-[58%_center]" />
+          </div>
           <DoodleStar className="doodle absolute top-5 right-8 w-9 h-9 text-black/25" />
           <DoodleHeart className="doodle absolute bottom-6 right-24 w-7 h-7 text-black/20 [animation-delay:1.5s]" />
           <DoodleSparkle className="absolute -bottom-3 left-1/2 w-16 h-16 text-white/25" />
