@@ -3,6 +3,7 @@ import { connectDB } from './mongodb'
 import { Order } from './models/Order'
 import { Recette } from './models/Recette'
 import { ORDER_SOURCES, type OrderSource } from './orderSource'
+import { MOVEMENT_KINDS, type MovementKind, isMovementKind } from './movementKinds'
 
 /**
  * Till sessions ("recettes") and their figures.
@@ -17,10 +18,16 @@ import { ORDER_SOURCES, type OrderSource } from './orderSource'
  * the kiosk or sent from the website. The breakdown by origin, computed below,
  * is what tells them apart.
  *
- * Cash also leaves the drawer while the service runs — the bread bought at
- * nine, the rider paid at noon. Those are recorded on the session itself as
- * achats and dépenses (`mouvements`), so the count at closing is measured
- * against what the drawer should really hold, not against sales alone.
+ * Cash also moves while the service runs, both ways — the bread bought at
+ * nine, the rider paid at noon, the 50 DT of change put in at one o'clock
+ * because the drawer had run out of small notes. All of it is recorded on the
+ * session itself (`mouvements`), so the count at closing is measured against
+ * what the drawer should really hold, not against sales alone.
+ *
+ * Two of those four cost money (achat, dépense) and two only move it (apport,
+ * retrait) — see lib/movementKinds. The distinction is the whole point: a
+ * drawer topped up with 50 DT holds 50 DT more, but the service earned not a
+ * millime more for it.
  */
 
 /** An error carrying the HTTP status the API should answer with. */
@@ -32,8 +39,8 @@ export class RecetteError extends Error {
   }
 }
 
-export const MOVEMENT_KINDS = ['achat', 'depense'] as const
-export type MovementKind = (typeof MOVEMENT_KINDS)[number]
+export { MOVEMENT_KINDS }
+export type { MovementKind }
 
 export interface Bucket {
   count: number
@@ -68,9 +75,13 @@ export interface RecetteTotals {
   achats: number
   /** Everything else paid out of the drawer — cancelled entries excluded. */
   depenses: number
+  /** Cash added to the drawer mid-service. Not a sale: it buys nothing. */
+  apports: number
+  /** Cash taken out of the drawer unspent — bank, safe, owner. Not an expense. */
+  retraits: number
   /** What the drawer should hold on top of the opening float. */
   cashExpected: number
-  /** Net takings once achats and dépenses are paid. */
+  /** Net takings once achats and dépenses are paid. Top-ups change nothing here. */
   solde: number
   byType: Record<'delivery' | 'pickup', Bucket>
   bySource: Record<OrderSource | 'unknown', Bucket>
@@ -111,6 +122,8 @@ export function emptyTotals(): RecetteTotals {
     cardSales: 0,
     achats: 0,
     depenses: 0,
+    apports: 0,
+    retraits: 0,
     cashExpected: 0,
     solde: 0,
     byType: { delivery: { count: 0, revenue: 0 }, pickup: { count: 0, revenue: 0 } },
@@ -122,7 +135,8 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 
 const MONEY_KEYS = [
   'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
-  'cashSales', 'cardSales', 'achats', 'depenses', 'cashExpected', 'solde',
+  'cashSales', 'cardSales', 'achats', 'depenses', 'apports', 'retraits',
+  'cashExpected', 'solde',
 ] as const
 
 /**
@@ -175,9 +189,14 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
     const amount = Number(movement.amount) || 0
     if (movement.kind === 'achat') totals.achats += amount
     else if (movement.kind === 'depense') totals.depenses += amount
+    else if (movement.kind === 'apport') totals.apports += amount
+    else if (movement.kind === 'retrait') totals.retraits += amount
   }
 
-  totals.cashExpected = totals.cashSales - totals.achats - totals.depenses
+  // The drawer counts every movement; the result counts only what was spent.
+  // Putting 50 DT of change in makes the drawer heavier, not the day better.
+  totals.cashExpected =
+    totals.cashSales + totals.apports - totals.retraits - totals.achats - totals.depenses
   totals.solde = totals.net - totals.achats - totals.depenses
 
   // Sums of prices drift into 12.300000000000001; a report shows centimes.
@@ -213,8 +232,14 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
     typeof totals.cashSales === 'number'
       ? totals
       : { ...totals, cashSales: totals.cashExpected ?? 0, achats: 0, depenses: 0, solde: totals.net ?? 0 }
-  // Card payments were not recorded before cardSales existed.
-  return { ...base, cardSales: base.cardSales ?? 0 }
+  // Card payments, top-ups and withdrawals each arrived after some sessions
+  // had already been closed; those sessions had none of them.
+  return {
+    ...base,
+    cardSales: base.cardSales ?? 0,
+    apports: base.apports ?? 0,
+    retraits: base.retraits ?? 0,
+  }
 }
 
 /**
@@ -236,6 +261,21 @@ export async function recetteTotals(recette: {
 }
 
 /**
+ * What the drawer should hold at this instant: the float it opened with, plus
+ * everything that came in, less everything that went out.
+ *
+ * The figure a cashier can check against the notes in front of them — and the
+ * one an achat is weighed against before it is recorded, since a drawer that
+ * does not hold 40 DT cannot pay 40 DT of bread.
+ */
+export function cashInDrawer(
+  recette: { openingFloat?: number },
+  totals: Pick<RecetteTotals, 'cashExpected'>
+): number {
+  return round2((recette.openingFloat || 0) + totals.cashExpected)
+}
+
+/**
  * Difference between the cash counted at closing and what was expected.
  * `null` while nothing has been counted — an uncounted drawer is not a
  * balanced one.
@@ -245,7 +285,7 @@ export function cashDifference(
   totals: RecetteTotals
 ): number | null {
   if (typeof recette.closingCash !== 'number') return null
-  return round2(recette.closingCash - ((recette.openingFloat || 0) + totals.cashExpected))
+  return round2(recette.closingCash - cashInDrawer(recette, totals))
 }
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -357,9 +397,9 @@ export async function closeRecette(id: string, input: CloseInput) {
   return recette
 }
 
-// ── Sorties de caisse ───────────────────────────────────────────────────────
+// ── Mouvements de caisse ────────────────────────────────────────────────────
 
-/** Above this, a typing slip is far likelier than a real cash-out. */
+/** Above this, a typing slip is far likelier than a real movement. */
 const MAX_MOVEMENT = 100_000
 
 export interface MovementInput {
@@ -371,9 +411,9 @@ export interface MovementInput {
 }
 
 function cleanMovement(input: MovementInput) {
-  const kind = String(input.kind ?? '')
-  if (!(MOVEMENT_KINDS as readonly string[]).includes(kind)) {
-    throw new RecetteError('Type de sortie invalide : achat ou dépense', 400)
+  const kind = input.kind
+  if (!isMovementKind(kind)) {
+    throw new RecetteError('Type de mouvement invalide : achat, dépense, apport ou retrait', 400)
   }
   const label = typeof input.label === 'string' ? input.label.trim().slice(0, 80) : ''
   if (!label) throw new RecetteError('Indiquez un libellé', 400)
@@ -382,7 +422,7 @@ function cleanMovement(input: MovementInput) {
   if (!Number.isFinite(amount) || amount <= 0) throw new RecetteError('Montant invalide', 400)
   if (amount > MAX_MOVEMENT) throw new RecetteError('Montant trop élevé', 400)
   const note = typeof input.note === 'string' ? input.note.trim().slice(0, 200) : ''
-  return { kind: kind as MovementKind, label, amount, note }
+  return { kind, label, amount, note }
 }
 
 /** Why an update guarded on an open session matched nothing. */
@@ -392,28 +432,55 @@ async function sessionMiss(id: string): Promise<never> {
   throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409)
 }
 
+/** Beyond this, it is no longer one decision being recorded. */
+const MAX_AT_ONCE = 4
+
 /**
- * Records an achat or a dépense on an open session.
+ * Records movements on an open session — one, or several in a single update.
+ *
+ * Several at once is not a convenience. "The drawer is short, so I put 20 DT
+ * in and then paid the 35 DT of bread" is one decision, and the two lines it
+ * produces belong together: pushed one after the other, a failure in between
+ * would leave a top-up on the record with nothing to explain it, and a drawer
+ * that no longer adds up. `$each` lands them together or not at all.
  *
  * The open status is part of the update's filter rather than a check made
  * beforehand: a session closed a millisecond earlier cannot receive an entry
  * after its figures were frozen.
  */
-export async function addMovement(recetteId: string, input: MovementInput) {
-  const movement = cleanMovement(input)
+export async function addMovements(recetteId: string, inputs: MovementInput[], userName = '') {
+  if (!Array.isArray(inputs) || inputs.length === 0) {
+    throw new RecetteError('Aucun mouvement à enregistrer', 400)
+  }
+  if (inputs.length > MAX_AT_ONCE) throw new RecetteError('Trop de mouvements en une fois', 400)
+  const cleaned = inputs.map(cleanMovement)
   if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404)
   await connectDB()
 
+  // One instant, one millisecond apart, so the list keeps the order they were
+  // decided in: the top-up above the achat it paid for.
+  const now = Date.now()
   const updated = await Recette.findOneAndUpdate(
     { _id: recetteId, status: 'open' },
     {
       $push: {
-        mouvements: { ...movement, createdAt: new Date(), createdBy: { name: input.userName ?? '' } },
+        mouvements: {
+          $each: cleaned.map((movement, i) => ({
+            ...movement,
+            createdAt: new Date(now + i),
+            createdBy: { name: userName },
+          })),
+        },
       },
     },
     { returnDocument: 'after', runValidators: true }
   )
   return updated ?? sessionMiss(recetteId)
+}
+
+/** Un seul mouvement — voir addMovements. */
+export async function addMovement(recetteId: string, input: MovementInput) {
+  return addMovements(recetteId, [input], input.userName ?? '')
 }
 
 /**

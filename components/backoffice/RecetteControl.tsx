@@ -3,13 +3,14 @@
 import { useCallback, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Lock, LockOpen, Wallet } from 'lucide-react'
+import { ArrowLeftRight, Lock, LockOpen, Wallet } from 'lucide-react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import CashMovementDialog from './CashMovementDialog'
 
 /**
  * Ouverture / clôture de caisse, sitting in the sidebar so it is one click away
@@ -19,6 +20,10 @@ import { Textarea } from '@/components/ui/textarea'
  * It polls `/api/recettes/current` rather than being fed by the server layout:
  * orders keep landing in the session while the manager sits on a page, and the
  * running total is the number they want to glance at.
+ *
+ * Cash movements are here too, and not only on the recette page. A supplier
+ * turns up while the manager is somewhere else entirely; making them navigate
+ * first is how an achat ends up never being written down.
  */
 
 interface Totals {
@@ -28,6 +33,11 @@ interface Totals {
   revenue: number
   net: number
   cashExpected: number
+  cashSales: number
+  achats: number
+  depenses: number
+  apports: number
+  retraits: number
 }
 
 interface OpenRecette {
@@ -41,6 +51,8 @@ interface OpenRecette {
 interface Current {
   recette: OpenRecette | null
   totals: Totals
+  /** Fond + entrées − sorties, calculé par le serveur pour que tout le monde lise la même chose. */
+  cashInDrawer: number
 }
 
 const money = (n: number) => `${(n || 0).toFixed(2)} DT`
@@ -55,7 +67,7 @@ export default function RecetteControl({ onNavigate }: { onNavigate?: () => void
   const router = useRouter()
   const pathname = usePathname()
   const [current, setCurrent] = useState<Current | null>(null)
-  const [dialog, setDialog] = useState<'open' | 'close' | null>(null)
+  const [dialog, setDialog] = useState<'open' | 'close' | 'movement' | null>(null)
 
   const load = useCallback(async () => {
     try {
@@ -127,9 +139,29 @@ export default function RecetteControl({ onNavigate }: { onNavigate?: () => void
               {totals?.orders ?? 0} commande{(totals?.orders ?? 0) > 1 ? 's' : ''}
               {totals?.cancelled ? ` · ${totals.cancelled} annulée${totals.cancelled > 1 ? 's' : ''}` : ''}
             </p>
+
+            {/* Ce que le tiroir doit contenir : le chiffre qu'on vérifie d'un
+                coup d'œil avant de payer un fournisseur. */}
+            <div className="mt-2 flex items-center justify-between rounded-lg bg-black/20 px-2 py-1.5">
+              <span className="text-[11px] text-white/40">Tiroir</span>
+              <span
+                className={`text-xs font-bold ${
+                  (current.cashInDrawer ?? 0) < -0.005 ? 'text-red-400' : 'text-white/80'
+                }`}
+              >
+                {money(current.cashInDrawer ?? 0)}
+              </span>
+            </div>
+
+            <button
+              onClick={() => setDialog('movement')}
+              className="mt-1.5 w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white/80 text-xs font-semibold py-2 transition-colors"
+            >
+              <ArrowLeftRight size={13} /> Mouvement de caisse
+            </button>
             <button
               onClick={() => setDialog('close')}
-              className="mt-2.5 w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 text-white/80 hover:text-red-300 text-xs font-semibold py-2 transition-colors"
+              className="mt-1.5 w-full flex items-center justify-center gap-1.5 rounded-lg bg-white/10 hover:bg-red-500/20 text-white/80 hover:text-red-300 text-xs font-semibold py-2 transition-colors"
             >
               <Lock size={13} /> Clôturer la caisse
             </button>
@@ -151,13 +183,23 @@ export default function RecetteControl({ onNavigate }: { onNavigate?: () => void
 
       <OpenDialog open={dialog === 'open'} onClose={() => setDialog(null)} onDone={done} />
       {recette && totals && (
-        <CloseDialog
-          open={dialog === 'close'}
-          recette={recette}
-          totals={totals}
-          onClose={() => setDialog(null)}
-          onDone={done}
-        />
+        <>
+          <CashMovementDialog
+            recetteId={recette._id}
+            open={dialog === 'movement'}
+            onOpenChange={(v) => !v && setDialog(null)}
+            cashInDrawer={current?.cashInDrawer ?? 0}
+            onSaved={done}
+          />
+          <CloseDialog
+            open={dialog === 'close'}
+            recette={recette}
+            totals={totals}
+            cashInDrawer={current?.cashInDrawer ?? 0}
+            onClose={() => setDialog(null)}
+            onDone={done}
+          />
+        </>
       )}
     </div>
   )
@@ -244,12 +286,14 @@ function CloseDialog({
   open,
   recette,
   totals,
+  cashInDrawer,
   onClose,
   onDone,
 }: {
   open: boolean
   recette: OpenRecette
   totals: Totals
+  cashInDrawer: number
   onClose: () => void
   onDone: () => void
 }) {
@@ -257,7 +301,7 @@ function CloseDialog({
   const [notes, setNotes] = useState('')
   const [loading, setLoading] = useState(false)
 
-  const expected = (recette.openingFloat || 0) + totals.cashExpected
+  const expected = cashInDrawer
   const counted = closingCash.trim() === '' ? null : Number(closingCash)
   const gap = counted === null || Number.isNaN(counted) ? null : counted - expected
 
@@ -294,12 +338,25 @@ function CloseDialog({
             <Row label="Commandes" value={String(totals.orders)} />
             <Row label="Chiffre d'affaires" value={money(totals.revenue)} strong />
             <Row label="Net (après commissions)" value={money(totals.net)} />
-            <Row label="Fond de caisse" value={money(recette.openingFloat || 0)} />
-            <Row label="Espèces attendues" value={money(expected)} />
+            <Row label="Fond à l'ouverture" value={money(recette.openingFloat || 0)} />
+            <Row label="Ventes en espèces" value={`+ ${money(totals.cashSales ?? 0)}`} />
+            {/* Seules les lignes qui ont bougé : une colonne de zéros apprend à
+                ne plus lire le bloc. */}
+            {(totals.apports ?? 0) > 0 && (
+              <Row label="Ajouts au fond" value={`+ ${money(totals.apports)}`} />
+            )}
+            {(totals.achats ?? 0) > 0 && <Row label="Achats" value={`− ${money(totals.achats)}`} />}
+            {(totals.depenses ?? 0) > 0 && (
+              <Row label="Dépenses" value={`− ${money(totals.depenses)}`} />
+            )}
+            {(totals.retraits ?? 0) > 0 && (
+              <Row label="Retraits" value={`− ${money(totals.retraits)}`} />
+            )}
+            <Row label="Espèces attendues" value={money(expected)} strong />
           </dl>
           <p className="text-xs text-muted-foreground -mt-2">
-            Espèces attendues = fond de caisse + commandes prises sur place − achats et dépenses payés depuis le tiroir. Les commandes
-            livrées par une plateforme n&apos;y sont pas comptées.
+            Comptez le tiroir en entier, fond compris. Les commandes livrées par une plateforme et
+            celles payées par carte n&apos;y sont pas comptées.
           </p>
 
           <div className="space-y-1">

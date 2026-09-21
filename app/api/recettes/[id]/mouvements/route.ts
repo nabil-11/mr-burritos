@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { callerFrom } from '@/lib/caisseCaller'
-import { RecetteError, addMovement } from '@/lib/recette'
+import { RecetteError, addMovements } from '@/lib/recette'
 
 type Ctx = { params: Promise<{ id: string }> }
 
 /**
- * POST /api/recettes/[id]/mouvements — une sortie de caisse.
+ * POST /api/recettes/[id]/mouvements — un mouvement de caisse.
  *
- * Body : { kind: 'achat' | 'depense', label, amount, note?, userName? }
+ * Body : { kind, label, amount, note?, userName? }
+ *   kind : 'achat' | 'depense' — de l'argent sort et il est dépensé
+ *          'apport'           — de l'argent entre dans le tiroir (ajout au fond)
+ *          'retrait'          — de l'argent sort sans être dépensé (banque, coffre)
+ *
+ * Ou plusieurs d'un coup : { userName?, mouvements: [ {…}, {…} ] }. Le cas qui
+ * l'exige est celui du fond insuffisant — « je remets 20 DT dans le tiroir et
+ * je paie les 35 DT de pain » est une seule décision : ses deux lignes sont
+ * écrites ensemble, ou aucune ne l'est.
  *
  * Refusée avec 409 une fois la recette clôturée : ses chiffres sont figés.
  * Ouverte comme les autres routes de recette — voir lib/caisseCaller.
@@ -17,7 +25,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
     const { id } = await params
     const body = await req.json().catch(() => ({}))
     const caller = callerFrom(req, body.userName)
-    const recette = await addMovement(id, { ...body, userName: caller.name })
+    const inputs = Array.isArray(body.mouvements) ? body.mouvements : [body]
+    const recette = await addMovements(id, inputs, caller.name)
     return NextResponse.json(recette, { status: 201 })
   } catch (e: unknown) {
     return fail(e)

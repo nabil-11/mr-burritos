@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Recette } from '@/lib/models/Recette'
 import { callerFrom } from '@/lib/caisseCaller'
-import { RecetteError, cashDifference, closeRecette, recetteOrders, recetteTotals } from '@/lib/recette'
+import {
+  RecetteError,
+  cashDifference,
+  cashInDrawer,
+  closeRecette,
+  recetteOrders,
+  recetteTotals,
+} from '@/lib/recette'
 
 type Ctx = { params: Promise<{ id: string }> }
 
@@ -22,6 +29,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       recette,
       totals,
       cashDifference: cashDifference(recette, totals),
+      cashInDrawer: cashInDrawer(recette, totals),
       orders,
     })
   } catch (e: unknown) {

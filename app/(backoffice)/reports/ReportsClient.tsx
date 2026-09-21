@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { TrendingUp, ShoppingBag, Receipt, Bike, BadgeDollarSign, TrendingDown } from 'lucide-react'
+import { TrendingUp, ShoppingBag, Receipt, Bike, BadgeDollarSign, TrendingDown, ShoppingCart, PiggyBank, Wallet } from 'lucide-react'
 import { ORDER_SOURCE_ICONS, ORDER_SOURCE_LABELS, type OrderSource } from '@/lib/orderSource'
+import { MOVEMENT_META, isMovementKind } from '@/lib/movementKinds'
 
 type ReportData = {
   totalRevenue: number
@@ -25,6 +26,54 @@ type ReportData = {
   byDay: { date: string; revenue: number; count: number }[]
   byHour: { hour: number; revenue: number; count: number }[]
   byStatus: { pending: number; confirmed: number; preparing: number; ready: number; delivered: number }
+  // Tout ce qui suit est arrivé avec la caisse et reste facultatif : un serveur
+  // pas encore redéployé ne l'envoie pas, et le rapport masque la section
+  // plutôt que d'afficher des zéros qui se liraient comme des faits.
+  sorties?: MovementSummary
+  /** Espèces déplacées sans être dépensées : fond complété, tiroir vidé. */
+  fond?: MovementSummary & { apports: number; retraits: number; net: number }
+  /** CA net − achats − dépenses. */
+  solde?: number
+  recettes?: ReportRecette[]
+  caisse?: {
+    sessions: number
+    open: number
+    counted: number
+    ecartTotal: number
+    /** Des tailles, toujours positives : 7,50 manquants, 2,00 en trop. */
+    manquants: { count: number; amount: number }
+    excedents: { count: number; amount: number }
+  }
+}
+
+type MovementLine = { kind: string; label: string; count: number; amount: number }
+
+type MovementSummary = {
+  achats?: number
+  depenses?: number
+  total?: number
+  count: number
+  byLabel: MovementLine[]
+}
+
+type ReportRecette = {
+  _id: string
+  number: string
+  status: 'open' | 'closed'
+  openedAt: string | null
+  closedAt: string | null
+  orders: number
+  revenue: number
+  net: number
+  /** Achats et dépenses cumulés. */
+  sorties: number
+  /** Ajouts au fond moins retraits. */
+  fond?: number
+  openingFloat: number
+  expected: number
+  closingCash: number | null
+  /** Compté moins attendu ; null tant que le tiroir n'a pas été compté. */
+  ecart: number | null
 }
 
 type Preset = 'today' | 'week' | 'month' | 'thisMonth' | 'custom'
@@ -560,8 +609,313 @@ export default function ReportsClient() {
               )}
             </>
           )}
+
+          {/* ── Caisse & trésorerie ───────────────────────────── */}
+          <CashSection data={data} />
         </>
       )}
     </div>
+  )
+}
+
+const money = (n: number) => `${(Number(n) || 0).toFixed(2)} DT`
+
+/** Un écart sous le demi-centime n'en est pas un : les prix arrondis laissent de la poussière. */
+const ecartTone = (gap: number) =>
+  Math.abs(gap) < 0.005
+    ? 'text-green-600 dark:text-green-400'
+    : gap > 0
+      ? 'text-amber-600 dark:text-amber-400'
+      : 'text-red-600 dark:text-red-400'
+
+/**
+ * Caisse & trésorerie : ce que la période a coûté en espèces, ce qui a été
+ * remis dans le tiroir, et comment chaque service s'est terminé.
+ *
+ * La question à laquelle cette section répond n'est pas « combien avons-nous
+ * vendu » — le haut du rapport s'en charge — mais « où est passé l'argent » :
+ * le pain payé au comptant, le fond complété à midi, le tiroir qui tombe juste
+ * ou pas. Les deux familles de mouvements restent séparées, parce qu'un fond
+ * complété n'est pas une dépense.
+ */
+function CashSection({ data }: { data: ReportData }) {
+  const sorties = data.sorties
+  const fond = data.fond
+  const recettes = data.recettes ?? []
+  const caisse = data.caisse
+  const hasSorties = (sorties?.count ?? 0) > 0
+  const hasFond = (fond?.count ?? 0) > 0
+  if (!hasSorties && !hasFond && recettes.length === 0) return null
+
+  const fmtDay = (d: string | null) =>
+    d ? new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) : '—'
+  const fmtTime = (d: string | null) =>
+    d ? new Date(d).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : '—'
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-baseline gap-3 pt-2">
+        <h2 className="text-lg font-bold">Caisse &amp; trésorerie</h2>
+        <p className="text-xs text-muted-foreground">
+          Les espèces qui ont bougé sur la période, sessions comprises
+        </p>
+      </div>
+
+      {(hasSorties || hasFond) && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Tile
+            label="Achats"
+            value={`− ${money(sorties?.achats ?? 0)}`}
+            hint="Marchandise payée en espèces"
+            icon={<ShoppingCart size={18} className="text-amber-500" />}
+            tone="text-amber-600 dark:text-amber-400"
+          />
+          <Tile
+            label="Dépenses"
+            value={`− ${money(sorties?.depenses ?? 0)}`}
+            hint="Livreur, avances, réparations…"
+            icon={<TrendingDown size={18} className="text-orange-500" />}
+            tone="text-orange-600 dark:text-orange-400"
+          />
+          <Tile
+            label="Ajouts au fond"
+            value={`+ ${money(fond?.apports ?? 0)}`}
+            hint={
+              (fond?.retraits ?? 0) > 0
+                ? `Retraits − ${money(fond?.retraits ?? 0)}`
+                : 'Monnaie remise dans le tiroir'
+            }
+            icon={<PiggyBank size={18} className="text-emerald-500" />}
+            tone="text-emerald-600 dark:text-emerald-400"
+          />
+          <Tile
+            label="Solde après sorties"
+            value={money(data.solde ?? data.netTotalRevenue - (sorties?.total ?? 0))}
+            hint="CA net − achats − dépenses"
+            icon={<Wallet size={18} className="text-green-600" />}
+            tone="text-green-600"
+          />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {hasSorties && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Où part l&apos;argent</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {sorties?.byLabel.map((line) => {
+                const meta = isMovementKind(line.kind) ? MOVEMENT_META[line.kind] : null
+                const max = Math.max(...(sorties?.byLabel.map((l) => l.amount) ?? [1]), 1)
+                return (
+                  <div key={`${line.kind}-${line.label}`}>
+                    <div className="flex justify-between items-center gap-2 text-sm mb-1.5">
+                      <span className="flex items-center gap-2 min-w-0">
+                        <span
+                          className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            meta?.badge ?? 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {meta?.short ?? line.kind}
+                        </span>
+                        <span className="truncate">{line.label || '—'}</span>
+                        {line.count > 1 && (
+                          <span className="text-xs text-muted-foreground shrink-0">×{line.count}</span>
+                        )}
+                      </span>
+                      <span className="font-semibold whitespace-nowrap">{money(line.amount)}</span>
+                    </div>
+                    <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-amber-500 rounded-full transition-all duration-500"
+                        style={{ width: `${(line.amount / max) * 100}%` }}
+                      />
+                    </div>
+                  </div>
+                )
+              })}
+              <p className="text-xs text-muted-foreground pt-1">
+                {sorties?.count} mouvement{(sorties?.count ?? 0) > 1 ? 's' : ''} · total{' '}
+                <span className="font-semibold text-foreground">{money(sorties?.total ?? 0)}</span>
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
+        {hasFond && (
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Mouvements de fond</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2.5">
+              <p className="text-xs text-muted-foreground -mt-1">
+                Des espèces déplacées, pas dépensées : elles ne changent pas le résultat du
+                service, seulement ce que le tiroir doit contenir.
+              </p>
+              {fond?.byLabel.map((line) => {
+                const meta = isMovementKind(line.kind) ? MOVEMENT_META[line.kind] : null
+                return (
+                  <div
+                    key={`${line.kind}-${line.label}`}
+                    className="flex justify-between items-center gap-2 text-sm"
+                  >
+                    <span className="flex items-center gap-2 min-w-0">
+                      <span
+                        className={`shrink-0 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                          meta?.badge ?? 'bg-muted text-muted-foreground'
+                        }`}
+                      >
+                        {meta?.short ?? line.kind}
+                      </span>
+                      <span className="truncate">{line.label || '—'}</span>
+                      {line.count > 1 && (
+                        <span className="text-xs text-muted-foreground shrink-0">×{line.count}</span>
+                      )}
+                    </span>
+                    <span className={`font-semibold whitespace-nowrap ${meta?.amountTone ?? ''}`}>
+                      {meta && meta.sign > 0 ? '+' : '−'} {money(line.amount)}
+                    </span>
+                  </div>
+                )
+              })}
+              <div className="flex justify-between items-center border-t pt-2 text-sm">
+                <span className="text-muted-foreground">Net remis dans les tiroirs</span>
+                <span className="font-black">
+                  {(fond?.net ?? 0) >= 0 ? '+' : '−'} {money(Math.abs(fond?.net ?? 0))}
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {recettes.length > 0 && (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Sessions de caisse</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            {caisse && (
+              <p className="px-4 pb-3 text-xs text-muted-foreground">
+                {caisse.sessions} session{caisse.sessions > 1 ? 's' : ''}
+                {caisse.open > 0 ? ` · ${caisse.open} encore ouverte${caisse.open > 1 ? 's' : ''}` : ''}{' '}
+                · {caisse.counted} comptée{caisse.counted > 1 ? 's' : ''}
+                {caisse.manquants.count > 0 && (
+                  <span className="text-red-600 dark:text-red-400 font-semibold">
+                    {' '}
+                    · {caisse.manquants.count} manquant{caisse.manquants.count > 1 ? 's' : ''} pour{' '}
+                    {money(caisse.manquants.amount)}
+                  </span>
+                )}
+                {caisse.excedents.count > 0 && (
+                  <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                    {' '}
+                    · {caisse.excedents.count} excédent{caisse.excedents.count > 1 ? 's' : ''} pour{' '}
+                    {money(caisse.excedents.amount)}
+                  </span>
+                )}
+              </p>
+            )}
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm min-w-200">
+                <thead className="bg-muted/50 border-b">
+                  <tr>
+                    {['N°', 'Jour', 'Horaires', 'Cmd', 'CA', 'Sorties', 'Fond ajouté', 'Attendu', 'Compté', 'Écart'].map(
+                      (h) => (
+                        <th key={h} className="px-3 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
+                          {h}
+                        </th>
+                      )
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {recettes.map((r) => (
+                    <tr key={r._id} className="hover:bg-muted/50">
+                      <td className="px-3 py-3 font-semibold whitespace-nowrap">
+                        {r.number}
+                        {r.status === 'open' && (
+                          <span className="ml-1.5 text-[10px] font-bold text-green-600 dark:text-green-400">
+                            en cours
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">{fmtDay(r.openedAt)}</td>
+                      <td className="px-3 py-3 text-muted-foreground whitespace-nowrap">
+                        {fmtTime(r.openedAt)} → {r.status === 'open' ? '…' : fmtTime(r.closedAt)}
+                      </td>
+                      <td className="px-3 py-3 text-muted-foreground">{r.orders}</td>
+                      <td className="px-3 py-3 font-semibold">{money(r.revenue)}</td>
+                      <td className="px-3 py-3">
+                        {r.sorties > 0 ? (
+                          <span className="text-amber-600 dark:text-amber-400">− {money(r.sorties)}</span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">
+                        {r.fond ? (
+                          <span className="text-emerald-600 dark:text-emerald-400">
+                            {r.fond > 0 ? '+' : '−'} {money(Math.abs(r.fond))}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-3">{money(r.expected)}</td>
+                      <td className="px-3 py-3">
+                        {r.closingCash === null ? (
+                          <span className="text-muted-foreground">non compté</span>
+                        ) : (
+                          money(r.closingCash)
+                        )}
+                      </td>
+                      <td className="px-3 py-3 whitespace-nowrap">
+                        {r.ecart === null ? (
+                          <span className="text-muted-foreground">—</span>
+                        ) : (
+                          <span className={`font-semibold ${ecartTone(r.ecart)}`}>
+                            {r.ecart > 0 ? '+' : ''}
+                            {r.ecart.toFixed(2)} DT
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+function Tile({
+  label,
+  value,
+  hint,
+  icon,
+  tone,
+}: {
+  label: string
+  value: string
+  hint: string
+  icon: React.ReactNode
+  tone: string
+}) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">{label}</CardTitle>
+        {icon}
+      </CardHeader>
+      <CardContent>
+        <p className={`text-xl font-black ${tone}`}>{value}</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{hint}</p>
+      </CardContent>
+    </Card>
   )
 }

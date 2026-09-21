@@ -4,6 +4,7 @@ import { Order } from '@/lib/models/Order'
 import { Recette } from '@/lib/models/Recette'
 import { ORDER_SOURCES, type OrderSource } from '@/lib/orderSource'
 import { cashDifference, recetteTotals, type RecetteTotals } from '@/lib/recette'
+import { MOVEMENT_META, isMovementKind, type MovementKind } from '@/lib/movementKinds'
 import { daysBetween, isDay, nextDay, safeTimeZone, startOfDay, wallClock } from '@/lib/reportTime'
 
 /**
@@ -49,6 +50,30 @@ type RecetteDoc = {
 /** "Légumes ", "legumes" and "LEGUMES" are one line of the report. */
 const labelKey = (kind: string, label: string) =>
   `${kind}:${label.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}`
+
+type Tally = { kind: MovementKind; label: string; count: number; amount: number; last: number }
+
+/** Adds one entry to a "what was it spent on" ranking. */
+function tally(map: Map<string, Tally>, kind: MovementKind, raw: string, amount: number, at: number) {
+  const label = raw.trim()
+  const key = labelKey(kind, label)
+  const entry = map.get(key) ?? { kind, label, count: 0, amount: 0, last: 0 }
+  entry.count++
+  entry.amount += amount
+  // Shown as it was last typed.
+  if (at >= entry.last && label) {
+    entry.last = at
+    entry.label = label
+  }
+  map.set(key, entry)
+}
+
+/** The ten biggest lines — beyond that a ranking is a ledger. */
+const topLabels = (map: Map<string, Tally>) =>
+  [...map.values()]
+    .sort((a, b) => b.amount - a.amount)
+    .slice(0, 10)
+    .map(({ kind, label, count, amount }) => ({ kind, label, count, amount: round2(amount) }))
 
 export async function GET(req: NextRequest) {
   try {
@@ -222,43 +247,47 @@ export async function GET(req: NextRequest) {
     const netTotalRevenue = pickupRevenue + deliveryNet
     const avgOrder = orderCount > 0 ? netTotalRevenue / orderCount : 0
 
-    // ── Sorties de caisse ─────────────────────────────────────────────────
-    let achats = 0
-    let depenses = 0
-    let movementCount = 0
-    const labels = new Map<string, { kind: string; label: string; count: number; amount: number; last: number }>()
+    // ── Mouvements de caisse ──────────────────────────────────────────────
+    // Two families, deliberately kept apart. Achats and dépenses are money
+    // gone: they come off the result. Apports and retraits only move cash
+    // between the drawer and somewhere else — the change bought at midday,
+    // the takings deposited at night. Folding the second family into the
+    // first would turn a day of buying change into a day of spending.
+    const total: Record<MovementKind, number> = { achat: 0, depense: 0, apport: 0, retrait: 0 }
+    const count = { spent: 0, moved: 0 }
+    const spentLabels = new Map<string, Tally>()
+    const movedLabels = new Map<string, Tally>()
+
     for (const r of movementDocs as RecetteDoc[]) {
       for (const m of r.mouvements ?? []) {
         if (m.cancelledAt || !m.createdAt) continue
         const at = new Date(m.createdAt).getTime()
         if (!within(at)) continue
+        if (!isMovementKind(m.kind)) continue
         const amount = Number(m.amount) || 0
-        if (m.kind === 'achat') achats += amount
-        else if (m.kind === 'depense') depenses += amount
-        else continue
-        movementCount++
-        const label = (m.label ?? '').trim()
-        const key = labelKey(m.kind, label)
-        const entry = labels.get(key) ?? { kind: m.kind, label, count: 0, amount: 0, last: 0 }
-        entry.count++
-        entry.amount += amount
-        // Shown as it was last typed.
-        if (at >= entry.last && label) {
-          entry.last = at
-          entry.label = label
-        }
-        labels.set(key, entry)
+        total[m.kind] += amount
+        const spent = MOVEMENT_META[m.kind].expense
+        if (spent) count.spent++
+        else count.moved++
+        tally(spent ? spentLabels : movedLabels, m.kind, m.label ?? '', amount, at)
       }
     }
+
     const sorties = {
-      achats: round2(achats),
-      depenses: round2(depenses),
-      total: round2(achats + depenses),
-      count: movementCount,
-      byLabel: [...labels.values()]
-        .sort((a, b) => b.amount - a.amount)
-        .slice(0, 10)
-        .map(({ kind, label, count, amount }) => ({ kind, label, count, amount: round2(amount) })),
+      achats: round2(total.achat),
+      depenses: round2(total.depense),
+      total: round2(total.achat + total.depense),
+      count: count.spent,
+      byLabel: topLabels(spentLabels),
+    }
+    /** Cash that only changed place: the float topped up, the drawer emptied. */
+    const fond = {
+      apports: round2(total.apport),
+      retraits: round2(total.retrait),
+      /** Put in, less taken out — what the drawers hold beyond their sales. */
+      net: round2(total.apport - total.retrait),
+      count: count.moved,
+      byLabel: topLabels(movedLabels),
     }
 
     // ── Recettes of the period and how their drawers came out ─────────────
@@ -275,6 +304,7 @@ export async function GET(req: NextRequest) {
           revenue: round2(t.revenue),
           net: round2(t.net),
           sorties: round2((t.achats ?? 0) + (t.depenses ?? 0)),
+          fond: round2((t.apports ?? 0) - (t.retraits ?? 0)),
           openingFloat: r.openingFloat ?? 0,
           expected: round2((r.openingFloat ?? 0) + t.cashExpected),
           closingCash: typeof r.closingCash === 'number' ? r.closingCash : null,
@@ -322,6 +352,7 @@ export async function GET(req: NextRequest) {
         revenue: round2(cancelledOrders.reduce((s, o) => s + (o.total || 0), 0)),
       },
       sorties,
+      fond,
       solde: round2(netTotalRevenue - sorties.total),
       recettes,
       caisse,

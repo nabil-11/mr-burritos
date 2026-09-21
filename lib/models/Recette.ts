@@ -1,4 +1,5 @@
 import mongoose, { Schema, model, models } from 'mongoose'
+import { MOVEMENT_KINDS } from '../movementKinds'
 
 /**
  * A recette is one till session.
@@ -24,7 +25,7 @@ const TotalsSchema = new Schema(
     surcharges: { type: Number, default: 0 },
     deliveryFees: { type: Number, default: 0 },
     commission: { type: Number, default: 0 },
-    // The four below carry no default on purpose. A session closed before
+    // The ones below carry no default on purpose. A session closed before
     // cash-outs existed must read as "not recorded", not as a zero — a zero
     // here would quietly rewrite its drawer as empty. See normalizeTotals.
     /** Cash taken on the premises — caisse and borne, no delivery platform. */
@@ -33,9 +34,13 @@ const TotalsSchema = new Schema(
     cardSales: { type: Number },
     achats: { type: Number },
     depenses: { type: Number },
-    /** Net takings minus achats and dépenses. */
+    /** Cash put into the drawer mid-service — a top-up, never a sale. */
+    apports: { type: Number },
+    /** Cash taken out without being spent — a deposit, never an expense. */
+    retraits: { type: Number },
+    /** Net takings minus achats and dépenses. Top-ups and withdrawals cost nothing. */
     solde: { type: Number },
-    /** What the drawer should hold on top of the float: cash sales minus cash-outs. */
+    /** What the drawer should hold on top of the float: everything in, minus everything out. */
     cashExpected: { type: Number, default: 0 },
     byType: { type: Schema.Types.Mixed, default: {} },
     bySource: { type: Schema.Types.Mixed, default: {} },
@@ -44,16 +49,22 @@ const TotalsSchema = new Schema(
 )
 
 /**
- * Cash that left the drawer during the session.
+ * Cash that moved during the session, in or out.
  *
  * - achat   — goods for the kitchen: bread, vegetables, drinks, packaging, gas
  * - depense — anything else paid in cash: a rider, a staff advance, a repair
+ * - apport  — cash put in: change bought, an advance from the safe or the bank
+ * - retrait — cash taken out unspent: a bank deposit, the safe, the owner
+ *
+ * The first two cost the restaurant money; the last two only move it from one
+ * place to another. Both change what the drawer should hold, which is why one
+ * list carries them all.
  *
  * Never deleted. A mistake is cancelled and stays on the record, struck
  * through: a drawer that came up short has to be explainable line by line.
  */
 const MovementSchema = new Schema({
-  kind: { type: String, enum: ['achat', 'depense'], required: true },
+  kind: { type: String, enum: MOVEMENT_KINDS, required: true },
   label: { type: String, required: true, trim: true, maxlength: 80 },
   amount: { type: Number, required: true, min: 0.01 },
   note: { type: String, default: '', trim: true, maxlength: 200 },
@@ -85,7 +96,7 @@ const RecetteSchema = new Schema(
     /** Cash counted at closing. `null` means it was not counted. */
     closingCash: { type: Number, default: null },
     notes: { type: String, default: '' },
-    /** Achats and dépenses paid out of the drawer, in the order they happened. */
+    /** Every movement of cash in or out of the drawer, in the order it happened. */
     mouvements: { type: [MovementSchema], default: [] },
     /** Snapshot of the figures taken at closing. Empty while the session runs. */
     totals: { type: TotalsSchema, default: null },
