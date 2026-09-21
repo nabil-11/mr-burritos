@@ -334,9 +334,12 @@ function MovementForm({
         >
           {saving
             ? 'Enregistrement…'
-            : value === null
-              ? 'Enregistrer'
-              : `Enregistrer · ${meta.sign > 0 ? '+' : '−'} ${money(value)}`}
+            : willTopUp
+              ? // Deux lignes vont partir : le bouton le dit avant d'être pressé.
+                `Ajouter ${money(topUpValue)} puis enregistrer`
+              : value === null
+                ? 'Enregistrer'
+                : `Enregistrer · ${meta.sign > 0 ? '+' : '−'} ${money(value)}`}
         </Button>
       </div>
     </form>

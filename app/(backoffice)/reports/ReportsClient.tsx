@@ -821,7 +821,7 @@ function CashSection({ data }: { data: ReportData }) {
               <table className="w-full text-sm min-w-200">
                 <thead className="bg-muted/50 border-b">
                   <tr>
-                    {['N°', 'Jour', 'Horaires', 'Cmd', 'CA', 'Sorties', 'Fond ajouté', 'Attendu', 'Compté', 'Écart'].map(
+                    {['N°', 'Jour', 'Horaires', 'Cmd', 'CA', 'Sorties', 'Fond (net)', 'Attendu', 'Compté', 'Écart'].map(
                       (h) => (
                         <th key={h} className="px-3 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                           {h}
@@ -855,8 +855,16 @@ function CashSection({ data }: { data: ReportData }) {
                         )}
                       </td>
                       <td className="px-3 py-3">
+                        {/* Ajouts moins retraits : vert quand le tiroir s'est rempli,
+                            neutre quand il s'est vidé — un moins en vert se lit mal. */}
                         {r.fond ? (
-                          <span className="text-emerald-600 dark:text-emerald-400">
+                          <span
+                            className={
+                              r.fond > 0
+                                ? 'text-emerald-600 dark:text-emerald-400'
+                                : 'text-sky-600 dark:text-sky-400'
+                            }
+                          >
                             {r.fond > 0 ? '+' : '−'} {money(Math.abs(r.fond))}
                           </span>
                         ) : (
