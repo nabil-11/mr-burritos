@@ -44,7 +44,7 @@ function sizeOf(publicPath: string): string | null {
 }
 
 /** Le chemin public de l'installateur de la caisse, servi depuis /public. */
-export const CAISSE_FILE = 'downloads/mr-burritos-caisse.exe'
+export const CAISSE_FILE = 'downloads/Mr. Burritos Caisse Setup 1.2.0.exe'
 
 /**
  * Ce qui est réellement téléchargeable maintenant, dans l'ordre d'affichage.
@@ -58,19 +58,10 @@ export function staffApps(): StaffApp[] {
   if (caisseUrl || caisseSize) {
     apps.push({
       href: caisseUrl || `/${CAISSE_FILE}`,
-      label: 'App Caisse',
-      note: `Windows · comptoir${caisseSize && !caisseUrl ? ` · ${caisseSize}` : ''}`,
+      label: 'App Desktop',
+      note: `Windows${caisseSize && !caisseUrl ? ` · ${caisseSize}` : ''}`,
       icon: 'monitor',
     })
-  }
-
-  for (const [file, label, note, icon] of [
-    ['downloads/mr-burritos-manager.apk', 'App Manager', 'Android · équipe', 'store'],
-    ['downloads/mr-burritos-livreur.apk', 'App Livreur', 'Android · livraison', 'bike'],
-  ] as const) {
-    const size = sizeOf(file)
-    if (size === null) continue
-    apps.push({ href: `/${file}`, label, note: `${note} · ${size}`, icon })
   }
 
   return apps
