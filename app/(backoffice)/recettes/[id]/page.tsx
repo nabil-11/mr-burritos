@@ -128,7 +128,11 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
       {/* ── Chiffres clés ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
         <Stat label="Chiffre d'affaires" value={money(totals.revenue)} accent />
-        <Stat label="Net (après commissions)" value={money(totals.net)} />
+        <Stat
+          label="Net (après commissions)"
+          value={money(totals.net)}
+          hint={totals.commission > 0 ? `− ${money(totals.commission)} de commissions` : undefined}
+        />
         <Stat
           label="Commandes"
           value={String(totals.orders)}
@@ -137,6 +141,51 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
         <Stat
           label="Panier moyen"
           value={money(totals.orders > 0 ? totals.revenue / totals.orders : 0)}
+        />
+      </div>
+
+      {/* ── Où est l'argent ? ─────────────────────────────────────
+           La question de fin de journée. Le chiffre d'affaires est une somme ;
+           celle-ci dit dans quelle poche elle se trouve, et laquelle il reste
+           à aller chercher. */}
+      <div className="mb-2 flex items-baseline gap-3">
+        <h2 className="text-sm font-bold">Où est l&apos;argent&nbsp;?</h2>
+        <p className="text-xs text-muted-foreground">
+          Chaque commande tombe dans une seule poche
+        </p>
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+        <Stat
+          label="Espèces"
+          value={money(totals.cashSales)}
+          hint={`dans le tiroir : ${money(expectedCash)}`}
+          tone="text-emerald-600 dark:text-emerald-400"
+        />
+        <Stat
+          label="Carte"
+          value={money(totals.cardSales)}
+          hint="versé en banque"
+          tone="text-sky-600 dark:text-sky-400"
+        />
+        <Stat
+          label="Plateformes"
+          value={money(totals.platformDue)}
+          hint={
+            totals.commission > 0
+              ? `à recevoir · ${money(totals.commission)} de commission déduits`
+              : 'à recevoir'
+          }
+          tone="text-violet-600 dark:text-violet-400"
+        />
+        <Stat
+          label="Non renseigné"
+          value={money(totals.unsettled)}
+          hint={
+            totals.unsettled > 0
+              ? 'règlement non enregistré à la caisse'
+              : 'tout est réparti'
+          }
+          tone={totals.unsettled > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}
         />
       </div>
 
@@ -212,6 +261,18 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           })}
         </Card>
       </div>
+
+      {/* ── Plateformes de livraison ──────────────────────────── */}
+      {totals.byCompany.length > 0 ? (
+        <CompaniesTable companies={totals.byCompany} />
+      ) : (
+        totals.commission > 0 && (
+          <p className="mb-4 rounded-xl border bg-card px-4 py-3 text-xs text-muted-foreground">
+            Cette recette a été clôturée avant que le détail par plateforme ne soit enregistré —
+            seul le total des commissions ({money(totals.commission)}) en a été gardé.
+          </p>
+        )
+      )}
 
       {/* ── Mouvements de caisse ──────────────────────────────── */}
       {(isOpen || movements.length > 0) && (
@@ -300,21 +361,127 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
   )
 }
 
+/**
+ * Une plateforme, une ligne, et le total en pied de tableau : « Glovo, 12
+ * commandes, 500 DT » est la phrase que le gérant vient chercher le soir.
+ *
+ * Le brut n'est pas ce qu'il touchera — la colonne qui compte est la dernière.
+ */
+function CompaniesTable({ companies }: { companies: RecetteTotals['byCompany'] }) {
+  const sum = (pick: (c: RecetteTotals['byCompany'][number]) => number) =>
+    companies.reduce((s, c) => s + pick(c), 0)
+  const cash = sum((c) => c.cash)
+  // Tant qu'aucun livreur n'a payé au comptoir, « net » et « à recevoir » sont
+  // le même nombre : une colonne de plus ne dirait rien de neuf.
+  const columns = cash > 0
+    ? ['Plateforme', 'Commandes', 'CA brut', 'Commission', 'Net', 'À recevoir']
+    : ['Plateforme', 'Commandes', 'CA brut', 'Commission', 'À recevoir']
+
+  return (
+    <div className="bg-card rounded-xl border overflow-hidden mb-4">
+      <div className="px-4 py-3 border-b">
+        <p className="font-semibold text-sm">
+          Plateformes de livraison{' '}
+          <span className="text-muted-foreground font-normal">({companies.length})</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Ce que chaque plateforme a apporté sur cette session, et ce qu&apos;elle doit reverser.
+        </p>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm min-w-150">
+          <thead className="bg-muted/50 border-b">
+            <tr>
+              {columns.map((h, i) => (
+                <th
+                  key={h}
+                  className={`px-4 py-3 font-medium text-muted-foreground ${i === 0 ? 'text-left' : 'text-right'}`}
+                >
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y">
+            {companies.map((c) => (
+              <tr key={c.name} className="hover:bg-muted/50">
+                <td className="px-4 py-3 font-semibold">
+                  🛵 {c.name}
+                  {c.cash > 0 && (
+                    <span className="block text-[11px] font-normal text-muted-foreground">
+                      dont {money(c.cash)} encaissés en espèces
+                    </span>
+                  )}
+                </td>
+                <td className="px-4 py-3 text-right text-muted-foreground">{c.count}</td>
+                <td className="px-4 py-3 text-right font-semibold">{money(c.revenue)}</td>
+                <td className="px-4 py-3 text-right">
+                  <span className="text-xs font-bold text-red-600 dark:text-red-400">
+                    − {money(c.commission)}
+                    {c.rate !== null && ` (${c.rate}%)`}
+                  </span>
+                </td>
+                {cash > 0 && (
+                  <td className="px-4 py-3 text-right font-semibold">{money(c.net)}</td>
+                )}
+                <td className="px-4 py-3 text-right font-black text-violet-600 dark:text-violet-400">
+                  {money(c.due)}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot className="border-t-2 bg-muted/50">
+            <tr>
+              <td className="px-4 py-3 font-black">TOTAL</td>
+              <td className="px-4 py-3 text-right font-bold">{sum((c) => c.count)}</td>
+              <td className="px-4 py-3 text-right font-bold">{money(sum((c) => c.revenue))}</td>
+              <td className="px-4 py-3 text-right font-bold text-red-600 dark:text-red-400">
+                − {money(sum((c) => c.commission))}
+              </td>
+              {cash > 0 && (
+                <td className="px-4 py-3 text-right font-bold">{money(sum((c) => c.net))}</td>
+              )}
+              <td className="px-4 py-3 text-right font-black text-violet-600 dark:text-violet-400">
+                {money(sum((c) => c.due))}
+              </td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+      <p className="px-4 py-2.5 border-t text-[11px] text-muted-foreground leading-snug">
+        <b className="text-foreground">Net</b> est ce que le restaurant garde sur ces commandes ;{' '}
+        <b className="text-foreground">à recevoir</b> est ce que la plateforme doit encore verser.
+        {cash > 0 && (
+          <>
+            {' '}
+            {/* Le blanc est explicite : JSX mange celui qui suit une expression. */}
+            Les {money(cash)}{' '}
+            encaissés en espèces sont déjà dans le tiroir — ils ne sont donc pas attendus une
+            seconde fois, et sur ceux-là c&apos;est la commission qui reste due à la plateforme.
+          </>
+        )}
+      </p>
+    </div>
+  )
+}
+
 function Stat({
   label,
   value,
   hint,
   accent,
+  tone,
 }: {
   label: string
   value: string
   hint?: string
   accent?: boolean
+  tone?: string
 }) {
   return (
     <div className="bg-card rounded-xl border p-4">
       <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
-      <p className={`text-xl font-black mt-1 ${accent ? 'text-[#F5A800]' : ''}`}>{value}</p>
+      <p className={`text-xl font-black mt-1 ${tone ?? (accent ? 'text-[#F5A800]' : '')}`}>{value}</p>
       {hint && <p className="text-[11px] text-muted-foreground mt-0.5">{hint}</p>}
     </div>
   )

@@ -8,6 +8,10 @@ import { cashDifference, recetteTotals, type RecetteTotals } from '@/lib/recette
  *
  * La session ouverte est calculée à la volée (elle bouge encore), les autres
  * affichent le total figé à la clôture.
+ *
+ * Le chiffre d'affaires d'une journée ne dit pas où est l'argent : les deux
+ * colonnes qui suivent le disent — ce qui est passé par le tiroir, et ce que
+ * les plateformes doivent encore.
  */
 
 // Une session par service : deux ans de caisse tiennent largement là-dedans.
@@ -82,10 +86,10 @@ export default async function RecettesPage() {
 
       <div className="bg-card rounded-xl border overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-200">
+          <table className="w-full text-sm min-w-250">
             <thead className="bg-muted/50 border-b">
               <tr>
-                {['N°', 'Ouverture', 'Clôture', 'Commandes', 'Chiffre d’affaires', 'Net', 'Écart caisse', 'Statut'].map((h) => (
+                {['N°', 'Ouverture', 'Clôture', 'Commandes', 'Chiffre d’affaires', 'Espèces', 'Plateformes', 'Net', 'Écart caisse', 'Statut'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -126,6 +130,17 @@ export default async function RecettesPage() {
                     )}
                   </td>
                   <td className="px-4 py-3 font-bold">{money(totals.revenue)}</td>
+                  <td className="px-4 py-3">{money(totals.cashSales)}</td>
+                  {/* Ce que les plateformes doivent encore pour cette journée. */}
+                  <td className="px-4 py-3">
+                    {totals.platformDue > 0 ? (
+                      <span className="font-semibold text-violet-600 dark:text-violet-400">
+                        {money(totals.platformDue)}
+                      </span>
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )}
+                  </td>
                   <td className="px-4 py-3">{money(totals.net)}</td>
                   <td className="px-4 py-3">
                     {gap === null ? (

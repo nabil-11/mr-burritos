@@ -38,6 +38,12 @@ const TotalsSchema = new Schema(
     apports: { type: Number },
     /** Cash taken out without being spent — a deposit, never an expense. */
     retraits: { type: Number },
+    /** What the delivery platforms owe, their commission already deducted. */
+    platformDue: { type: Number },
+    /** Sales whose settlement was never recorded — neither cash, card nor platform. */
+    unsettled: { type: Number },
+    /** One line per delivery platform: Glovo, Jumia, a rider of one's own. */
+    byCompany: { type: Schema.Types.Mixed },
     /** Net takings minus achats and dépenses. Top-ups and withdrawals cost nothing. */
     solde: { type: Number },
     /** What the drawer should hold on top of the float: everything in, minus everything out. */

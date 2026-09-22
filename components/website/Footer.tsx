@@ -1,17 +1,19 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Phone, Mail, Download, Store, Bike } from 'lucide-react'
+import { MapPin, Phone, Mail, Download, Store, Bike, Monitor } from 'lucide-react'
 import { SITE } from '@/lib/site'
+import { staffApps } from '@/lib/downloads'
 
 const CONTACT = { ...SITE, location: `${SITE.location}, ${SITE.region}` }
 
-/** Internal Android builds for staff — not customer-facing apps. */
-const STAFF_APPS = [
-  { href: '/downloads/mr-burritos-manager.apk', icon: Store, label: 'App Manager', note: 'Android · équipe' },
-  { href: '/downloads/mr-burritos-livreur.apk', icon: Bike, label: 'App Livreur', note: 'Android · livraison' },
-]
+/** Internal staff builds — not customer-facing apps. */
+const ICONS = { store: Store, bike: Bike, monitor: Monitor }
 
 export default function Footer() {
+  // Lu à la construction du site : une application dont le fichier n'est pas
+  // là n'est pas proposée. Voir lib/downloads.
+  const apps = staffApps()
+
   return (
     <footer className="bg-background border-t border-border text-foreground">
       <div className="max-w-6xl mx-auto px-4 py-12">
@@ -66,33 +68,41 @@ export default function Footer() {
             </div>
           </div>
 
-          <div>
-            <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mb-3">
-              Applications équipe
-            </p>
-            <div className="space-y-2">
-              {STAFF_APPS.map((a) => (
-                <a
-                  key={a.href}
-                  href={a.href}
-                  download
-                  className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-[#F5A800]/40 transition-colors group"
-                >
-                  <div className="w-9 h-9 rounded-lg bg-[#F5A800]/12 grid place-items-center shrink-0">
-                    <a.icon size={16} className="text-[#F5A800]" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-foreground font-bold text-xs">{a.label}</p>
-                    <p className="text-muted-foreground text-[10px]">{a.note}</p>
-                  </div>
-                  <Download
-                    size={14}
-                    className="ml-auto text-muted-foreground/60 group-hover:text-[#F5A800] transition-colors shrink-0"
-                  />
-                </a>
-              ))}
+          {apps.length > 0 && (
+            <div>
+              <p className="text-muted-foreground text-[10px] font-black uppercase tracking-widest mb-3">
+                Applications équipe
+              </p>
+              <div className="space-y-2">
+                {apps.map((a) => {
+                  const Icon = ICONS[a.icon]
+                  return (
+                    <a
+                      key={a.href}
+                      href={a.href}
+                      download
+                      className="flex items-center gap-3 p-3 rounded-xl border border-border bg-card hover:border-[#F5A800]/40 transition-colors group"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-[#F5A800]/12 grid place-items-center shrink-0">
+                        <Icon size={16} className="text-[#F5A800]" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-foreground font-bold text-xs">{a.label}</p>
+                        <p className="text-muted-foreground text-[10px]">{a.note}</p>
+                      </div>
+                      <Download
+                        size={14}
+                        className="ml-auto text-muted-foreground/60 group-hover:text-[#F5A800] transition-colors shrink-0"
+                      />
+                    </a>
+                  )
+                })}
+              </div>
+              <p className="text-muted-foreground/60 text-[10px] mt-3 leading-snug">
+                Réservées à l&apos;équipe : chacune demande un compte pour s&apos;ouvrir.
+              </p>
             </div>
-          </div>
+          )}
         </div>
 
         <p className="text-muted-foreground/60 text-[11px] mt-10 pt-6 border-t border-border">

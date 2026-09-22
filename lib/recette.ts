@@ -47,6 +47,32 @@ export interface Bucket {
   revenue: number
 }
 
+/**
+ * Ce qu'une plateforme a apporté sur la session — Glovo, Jumia, un coursier
+ * maison. Le chiffre qui compte en fin de journée n'est pas le brut mais
+ * `net` : ce que la plateforme reversera une fois sa commission prise.
+ */
+export interface CompanyBucket {
+  name: string
+  count: number
+  /** Ce que les clients ont payé, commission comprise. */
+  revenue: number
+  /** Le taux appliqué, ou null si plusieurs taux se sont mélangés. */
+  rate: number | null
+  commission: number
+  /** Brut moins commission : ce que le restaurant garde sur ces commandes. */
+  net: number
+  /** La part déjà encaissée au comptoir — un livreur qui paie en espèces. */
+  cash: number
+  /**
+   * Ce que la plateforme doit encore verser : le net des seules commandes
+   * qu'elle a encaissées elle-même. Sur une commande payée en espèces au
+   * comptoir, l'argent est déjà là — la compter ici la ferait attendre deux
+   * fois. La somme des `due` fait exactement `platformDue`.
+   */
+  due: number
+}
+
 export interface RecetteTotals {
   /** Orders that count — cancelled ones excluded. */
   orders: number
@@ -79,6 +105,18 @@ export interface RecetteTotals {
   apports: number
   /** Cash taken out of the drawer unspent — bank, safe, owner. Not an expense. */
   retraits: number
+  /**
+   * Où est l'argent du service, en quatre poches qui ne se recouvrent pas :
+   * `cashSales` dans le tiroir, `cardSales` en banque, `platformDue` chez les
+   * plateformes, `unsettled` nulle part de connu. Avec les commissions des
+   * commandes non encaissées en espèces, les quatre font le chiffre d'affaires.
+   */
+  /** Ce que les plateformes doivent reverser, commissions déduites. */
+  platformDue: number
+  /** Ventes dont le règlement n'a jamais été enregistré. Ni un reproche, ni un oubli à cacher. */
+  unsettled: number
+  /** Une ligne par plateforme, la plus grosse d'abord. */
+  byCompany: CompanyBucket[]
   /** What the drawer should hold on top of the opening float. */
   cashExpected: number
   /** Net takings once achats and dépenses are paid. Top-ups change nothing here. */
@@ -124,6 +162,9 @@ export function emptyTotals(): RecetteTotals {
     depenses: 0,
     apports: 0,
     retraits: 0,
+    platformDue: 0,
+    unsettled: 0,
+    byCompany: [],
     cashExpected: 0,
     solde: 0,
     byType: { delivery: { count: 0, revenue: 0 }, pickup: { count: 0, revenue: 0 } },
@@ -136,7 +177,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 const MONEY_KEYS = [
   'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
   'cashSales', 'cardSales', 'achats', 'depenses', 'apports', 'retraits',
-  'cashExpected', 'solde',
+  'platformDue', 'unsettled', 'cashExpected', 'solde',
 ] as const
 
 /**
@@ -146,6 +187,7 @@ const MONEY_KEYS = [
  */
 export function computeTotals(orders: OrderLike[], movements: MovementLike[] = []): RecetteTotals {
   const totals = emptyTotals()
+  const companies = new Map<string, CompanyBucket>()
 
   for (const order of orders) {
     if (order.status === 'cancelled') {
@@ -178,10 +220,56 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
 
     const method = order.payment?.method
     const onPremises = source === 'counter' || source === 'kiosk'
-    const inDrawer = method ? method === 'cash' : onPremises && !order.deliveryCompany?.name
+    const company = order.deliveryCompany?.name?.trim() ?? ''
+    const inDrawer = method ? method === 'cash' : onPremises && !company
     if (inDrawer) totals.cashSales += total
     if (method === 'card') totals.cardSales += total
+
+    // La même commande ne tombe que dans une poche. Une commande Glovo payée
+    // dans l'application n'est pas encore de l'argent reçu : elle est due.
+    if (inDrawer || method === 'card') {
+      // Déjà comptée au-dessus.
+    } else if (company) {
+      totals.platformDue += total - commission
+    } else {
+      totals.unsettled += total
+    }
+
+    if (company) {
+      const bucket = companies.get(company) ?? {
+        name: company,
+        count: 0,
+        revenue: 0,
+        rate,
+        commission: 0,
+        net: 0,
+        cash: 0,
+        due: 0,
+      }
+      bucket.count++
+      bucket.revenue += total
+      bucket.commission += commission
+      bucket.net += total - commission
+      if (inDrawer) bucket.cash += total
+      else if (method !== 'card') bucket.due += total - commission
+      // Un taux renégocié en cours de journée : mieux vaut n'en afficher aucun
+      // qu'en afficher un qui ne vaut que pour la moitié des commandes.
+      if (bucket.rate !== null && bucket.rate !== rate) bucket.rate = null
+      companies.set(company, bucket)
+    }
   }
+
+  // La plus grosse plateforme en premier : c'est celle dont on veut le total.
+  totals.byCompany = [...companies.values()]
+    .map((c) => ({
+      ...c,
+      revenue: round2(c.revenue),
+      commission: round2(c.commission),
+      net: round2(c.net),
+      cash: round2(c.cash),
+      due: round2(c.due),
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
 
   // A cancelled entry stays on the record but moves no money.
   for (const movement of movements) {
@@ -232,13 +320,18 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
     typeof totals.cashSales === 'number'
       ? totals
       : { ...totals, cashSales: totals.cashExpected ?? 0, achats: 0, depenses: 0, solde: totals.net ?? 0 }
-  // Card payments, top-ups and withdrawals each arrived after some sessions
-  // had already been closed; those sessions had none of them.
+  // Card payments, top-ups, withdrawals and the platform breakdown each
+  // arrived after some sessions had already been closed. A missing figure
+  // reads as zero rather than being recomputed: a status changed weeks later
+  // must not rewrite a report that has been signed off.
   return {
     ...base,
     cardSales: base.cardSales ?? 0,
     apports: base.apports ?? 0,
     retraits: base.retraits ?? 0,
+    platformDue: base.platformDue ?? 0,
+    unsettled: base.unsettled ?? 0,
+    byCompany: Array.isArray(base.byCompany) ? base.byCompany : [],
   }
 }
 

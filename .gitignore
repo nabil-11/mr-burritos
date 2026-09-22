@@ -39,3 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# L installateur Windows de la caisse : une centaine de megaoctets, au-dela
+# de ce que GitHub accepte (100 Mo par fichier). Il est depose dans
+# public/downloads sur la machine qui sert le site — ou heberge ailleurs, et
+# NEXT_PUBLIC_CAISSE_URL pointe dessus. Voir lib/downloads.ts.
+/public/downloads/*.exe
