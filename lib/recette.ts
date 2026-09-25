@@ -97,9 +97,11 @@ export interface RecetteTotals {
   /**
    * Sales paid in cash — what went into the drawer.
    *
-   * Read off the payment the till records. Orders from before it asked keep
-   * the approximation they were counted with: taken on the premises (caisse,
-   * borne), no delivery platform involved.
+   * Read off the payment the till records. Where none was recorded, the
+   * channel answers: the counter, the kiosk and the website all take their
+   * money on the spot — the site charges nothing online, the customer pays at
+   * the counter or to the driver — so that sale is cash in the drawer. Only a
+   * platform collects on our behalf and pays later. See lib/platformSettlement.
    */
   cashSales: number
   /** Sales paid by card: takings that never touch the drawer. */

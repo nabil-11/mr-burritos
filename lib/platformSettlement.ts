@@ -85,24 +85,42 @@ export function netOf(order: PlatformOrderLike): number {
 }
 
 /**
+ * Les canaux où quelqu'un est là pour prendre l'argent tout de suite.
+ *
+ * Le site n'encaisse rien en ligne : il enregistre une commande, et le client
+ * paie au comptoir en venant la chercher, ou au livreur en la recevant. Une
+ * commande web sans mode de règlement n'est donc pas un trou dans les
+ * écritures — c'est de l'argent déjà pris à la caisse, comme une commande
+ * passée au comptoir. Seule une plateforme paie plus tard.
+ */
+const ON_SPOT: readonly string[] = ['counter', 'kiosk', 'website']
+
+/**
  * Où est l'argent de cette commande.
  *
  * L'ordre des tests est la règle : ce qui est déjà encaissé l'emporte sur la
  * plateforme. Une commande Glovo payée en espèces au livreur a mis l'argent
  * dans le tiroir — la compter aussi comme créance la ferait attendre deux fois.
  *
- * Les commandes d'avant que la caisse demande le mode de règlement n'en portent
- * aucun : prises sur place et sans plateforme, on les suppose en espèces, comme
- * elles ont toujours été comptées. Sinon, elles restent « inconnues » — ni un
- * reproche, ni un oubli à cacher.
+ * Sans mode de règlement enregistré, c'est le canal qui répond. Une plateforme
+ * a encaissé pour nous et reversera : créance. Sinon personne n'a encaissé à
+ * notre place, donc l'argent a été pris ici, sur place — le tiroir. C'est vrai
+ * de la caisse et de la borne, et tout autant du site, qui ne prend aucun
+ * paiement en ligne. Quand c'est le terminal qui a pris l'argent, la caisse l'a
+ * enregistré au moment de la vente et la commande part en banque.
+ *
+ * Reste « inconnu » : les commandes d'avant que `source` existe, qui ne
+ * déclarent aucun canal, et les règlements « autres » hors plateforme. Ni un
+ * reproche, ni un oubli à cacher — mais rien qu'on puisse mettre dans une
+ * poche à leur place.
  */
 export function moneyPocket(order: PlatformOrderLike): MoneyPocket {
   const method = order.payment?.method
-  const company = companyOf(order)
-  const onPremises = order.source === 'counter' || order.source === 'kiosk'
-  if (method ? method === 'cash' : onPremises && !company) return 'drawer'
+  if (method === 'cash') return 'drawer'
   if (method === 'card') return 'bank'
-  return company ? 'platform' : 'unknown'
+  if (companyOf(order)) return 'platform'
+  if (!method && ON_SPOT.includes(String(order.source))) return 'drawer'
+  return 'unknown'
 }
 
 /**

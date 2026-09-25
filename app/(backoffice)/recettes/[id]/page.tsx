@@ -244,7 +244,8 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
             strong
           />
           <p className="px-3 pt-2 text-[11px] text-muted-foreground leading-snug">
-            Les ventes sur place regroupent la caisse et la borne, hors plateformes de livraison.
+            Les ventes sur place regroupent la caisse, la borne et le site — le site n&apos;encaisse
+            rien en ligne, le client paie au comptoir ou au livreur —, hors plateformes de livraison.
             S&apos;y ajoute ce qui a été remis dans le tiroir en cours de service, et s&apos;en
             déduit tout ce qui en est sorti — achats, dépenses, retraits.
           </p>
