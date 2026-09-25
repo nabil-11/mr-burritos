@@ -144,49 +144,79 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
         />
       </div>
 
-      {/* ── Où est l'argent ? ─────────────────────────────────────
-           La question de fin de journée. Le chiffre d'affaires est une somme ;
-           celle-ci dit dans quelle poche elle se trouve, et laquelle il reste
-           à aller chercher. */}
+      {/* ── Payé / pas payé ───────────────────────────────────────
+           La question de fin de journée, et elle n'en fait qu'une : cet argent
+           est-il arrivé ? Le chiffre d'affaires est une somme ; ces deux-là
+           disent ce qu'on a en main ce soir, et ce qu'il reste à aller
+           chercher. Le détail des poches vient après — il explique, il ne
+           décide pas. */}
       <div className="mb-2 flex items-baseline gap-3">
-        <h2 className="text-sm font-bold">Où est l&apos;argent&nbsp;?</h2>
+        <h2 className="text-sm font-bold">Encaissé ou à recevoir&nbsp;?</h2>
         <p className="text-xs text-muted-foreground">
           Chaque commande tombe dans une seule poche
         </p>
       </div>
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-        <Stat
-          label="Espèces"
-          value={money(totals.cashSales)}
-          hint={`dans le tiroir : ${money(expectedCash)}`}
-          tone="text-emerald-600 dark:text-emerald-400"
-        />
-        <Stat
-          label="Carte"
-          value={money(totals.cardSales)}
-          hint="versé en banque"
-          tone="text-sky-600 dark:text-sky-400"
-        />
-        <Stat
-          label="Plateformes"
-          value={money(totals.platformDue)}
-          hint={
-            totals.commission > 0
-              ? `à recevoir · ${money(totals.commission)} de commission déduits`
-              : 'à recevoir'
-          }
-          tone="text-violet-600 dark:text-violet-400"
-        />
-        <Stat
-          label="Non renseigné"
-          value={money(totals.unsettled)}
-          hint={
-            totals.unsettled > 0
-              ? 'règlement non enregistré à la caisse'
-              : 'tout est réparti'
-          }
-          tone={totals.unsettled > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'}
-        />
+      <div className="grid gap-3 lg:grid-cols-2 mb-3">
+        <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+            Encaissé — l&apos;argent est arrivé
+          </p>
+          <p className="mt-1 text-3xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
+            {money(totals.collected)}
+          </p>
+          <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            <p className="flex justify-between gap-3">
+              <span>Espèces · dans le tiroir</span>
+              <span className="font-semibold text-foreground">{money(totals.cashSales)}</span>
+            </p>
+            <p className="flex justify-between gap-3">
+              <span>TPE · payé, en banque — pas dans le tiroir</span>
+              <span className="font-semibold text-foreground">{money(totals.cardSales)}</span>
+            </p>
+            {totals.platformPaid > 0 && (
+              <p className="flex justify-between gap-3">
+                <span>Plateformes déjà réglées</span>
+                <span className="font-semibold text-foreground">{money(totals.platformPaid)}</span>
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
+          <p className="text-[11px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+            À recevoir — pas encore payé
+          </p>
+          <p className="mt-1 text-3xl font-black tabular-nums text-amber-600 dark:text-amber-400">
+            {money(totals.receivable)}
+          </p>
+          <div className="mt-2 space-y-0.5 text-xs text-muted-foreground">
+            <p className="flex justify-between gap-3">
+              <span>
+                Plateformes{totals.commission > 0 ? ` · ${money(totals.commission)} de commission déduits` : ''}
+              </span>
+              <span className="font-semibold text-foreground">
+                {money(totals.platformDue - totals.platformPaid)}
+              </span>
+            </p>
+            <p className="flex justify-between gap-3">
+              <span>Non renseigné · règlement non enregistré</span>
+              <span className="font-semibold text-foreground">{money(totals.unsettled)}</span>
+            </p>
+            <p className="pt-1 text-[11px]">
+              {totals.receivable > 0 ? (
+                <>
+                  Ces montants ne sont pas dans la caisse ce soir — suivez-les dans{' '}
+                  <Link href="/platform-payouts" className="font-semibold text-blue-600 hover:underline">
+                    Règlements plateformes
+                  </Link>
+                  .
+                </>
+              ) : (
+                'Tout le service a été encaissé — rien ne reste dû.'
+              )}
+            </p>
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 mb-4">
@@ -226,7 +256,16 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           <Line label="Majorations" value={`+ ${money(totals.surcharges)}`} />
           <Line label="Frais de livraison" value={money(totals.deliveryFees)} />
           <Line label="Commissions plateformes" value={`− ${money(totals.commission)}`} />
-          <Line label="Net encaissé" value={money(totals.net)} strong />
+          <Line label="Net après commissions" value={money(totals.net)} strong />
+          {/* « Net » est ce que le service a rapporté ; « encaissé » est ce qui
+              est arrivé. Les deux ne coïncident que le jour où plus personne ne
+              doit rien. */}
+          <Line label="Déjà encaissé" value={money(totals.collected)} tone="good" />
+          <Line
+            label="Encore à recevoir"
+            value={money(totals.receivable)}
+            tone={totals.receivable > 0 ? 'warn' : undefined}
+          />
           {(totals.achats > 0 || totals.depenses > 0) && (
             <>
               <Line label="Achats et dépenses" value={`− ${money(totals.achats + totals.depenses)}`} />
@@ -371,11 +410,19 @@ function CompaniesTable({ companies }: { companies: RecetteTotals['byCompany'] }
   const sum = (pick: (c: RecetteTotals['byCompany'][number]) => number) =>
     companies.reduce((s, c) => s + pick(c), 0)
   const cash = sum((c) => c.cash)
+  const settled = sum((c) => c.settled ?? 0)
   // Tant qu'aucun livreur n'a payé au comptoir, « net » et « à recevoir » sont
-  // le même nombre : une colonne de plus ne dirait rien de neuf.
-  const columns = cash > 0
-    ? ['Plateforme', 'Commandes', 'CA brut', 'Commission', 'Net', 'À recevoir']
-    : ['Plateforme', 'Commandes', 'CA brut', 'Commission', 'À recevoir']
+  // le même nombre : une colonne de plus ne dirait rien de neuf. Idem pour
+  // « réglé » tant qu'aucun versement n'a été pointé.
+  const columns = [
+    'Plateforme',
+    'Commandes',
+    'CA brut',
+    'Commission',
+    ...(cash > 0 ? ['Net'] : []),
+    ...(settled > 0 ? ['Réglé'] : []),
+    'À recevoir',
+  ]
 
   return (
     <div className="bg-card rounded-xl border overflow-hidden mb-4">
@@ -424,8 +471,13 @@ function CompaniesTable({ companies }: { companies: RecetteTotals['byCompany'] }
                 {cash > 0 && (
                   <td className="px-4 py-3 text-right font-semibold">{money(c.net)}</td>
                 )}
+                {settled > 0 && (
+                  <td className="px-4 py-3 text-right font-semibold text-emerald-600 dark:text-emerald-400">
+                    {money(c.settled ?? 0)}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-right font-black text-violet-600 dark:text-violet-400">
-                  {money(c.due)}
+                  {money(c.due - (c.settled ?? 0))}
                 </td>
               </tr>
             ))}
@@ -441,8 +493,13 @@ function CompaniesTable({ companies }: { companies: RecetteTotals['byCompany'] }
               {cash > 0 && (
                 <td className="px-4 py-3 text-right font-bold">{money(sum((c) => c.net))}</td>
               )}
+              {settled > 0 && (
+                <td className="px-4 py-3 text-right font-bold text-emerald-600 dark:text-emerald-400">
+                  {money(settled)}
+                </td>
+              )}
               <td className="px-4 py-3 text-right font-black text-violet-600 dark:text-violet-400">
-                {money(sum((c) => c.due))}
+                {money(sum((c) => c.due - (c.settled ?? 0)))}
               </td>
             </tr>
           </tfoot>
@@ -460,6 +517,16 @@ function CompaniesTable({ companies }: { companies: RecetteTotals['byCompany'] }
             seconde fois, et sur ceux-là c&apos;est la commission qui reste due à la plateforme.
           </>
         )}
+      </p>
+      {/* Ces chiffres disent ce que la session a produit, pas ce qui a été
+          encaissé depuis : une plateforme règle à la semaine, et son versement
+          se pointe ailleurs. */}
+      <p className="px-4 pb-2.5 text-[11px] text-muted-foreground leading-snug">
+        Les versements reçus se suivent dans{' '}
+        <Link href="/platform-payouts" className="font-semibold text-blue-600 hover:underline">
+          Règlements plateformes
+        </Link>{' '}
+        — cette page-ci garde les chiffres du jour, même une fois la plateforme payée.
       </p>
     </div>
   )

@@ -21,7 +21,35 @@ type ReportData = {
     net: number
   }
   bySource: Record<OrderSource | 'unknown', { count: number; revenue: number; net: number }>
-  byDeliveryCompany: { name: string; count: number; revenue: number; commission: number; net: number; commissionAmount: number }[]
+  byDeliveryCompany: {
+    name: string
+    count: number
+    revenue: number
+    commission: number
+    net: number
+    commissionAmount: number
+    /** Le règlement est arrivé après : un serveur plus ancien ne l'envoie pas. */
+    due?: number
+    paidNet?: number
+    paidCount?: number
+    unpaidNet?: number
+    unpaidCount?: number
+  }[]
+  /**
+   * Payé / pas payé sur la période. Absent d'un serveur plus ancien : la
+   * section disparaît alors, plutôt que d'afficher des zéros.
+   */
+  encaissement?: {
+    paid: { cash: number; card: number; platforms: number; total: number }
+    unpaid: { platforms: number; unrecorded: number; total: number }
+  }
+  /** Créances plateformes : encaissé pour vous, réglé, et les versements reçus. */
+  platforms?: {
+    due: number
+    paid: { count: number; net: number }
+    unpaid: { count: number; net: number }
+    payouts: { count: number; amount: number; expected: number; gap: number }
+  }
   topProducts: { name: string; qty: number; revenue: number }[]
   byDay: { date: string; revenue: number; count: number }[]
   byHour: { hour: number; revenue: number; count: number }[]
@@ -392,6 +420,9 @@ export default function ReportsClient() {
             </div>
           ) : (
             <>
+              {/* ── Payé / pas payé ───────────────────────────────── */}
+              <SettlementSection data={data} />
+
               {/* ── Hourly chart ──────────────────────────────────── */}
               <Card>
                 <CardHeader className="pb-3">
@@ -524,13 +555,22 @@ export default function ReportsClient() {
                 <Card>
                   <CardHeader className="pb-3">
                     <CardTitle className="text-base">Plateformes de livraison</CardTitle>
+                    {data.platforms && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        Ce qu&apos;elles ont encaissé pour vous sur la période, et ce qui a été
+                        pointé comme reçu — le versement arrive souvent la semaine suivante.
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent className="p-0">
                     <div className="overflow-x-auto">
                       <table className="w-full text-sm min-w-120">
                         <thead className="bg-muted/50 border-b">
                           <tr>
-                            {['Plateforme', 'Commandes', 'CA brut', 'Commission', 'Net reçu'].map((h) => (
+                            {[
+                              'Plateforme', 'Commandes', 'CA brut', 'Commission', 'Net reçu',
+                              ...(data.platforms ? ['Réglé', 'À recevoir'] : []),
+                            ].map((h) => (
                               <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
                             ))}
                           </tr>
@@ -547,6 +587,34 @@ export default function ReportsClient() {
                                 </span>
                               </td>
                               <td className="px-4 py-3 font-semibold text-green-600">{fmt(c.net)} DT</td>
+                              {data.platforms && (
+                                <>
+                                  <td className="px-4 py-3 text-xs">
+                                    {(c.paidCount ?? 0) > 0 ? (
+                                      <span className="font-bold text-emerald-600">
+                                        {fmt(c.paidNet ?? 0)} DT
+                                        <span className="ml-1 font-normal text-muted-foreground">
+                                          ({c.paidCount})
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-4 py-3 text-xs">
+                                    {(c.unpaidCount ?? 0) > 0 ? (
+                                      <span className="font-bold text-amber-600">
+                                        {fmt(c.unpaidNet ?? 0)} DT
+                                        <span className="ml-1 font-normal text-muted-foreground">
+                                          ({c.unpaidCount})
+                                        </span>
+                                      </span>
+                                    ) : (
+                                      <span className="text-muted-foreground">—</span>
+                                    )}
+                                  </td>
+                                </>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -566,11 +634,52 @@ export default function ReportsClient() {
                               <td className="px-4 py-3 font-black text-sm text-green-600">
                                 {fmt(data.deliverySummary.net)} DT
                               </td>
+                              {data.platforms && (
+                                <>
+                                  <td className="px-4 py-3 font-bold text-sm text-emerald-600">
+                                    {fmt(data.platforms.paid.net)} DT
+                                  </td>
+                                  <td className="px-4 py-3 font-black text-sm text-amber-600">
+                                    {fmt(data.platforms.unpaid.net)} DT
+                                  </td>
+                                </>
+                              )}
                             </tr>
                           </tfoot>
                         )}
                       </table>
                     </div>
+                    {data.platforms && (
+                      <div className="grid gap-4 border-t p-4 sm:grid-cols-3">
+                        <PlatformStat
+                          label="Encaissé par les plateformes"
+                          value={`${fmt(data.platforms.due)} DT`}
+                          hint="Net des commandes de la période qu'elles ont encaissées elles-mêmes"
+                        />
+                        <PlatformStat
+                          label="Versements reçus"
+                          value={`${fmt(data.platforms.payouts.amount)} DT`}
+                          hint={`${data.platforms.payouts.count} versement(s) pointé(s) pendant la période — ils soldent souvent la période d'avant`}
+                          tone="text-emerald-600 dark:text-emerald-400"
+                        />
+                        <PlatformStat
+                          label="Écart des versements"
+                          value={`${data.platforms.payouts.gap > 0 ? '+' : ''}${fmt(data.platforms.payouts.gap)} DT`}
+                          hint={
+                            Math.abs(data.platforms.payouts.gap) < 0.005
+                              ? 'Les plateformes ont versé exactement ce qui était attendu'
+                              : 'Entre le net attendu et le montant réellement versé'
+                          }
+                          tone={
+                            Math.abs(data.platforms.payouts.gap) < 0.005
+                              ? 'text-foreground'
+                              : data.platforms.payouts.gap < 0
+                                ? 'text-red-600 dark:text-red-400'
+                                : 'text-sky-600 dark:text-sky-400'
+                          }
+                        />
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
@@ -627,6 +736,95 @@ const ecartTone = (gap: number) =>
     : gap > 0
       ? 'text-amber-600 dark:text-amber-400'
       : 'text-red-600 dark:text-red-400'
+
+/**
+ * Payé, pas payé.
+ *
+ * Le haut du rapport dit ce qui a été vendu. Celui-ci dit ce qui a été
+ * **reçu** — et les deux ne sont pas le même nombre tant qu'une plateforme
+ * n'a pas viré sa semaine. Trois précisions valent d'être dites plutôt que
+ * supposées :
+ *
+ *   — le TPE est payé, mais l'argent est en banque, pas dans le tiroir ;
+ *   — une commande plateforme n'est encaissée que le jour du versement ;
+ *   — les versements reçus pendant la période soldent, la plupart du temps,
+ *     la période d'avant. Ils sont donc montrés à part, jamais additionnés
+ *     aux ventes du mois.
+ */
+function SettlementSection({ data }: { data: ReportData }) {
+  const e = data.encaissement
+  if (!e) return null
+  const payouts = data.platforms?.payouts
+  const owed = e.unpaid.total
+  const share = e.paid.total + owed > 0 ? (e.paid.total / (e.paid.total + owed)) * 100 : 100
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card className="border-emerald-500/40">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            Encaissé — l&apos;argent est arrivé
+          </CardTitle>
+          <BadgeDollarSign size={18} className="text-emerald-500" />
+        </CardHeader>
+        <CardContent>
+          <p className="text-2xl font-black tabular-nums text-emerald-600 dark:text-emerald-400">
+            {money(e.paid.total)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {share.toFixed(0)} % de ce que la période a rapporté
+          </p>
+          <dl className="mt-3 space-y-1 text-xs">
+            <Split label="Espèces · dans le tiroir" value={money(e.paid.cash)} />
+            <Split label="TPE · payé, en banque — pas dans le tiroir" value={money(e.paid.card)} />
+            <Split label="Plateformes déjà réglées" value={money(e.paid.platforms)} />
+          </dl>
+        </CardContent>
+      </Card>
+
+      <Card className={owed > 0 ? 'border-amber-500/40' : undefined}>
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            À recevoir — pas encore payé
+          </CardTitle>
+          <Receipt size={18} className="text-amber-500" />
+        </CardHeader>
+        <CardContent>
+          <p
+            className={`text-2xl font-black tabular-nums ${
+              owed > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-muted-foreground'
+            }`}
+          >
+            {money(owed)}
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {owed > 0 ? 'Sur les commandes de la période' : 'Tout a été encaissé'}
+          </p>
+          <dl className="mt-3 space-y-1 text-xs">
+            <Split label="Plateformes, versement en attente" value={money(e.unpaid.platforms)} />
+            <Split label="Règlement non enregistré" value={money(e.unpaid.unrecorded)} />
+            {payouts && payouts.count > 0 && (
+              <Split
+                label={`Versements reçus pendant la période (${payouts.count}) — soldent souvent la précédente`}
+                value={money(payouts.amount)}
+              />
+            )}
+          </dl>
+        </CardContent>
+      </Card>
+    </div>
+  )
+}
+
+/** Une ligne « libellé … montant » dans les deux cartes ci-dessus. */
+function Split({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-semibold tabular-nums">{value}</dd>
+    </div>
+  )
+}
 
 /**
  * Caisse & trésorerie : ce que la période a coûté en espèces, ce qui a été
@@ -897,6 +1095,27 @@ function CashSection({ data }: { data: ReportData }) {
           </CardContent>
         </Card>
       )}
+    </div>
+  )
+}
+
+/** Un chiffre du bloc plateformes. Pas une carte : il vit déjà dans une. */
+function PlatformStat({
+  label,
+  value,
+  hint,
+  tone = 'text-foreground',
+}: {
+  label: string
+  value: string
+  hint: string
+  tone?: string
+}) {
+  return (
+    <div>
+      <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{label}</p>
+      <p className={`mt-1 text-xl font-black tabular-nums ${tone}`}>{value}</p>
+      <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p>
     </div>
   )
 }

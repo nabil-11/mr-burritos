@@ -73,7 +73,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // How it was paid, when the till recorded it: the customer checks their
   // change against the paper, not against the cashier's memory.
   const payment = (order.payment ?? {}) as { method?: string; received?: number | null; change?: number | null }
-  const paidAs = payment.method === 'cash' ? 'ESPECES' : payment.method === 'card' ? 'CARTE' : payment.method === 'other' ? 'AUTRE' : ''
+  const paidAs = payment.method === 'cash' ? 'ESPECES' : payment.method === 'card' ? 'TPE' : payment.method === 'other' ? 'AUTRE' : ''
   const paymentHtml = paidAs
     ? `<tr><td class="tot-label" style="font-weight:400">PAYE ${paidAs}</td><td class="tot-val" style="font-weight:400">${
         typeof payment.received === 'number' ? `${payment.received.toFixed(2)} DT` : ''

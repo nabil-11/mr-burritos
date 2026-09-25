@@ -74,7 +74,7 @@ export interface PricedOrder {
     type: 'delivery' | 'pickup'
     source: OrderSource
     status: 'pending' | 'confirmed' | 'preparing'
-    deliveryCompany: { companyId: unknown; name: string; commission: number }
+    deliveryCompany: { companyId: unknown; name: string; commission: number; paid: boolean }
     deliveryFee: number
     reference: string
     notes: string
@@ -202,18 +202,35 @@ export async function quoteWebBasket(rawItems: ItemInput[]): Promise<WebQuote> {
   return { lines, subtotal, discount, total }
 }
 
-/** A platform the till names: its commission is read from its record, not from the request. */
+/**
+ * A platform the till names: its commission is read from its record, not from
+ * the request.
+ *
+ * `paid` is the one thing the counter decides, and its default is what matters:
+ * a platform pays by the week, so a fresh order is owed money until someone
+ * says otherwise. The cashier ticks "déjà réglé" only for an order keyed in
+ * after the payout landed — see lib/platformSettlement.
+ */
 async function platformOf(raw: unknown) {
   const dc = (raw ?? {}) as Record<string, unknown>
+  const paid = dc.paid === true || dc.paid === 'true'
   const id = objectId(dc.companyId)
   if (id) {
     const found = (await DeliveryCompany.findById(id).lean()) as { _id: unknown; name?: string; commission?: number } | null
-    if (found) return { companyId: found._id, name: found.name ?? '', commission: clamp(Number(found.commission) || 0, 0, 100) }
+    if (found) {
+      return {
+        companyId: found._id,
+        name: found.name ?? '',
+        commission: clamp(Number(found.commission) || 0, 0, 100),
+        paid,
+      }
+    }
   }
   const name = text(dc.name, 60)
   return name
-    ? { companyId: null, name, commission: clamp(num(dc.commission) ?? 0, 0, 100) }
-    : { companyId: null, name: '', commission: 0 }
+    ? { companyId: null, name, commission: clamp(num(dc.commission) ?? 0, 0, 100), paid }
+    : // Sans plateforme, personne ne doit rien : le drapeau n'aurait rien à dire.
+      { companyId: null, name: '', commission: 0, paid: false }
 }
 
 export async function priceOrder(body: Record<string, unknown>): Promise<PricedOrder> {
@@ -309,7 +326,9 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
       type,
       source,
       status,
-      deliveryCompany: counter ? await platformOf(body.deliveryCompany) : { companyId: null, name: '', commission: 0 },
+      deliveryCompany: counter
+        ? await platformOf(body.deliveryCompany)
+        : { companyId: null, name: '', commission: 0, paid: false },
       deliveryFee,
       reference: counter ? text(body.reference, 60) : '',
       notes: text(body.notes, 500),

@@ -5,6 +5,8 @@ import { Recette } from '@/lib/models/Recette'
 import { ORDER_SOURCES, type OrderSource } from '@/lib/orderSource'
 import { cashDifference, recetteTotals, type RecetteTotals } from '@/lib/recette'
 import { MOVEMENT_META, isMovementKind, type MovementKind } from '@/lib/movementKinds'
+import { PlatformPayout } from '@/lib/models/PlatformPayout'
+import { isPaid, moneyPocket, receivableOf, type PlatformOrderLike } from '@/lib/platformSettlement'
 import { daysBetween, isDay, nextDay, safeTimeZone, startOfDay, wallClock } from '@/lib/reportTime'
 
 /**
@@ -95,7 +97,7 @@ export async function GET(req: NextRequest) {
       (!range.$gte || t >= range.$gte.getTime()) && (!range.$lt || t < range.$lt.getTime())
     const clock = wallClock(tz)
 
-    const [all, recetteDocs, movementDocs] = await Promise.all([
+    const [all, recetteDocs, movementDocs, payoutDocs] = await Promise.all([
       Order.find(bounded ? { createdAt: range } : {}).lean(),
       Recette.find(bounded ? { openedAt: range } : {})
         .sort({ openedAt: -1 })
@@ -107,6 +109,9 @@ export async function GET(req: NextRequest) {
         bounded ? { mouvements: { $elemMatch: { createdAt: range } } } : { 'mouvements.0': { $exists: true } },
         { mouvements: 1 }
       ).lean(),
+      // Un versement appartient au jour où il est arrivé, pas à celui des
+      // commandes qu'il solde : Glovo paie lundi une semaine déjà écoulée.
+      PlatformPayout.find(bounded ? { createdAt: range } : {}).lean(),
     ])
 
     // Cancelled orders took no money: they stay out of every figure below and
@@ -130,17 +135,49 @@ export async function GET(req: NextRequest) {
     const delivery = orders.filter((o) => o.type === 'delivery')
     const pickup = orders.filter((o) => o.type === 'pickup')
 
-    // By delivery company — net computed per order, with each order's own rate
-    const companyMap: Record<string, { count: number; revenue: number; netRevenue: number; commission: number }> = {}
+    // By delivery company — net computed per order, with each order's own rate.
+    // Le règlement vient en plus : sur la période, ce que la plateforme a
+    // encaissé pour le restaurant, et la part qu'elle a déjà reversée. Une
+    // commande payée en espèces au comptoir ne doit rien — voir
+    // lib/platformSettlement, qui tranche pour tout le monde.
+    type CompanyTally = {
+      count: number
+      revenue: number
+      netRevenue: number
+      commission: number
+      due: number
+      paidNet: number
+      paidCount: number
+      unpaidNet: number
+      unpaidCount: number
+    }
+    const companyMap: Record<string, CompanyTally> = {}
     for (const o of delivery) {
       const dc = o.deliveryCompany as { name?: string; commission?: number } | undefined
       const name = dc?.name || 'Inconnue'
       const commission = dc?.commission ?? 0
-      if (!companyMap[name]) companyMap[name] = { count: 0, revenue: 0, netRevenue: 0, commission }
-      companyMap[name].count++
-      companyMap[name].revenue += o.total || 0
-      companyMap[name].netRevenue += (o.total || 0) * (1 - commission / 100)
-      companyMap[name].commission = commission
+      if (!companyMap[name]) {
+        companyMap[name] = {
+          count: 0, revenue: 0, netRevenue: 0, commission,
+          due: 0, paidNet: 0, paidCount: 0, unpaidNet: 0, unpaidCount: 0,
+        }
+      }
+      const entry = companyMap[name]
+      entry.count++
+      entry.revenue += o.total || 0
+      entry.netRevenue += (o.total || 0) * (1 - commission / 100)
+      entry.commission = commission
+      const receivable = receivableOf(o as PlatformOrderLike)
+      if (receivable > 0) {
+        entry.due += receivable
+        if (isPaid(o as PlatformOrderLike)) {
+          entry.paidNet += receivable
+          entry.paidCount++
+        } else {
+          entry.unpaidNet += receivable
+          entry.unpaidCount++
+        }
+      }
     }
     const byDeliveryCompany = Object.entries(companyMap)
       .map(([name, d]) => ({
@@ -150,6 +187,12 @@ export async function GET(req: NextRequest) {
         commission: d.commission,
         net: d.netRevenue,
         commissionAmount: d.revenue - d.netRevenue,
+        /** Le net que la plateforme a encaissé pour le restaurant sur la période. */
+        due: round2(d.due),
+        paidNet: round2(d.paidNet),
+        paidCount: d.paidCount,
+        unpaidNet: round2(d.unpaidNet),
+        unpaidCount: d.unpaidCount,
       }))
       .sort((a, b) => b.revenue - a.revenue)
 
@@ -247,6 +290,78 @@ export async function GET(req: NextRequest) {
     const netTotalRevenue = pickupRevenue + deliveryNet
     const avgOrder = orderCount > 0 ? netTotalRevenue / orderCount : 0
 
+    // ── Ce que les plateformes doivent, et ce qu'elles ont versé ──────────
+    // Deux mesures qui ne se recouvrent pas, et c'est voulu : `due` regarde les
+    // commandes de la période, `payouts` les virements reçus pendant la même
+    // période — lesquels soldent souvent la période d'avant. L'écart entre les
+    // deux n'est pas une erreur, c'est le décalage de règlement lui-même.
+    const payouts = (payoutDocs as Record<string, unknown>[]).map((p) => ({
+      amount: Number(p.amount) || 0,
+      expected: Number(p.expected) || 0,
+      gap: Number(p.gap) || 0,
+    }))
+    // Où en est l'argent de la période, en deux nombres : ce qui est arrivé et
+    // ce qui manque. Les espèces sont dans le tiroir, le TPE est payé sans y
+    // être passé, une plateforme peut n'avoir encore rien versé. Même
+    // répartition que la caisse (lib/platformSettlement), pour que la journée
+    // et le mois racontent la même histoire.
+    const pockets = { drawer: 0, bank: 0, platformPaid: 0, platformDue: 0, unknown: 0 }
+    for (const o of orders) {
+      const order = o as PlatformOrderLike
+      const total = o.total || 0
+      switch (moneyPocket(order)) {
+        case 'drawer':
+          pockets.drawer += total
+          break
+        case 'bank':
+          pockets.bank += total
+          break
+        case 'platform': {
+          const net = receivableOf(order)
+          pockets.platformDue += net
+          if (isPaid(order)) pockets.platformPaid += net
+          break
+        }
+        default:
+          pockets.unknown += total
+      }
+    }
+    const encaissement = {
+      paid: {
+        cash: round2(pockets.drawer),
+        /** Le TPE : payé, mais en banque — pas dans le tiroir. */
+        card: round2(pockets.bank),
+        platforms: round2(pockets.platformPaid),
+        total: round2(pockets.drawer + pockets.bank + pockets.platformPaid),
+      },
+      unpaid: {
+        platforms: round2(pockets.platformDue - pockets.platformPaid),
+        /** Des ventes dont personne n'a noté le règlement. */
+        unrecorded: round2(pockets.unknown),
+        total: round2(pockets.platformDue - pockets.platformPaid + pockets.unknown),
+      },
+    }
+
+    const platforms = {
+      /** Le net encaissé par les plateformes sur les commandes de la période. */
+      due: round2(byDeliveryCompany.reduce((s, c) => s + c.due, 0)),
+      paid: {
+        count: byDeliveryCompany.reduce((s, c) => s + c.paidCount, 0),
+        net: round2(byDeliveryCompany.reduce((s, c) => s + c.paidNet, 0)),
+      },
+      unpaid: {
+        count: byDeliveryCompany.reduce((s, c) => s + c.unpaidCount, 0),
+        net: round2(byDeliveryCompany.reduce((s, c) => s + c.unpaidNet, 0)),
+      },
+      /** Les versements reçus pendant la période, quelle que soit leur période d'origine. */
+      payouts: {
+        count: payouts.length,
+        amount: round2(payouts.reduce((s, p) => s + p.amount, 0)),
+        expected: round2(payouts.reduce((s, p) => s + p.expected, 0)),
+        gap: round2(payouts.reduce((s, p) => s + p.gap, 0)),
+      },
+    }
+
     // ── Mouvements de caisse ──────────────────────────────────────────────
     // Two families, deliberately kept apart. Achats and dépenses are money
     // gone: they come off the result. Apports and retraits only move cash
@@ -339,6 +454,8 @@ export async function GET(req: NextRequest) {
         commissionAmount: deliveryGross - deliveryNet,
         net: deliveryNet,
       },
+      platforms,
+      encaissement,
       bySource,
       byPayment,
       byDeliveryCompany,

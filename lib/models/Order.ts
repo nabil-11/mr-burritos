@@ -73,6 +73,22 @@ const OrderSchema = new Schema(
       companyId: { type: Schema.Types.ObjectId, ref: 'DeliveryCompany', default: null },
       name: { type: String, default: '' },
       commission: { type: Number, default: 0 },
+      // Le versement de la plateforme. Glovo encaisse le client tout de suite
+      // et reverse à la semaine ou au mois : entre la livraison et le virement,
+      // ce net est une créance. `paid` ne la lève que lorsque l'argent est
+      // arrivé — voir lib/platformSettlement.
+      //
+      // Faux par défaut sur toutes les commandes, plateforme ou non : ce
+      // drapeau ne veut rien dire tant qu'il n'y a pas de créance, et ce sont
+      // `receivableOf()` et non ce champ qui décident s'il y en a une.
+      paid: { type: Boolean, default: false },
+      paidAt: { type: Date, default: null },
+      /** Qui a pointé le versement — un e-mail, ou le nom de la caisse. */
+      paidBy: { type: String, default: '' },
+      /** Le versement qui l'a réglée, quand elle l'a été par un pointage groupé. */
+      payout: { type: Schema.Types.ObjectId, ref: 'PlatformPayout', default: null },
+      /** Sa référence, recopiée pour rester lisible sans jointure : « Glovo S38 ». */
+      payoutRef: { type: String, default: '' },
     },
     deliveryFee: { type: Number, default: 0, min: 0, max: 10 },
     assignedDelivery: { type: Schema.Types.ObjectId, ref: 'User', default: null },
@@ -102,6 +118,11 @@ const OrderSchema = new Schema(
   },
   { timestamps: true }
 )
+
+// Les créances plateformes se lisent toujours de la même façon : une société,
+// réglées ou non, les plus anciennes d'abord. Sans cet index, l'écran des
+// règlements balaie toutes les commandes que le restaurant ait jamais prises.
+OrderSchema.index({ 'deliveryCompany.name': 1, 'deliveryCompany.paid': 1, createdAt: -1 })
 
 export const Order = models.Order || model('Order', OrderSchema)
 export type OrderDoc = mongoose.InferSchemaType<typeof OrderSchema>

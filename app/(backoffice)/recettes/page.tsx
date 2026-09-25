@@ -89,7 +89,7 @@ export default async function RecettesPage() {
           <table className="w-full text-sm min-w-250">
             <thead className="bg-muted/50 border-b">
               <tr>
-                {['N°', 'Ouverture', 'Clôture', 'Commandes', 'Chiffre d’affaires', 'Espèces', 'Plateformes', 'Net', 'Écart caisse', 'Statut'].map((h) => (
+                {['N°', 'Ouverture', 'Clôture', 'Commandes', 'Chiffre d’affaires', 'Espèces', 'TPE', 'Encaissé', 'À recevoir', 'Écart caisse', 'Statut'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
                 ))}
               </tr>
@@ -131,17 +131,22 @@ export default async function RecettesPage() {
                   </td>
                   <td className="px-4 py-3 font-bold">{money(totals.revenue)}</td>
                   <td className="px-4 py-3">{money(totals.cashSales)}</td>
-                  {/* Ce que les plateformes doivent encore pour cette journée. */}
+                  {/* Payé, mais jamais passé par le tiroir. */}
+                  <td className="px-4 py-3">{money(totals.cardSales)}</td>
+                  {/* Les deux colonnes de la fin de journée : ce qui est arrivé,
+                      et ce qu'il reste à aller chercher. */}
+                  <td className="px-4 py-3 font-semibold text-emerald-600 dark:text-emerald-400">
+                    {money(totals.collected)}
+                  </td>
                   <td className="px-4 py-3">
-                    {totals.platformDue > 0 ? (
-                      <span className="font-semibold text-violet-600 dark:text-violet-400">
-                        {money(totals.platformDue)}
+                    {totals.receivable > 0 ? (
+                      <span className="font-semibold text-amber-600 dark:text-amber-400">
+                        {money(totals.receivable)}
                       </span>
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{money(totals.net)}</td>
                   <td className="px-4 py-3">
                     {gap === null ? (
                       <span className="text-muted-foreground">non compté</span>

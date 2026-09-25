@@ -11,6 +11,7 @@ import { isDuplicateKey, nextOrderNumber } from '@/lib/orderNumber'
 import { OrderInputError, priceOrder } from '@/lib/orderPricing'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
 import { getOpenRecette } from '@/lib/recette'
+import { callerFrom } from '@/lib/caisseCaller'
 
 export async function GET(req: NextRequest) {
   try {
@@ -84,11 +85,23 @@ export async function POST(req: NextRequest) {
     // started, it simply lands outside the day's recette.
     const recette = await getOpenRecette()
 
+    // Une commande plateforme saisie comme déjà réglée porte son pointage tout
+    // de suite : qui l'a dit, et quand. Sans ces deux champs, un « réglé » ne
+    // serait qu'une case cochée par personne.
+    const deliveryCompany = doc.deliveryCompany.paid
+      ? {
+          ...doc.deliveryCompany,
+          paidAt: new Date(),
+          paidBy: callerFrom(req, (body as Record<string, unknown>).userName).name,
+        }
+      : doc.deliveryCompany
+
     let order
     for (let attempt = 0; ; attempt++) {
       try {
         order = await Order.create({
           ...doc,
+          deliveryCompany,
           confirmedAt,
           recette: recette?._id ?? null,
           orderNumber: await nextOrderNumber(),

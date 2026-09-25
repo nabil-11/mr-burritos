@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, Tag, PlusCircle, ShoppingBag,
   CalendarDays, Users, Settings, LogOut, ClipboardPlus, Menu, X, Bike, BarChart3,
-  BookOpen, MessageSquare, Wallet,
+  BookOpen, MessageSquare, Wallet, HandCoins,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -22,6 +22,7 @@ const nav = [
   { href: '/categories',   label: 'Catégories',       icon: Tag },
   { href: '/supplements',  label: 'Suppléments',      icon: PlusCircle },
   { href: '/delivery-companies', label: 'Sociétés livraison', icon: Bike },
+  { href: '/platform-payouts', label: 'Règlements plateformes', icon: HandCoins },
   { href: '/posts',        label: 'Blog',             icon: BookOpen },
   { href: '/reviews',      label: 'Avis clients',     icon: MessageSquare },
   { href: '/reservations', label: 'Réservations',     icon: CalendarDays },

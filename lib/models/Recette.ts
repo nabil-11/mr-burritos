@@ -38,10 +38,21 @@ const TotalsSchema = new Schema(
     apports: { type: Number },
     /** Cash taken out without being spent — a deposit, never an expense. */
     retraits: { type: Number },
-    /** What the delivery platforms owe, their commission already deducted. */
+    /** What the delivery platforms collected for the shop, commission deducted. */
     platformDue: { type: Number },
-    /** Sales whose settlement was never recorded — neither cash, card nor platform. */
+    /** The part of platformDue whose payout had been ticked off by closing time. */
+    platformPaid: { type: Number },
+    /** Sales whose settlement was never recorded — neither cash, TPE nor platform. */
     unsettled: { type: Number },
+    /**
+     * La question de la fermeture, figée comme le reste : l'argent arrivé
+     * (`collected` — espèces, TPE, versements déjà pointés) et celui qui
+     * manquait encore (`receivable`). Gelés au moment de la clôture : un
+     * versement encaissé trois jours plus tard appartient à ce jour-là, pas à
+     * celui-ci.
+     */
+    collected: { type: Number },
+    receivable: { type: Number },
     /** One line per delivery platform: Glovo, Jumia, a rider of one's own. */
     byCompany: { type: Schema.Types.Mixed },
     /** Net takings minus achats and dépenses. Top-ups and withdrawals cost nothing. */

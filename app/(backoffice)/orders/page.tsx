@@ -8,6 +8,7 @@ import { orderSourceLabel } from '@/lib/orderSource'
 import RangeFilter from './RangeFilter'
 import { RANGE_LABELS, normalizeRange, rangeBounds } from './dateRange'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders, hasCountdown, readyDeadline } from '@/lib/orderTimers'
+import { receivableOf, type PlatformOrderLike } from '@/lib/platformSettlement'
 
 // A day of service rarely passes 200 orders; a year easily does. The list
 // shows the most recent ones and says so rather than silently truncating.
@@ -112,7 +113,16 @@ function toListItem(order: Doc): OrderListItem {
     deliveryFee: num(order.deliveryFee),
     total: num(order.total),
     deliveryCompany: str(company.name)
-      ? { name: str(company.name), commission: num(company.commission) }
+      ? {
+          name: str(company.name),
+          commission: num(company.commission),
+          // Ce que la plateforme doit encore : la règle vit dans
+          // lib/platformSettlement, elle n'est pas recopiée ici.
+          receivable: receivableOf(order as PlatformOrderLike),
+          paid: company.paid === true,
+          paidAtLabel: company.paidAt ? dateFr(company.paidAt) : '',
+          payoutRef: str(company.payoutRef),
+        }
       : null,
     assignedDelivery: driver && str(driver.name)
       ? { name: str(driver.name), phone: str(driver.phone) }

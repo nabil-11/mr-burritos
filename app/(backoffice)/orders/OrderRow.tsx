@@ -7,6 +7,8 @@ import { ChevronRight, Printer, Timer } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import OrderActions from './OrderActions'
 import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
+import { SETTLEMENT_META } from '@/lib/platformSettlement'
+import { toast } from 'sonner'
 
 /**
  * One row of the orders table, plus the detail panel it unfolds.
@@ -48,7 +50,19 @@ export type OrderListItem = {
   discount: { label: string; rate: number; amount: number } | null
   deliveryFee: number
   total: number
-  deliveryCompany: { name: string; commission: number } | null
+  deliveryCompany: {
+    name: string
+    commission: number
+    /**
+     * Ce que la plateforme doit encore verser, commission déduite — 0 dès que
+     * l'argent est arrivé autrement (espèces au comptoir, carte au terminal).
+     */
+    receivable: number
+    /** Vrai quand le versement a été pointé. Voir lib/platformSettlement. */
+    paid: boolean
+    paidAtLabel: string
+    payoutRef: string
+  } | null
   assignedDelivery: { name: string; phone: string } | null
   reference: string
   notes: string
@@ -175,6 +189,81 @@ function DetailCard({ title, children }: { title: string; children: React.ReactN
   )
 }
 
+/**
+ * Le versement de la plateforme sur cette commande, et le geste pour le
+ * corriger.
+ *
+ * L'écran « Règlements plateformes » fait le travail de fond : un virement, une
+ * période, un écart. Ici il ne s'agit que de rattraper une ligne — la commande
+ * qu'on a sous les yeux, pointée ou dépointée sans quitter la liste.
+ */
+function SettlementRow({
+  orderId,
+  company,
+}: {
+  orderId: string
+  company: NonNullable<OrderListItem['deliveryCompany']>
+}) {
+  const router = useRouter()
+  const [busy, setBusy] = useState(false)
+  const meta = SETTLEMENT_META[company.paid ? 'paid' : 'unpaid']
+
+  const toggle = async () => {
+    setBusy(true)
+    try {
+      const res = await fetch('/api/platform-payouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderIds: [orderId], paid: !company.paid }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Opération refusée')
+      toast.success(company.paid ? 'Remis à recevoir' : `${dt(company.receivable)} pointés comme reçus`)
+      router.refresh()
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Opération refusée')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="mt-2 rounded-lg border p-2">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+          Règlement {company.name}
+        </span>
+        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${meta.badge}`}>
+          {meta.label}
+        </span>
+      </div>
+      <p className="mt-1 flex justify-between gap-2 text-xs">
+        <span className="text-muted-foreground">
+          {company.paid
+            ? `Reçu${company.paidAtLabel ? ` le ${company.paidAtLabel}` : ''}${company.payoutRef ? ` · ${company.payoutRef}` : ''}`
+            : meta.hint}
+        </span>
+        <strong className="shrink-0">{dt(company.receivable)}</strong>
+      </p>
+      <div className="mt-1.5 flex items-center gap-2">
+        <button
+          onClick={toggle}
+          disabled={busy}
+          className="rounded-lg border px-2 py-1 text-[11px] font-semibold transition-colors hover:bg-muted disabled:opacity-50"
+        >
+          {busy ? '…' : company.paid ? 'Remettre à recevoir' : 'Marquer comme réglée'}
+        </button>
+        <Link
+          href="/platform-payouts"
+          className="text-[11px] font-semibold text-blue-600 hover:underline"
+        >
+          Tous les règlements →
+        </Link>
+      </div>
+    </div>
+  )
+}
+
 export default function OrderRow({ order }: { order: OrderListItem }) {
   const [open, setOpen] = useState(false)
   const { customer, items, discount, deliveryCompany, assignedDelivery } = order
@@ -211,9 +300,22 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
         <td className="px-4 py-3">
           <Badge variant="outline">{order.type === 'delivery' ? '🛵 Livraison' : '🏠 À emporter'}</Badge>
           {order.type === 'delivery' && deliveryCompany?.name && (
-            <p className="text-[10px] text-orange-600 font-bold mt-1">
-              {deliveryCompany.name} ({deliveryCompany.commission}%)
-            </p>
+            <>
+              <p className="text-[10px] text-orange-600 font-bold mt-1">
+                {deliveryCompany.name} ({deliveryCompany.commission}%)
+              </p>
+              {deliveryCompany.receivable > 0 && (
+                <span
+                  className={`mt-1 inline-block rounded-full px-1.5 py-0.5 text-[10px] font-bold ${
+                    SETTLEMENT_META[deliveryCompany.paid ? 'paid' : 'unpaid'].badge
+                  }`}
+                >
+                  {deliveryCompany.paid
+                    ? SETTLEMENT_META.paid.label
+                    : `${SETTLEMENT_META.unpaid.label} ${dt(deliveryCompany.receivable)}`}
+                </span>
+              )}
+            </>
           )}
         </td>
         <td className="px-4 py-3">
@@ -331,6 +433,9 @@ export default function OrderRow({ order }: { order: OrderListItem }) {
                   <span>Total</span>
                   <span className="text-[#F5A800]">{dt(order.total)}</span>
                 </div>
+                {deliveryCompany && deliveryCompany.receivable > 0 && (
+                  <SettlementRow orderId={order.id} company={deliveryCompany} />
+                )}
               </DetailCard>
 
               {/* ── Client ───────────────────────────────────────── */}

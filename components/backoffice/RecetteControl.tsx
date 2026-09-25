@@ -34,6 +34,13 @@ interface Totals {
   net: number
   cashExpected: number
   cashSales: number
+  cardSales?: number
+  platformDue?: number
+  platformPaid?: number
+  unsettled?: number
+  /** Encaisse et reste du : voir lib/recette. Absents des serveurs plus anciens. */
+  collected?: number
+  receivable?: number
   achats: number
   depenses: number
   apports: number
@@ -354,9 +361,42 @@ function CloseDialog({
             )}
             <Row label="Espèces attendues" value={money(expected)} strong />
           </dl>
+
+          {/* Avant de compter le tiroir : de tout ce qui a été vendu ce jour,
+              qu'est-ce qui est réellement arrivé ? Le tiroir n'en est qu'une
+              partie — le TPE est payé sans y être, une plateforme peut ne rien
+              avoir versé encore. */}
+          {typeof totals.collected === 'number' && (
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-xl border border-emerald-500/40 bg-emerald-500/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-emerald-700 dark:text-emerald-400">
+                  Encaissé
+                </p>
+                <p className="text-lg font-black tabular-nums text-emerald-600 dark:text-emerald-400">
+                  {money(totals.collected)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  espèces {money(totals.cashSales ?? 0)} · TPE {money(totals.cardSales ?? 0)}
+                  {(totals.platformPaid ?? 0) > 0 && ` · plateformes ${money(totals.platformPaid ?? 0)}`}
+                </p>
+              </div>
+              <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
+                  À recevoir
+                </p>
+                <p className="text-lg font-black tabular-nums text-amber-600 dark:text-amber-400">
+                  {money(totals.receivable ?? 0)}
+                </p>
+                <p className="text-[10px] text-muted-foreground">
+                  plateformes {money((totals.platformDue ?? 0) - (totals.platformPaid ?? 0))}
+                  {(totals.unsettled ?? 0) > 0 && ` · non renseigné ${money(totals.unsettled ?? 0)}`}
+                </p>
+              </div>
+            </div>
+          )}
           <p className="text-xs text-muted-foreground -mt-2">
-            Comptez le tiroir en entier, fond compris. Les commandes livrées par une plateforme et
-            celles payées par carte n&apos;y sont pas comptées.
+            Comptez le tiroir en entier, fond compris. Ni le TPE ni les plateformes n&apos;y sont :
+            payé n&apos;est pas la même chose que dans le tiroir.
           </p>
 
           <div className="space-y-1">

@@ -165,12 +165,15 @@ function DeliveryForm({
   loading,
 }: {
   deliveryCompanies: DeliveryCompany[]
-  onSubmit: (amount: number, reference: string, company: DeliveryCompany | null) => void
+  onSubmit: (amount: number, reference: string, company: DeliveryCompany | null, paid: boolean) => void
   loading: boolean
 }) {
   const [selectedCompanyId, setSelectedCompanyId] = useState('')
   const [amount, setAmount] = useState('')
   const [reference, setReference] = useState('')
+  // Une plateforme règle à la semaine ou au mois : par défaut, elle doit encore
+  // l'argent. « Déjà réglé » sert à la commande saisie après le virement.
+  const [paid, setPaid] = useState(false)
 
   const company = deliveryCompanies.find((c) => c._id === selectedCompanyId) ?? null
   const amountNum = parseFloat(amount) || 0
@@ -206,6 +209,43 @@ function DeliveryForm({
           </div>
         )}
       </div>
+
+      {/* Règlement : la plateforme doit-elle encore cet argent ? */}
+      {company && (
+        <div className="bg-card rounded-xl border p-5 space-y-3">
+          <div>
+            <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Règlement</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {company.name} encaisse le client et reverse plus tard — à la semaine, au mois.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { on: false, label: 'À recevoir', hint: `${company.name} n'a pas encore versé` },
+              { on: true, label: 'Déjà réglé', hint: "L'argent est arrivé" },
+            ].map((o) => (
+              <button
+                key={String(o.on)}
+                type="button"
+                onClick={() => setPaid(o.on)}
+                className={`rounded-xl border-2 p-3 text-left transition-all ${
+                  paid === o.on
+                    ? o.on
+                      ? 'border-emerald-500 bg-emerald-500/5'
+                      : 'border-amber-500 bg-amber-500/5'
+                    : 'border-border hover:border-muted-foreground/40'
+                }`}
+              >
+                <span className="block text-sm font-black">{o.label}</span>
+                <span className="block text-[11px] text-muted-foreground">{o.hint}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-muted-foreground">
+            Les créances se suivent dans <strong>Règlements plateformes</strong>.
+          </p>
+        </div>
+      )}
 
       {/* Amount + Reference */}
       <div className="bg-card rounded-xl border p-5 space-y-4">
@@ -249,7 +289,7 @@ function DeliveryForm({
             <span className="font-bold">− {commissionAmt.toFixed(2)} DT</span>
           </div>
           <div className="flex justify-between text-green-700 font-black border-t border-orange-200 pt-2 mt-2 text-base">
-            <span>Vous recevez</span>
+            <span>{paid ? 'Vous avez reçu' : `À recevoir de ${company.name}`}</span>
             <span>{netAmt.toFixed(2)} DT</span>
           </div>
         </div>
@@ -257,7 +297,7 @@ function DeliveryForm({
 
       {/* Submit */}
       <button
-        onClick={() => onSubmit(amountNum, reference, company)}
+        onClick={() => onSubmit(amountNum, reference, company, paid)}
         disabled={loading || amountNum <= 0}
         className="w-full bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-50 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl transition-all text-sm"
       >
@@ -327,7 +367,12 @@ export default function NewOrderForm({
     })
   }
 
-  const handleDelivery = (amount: number, reference: string, company: DeliveryCompany | null) => {
+  const handleDelivery = (
+    amount: number,
+    reference: string,
+    company: DeliveryCompany | null,
+    paid: boolean
+  ) => {
     if (amount <= 0) return toast.error('Saisissez un montant valide')
     submitOrder({
       customer: { name: 'Livraison', phone: '—', address: '' },
@@ -339,7 +384,7 @@ export default function NewOrderForm({
       status: 'confirmed',
       reference,
       deliveryCompany: company
-        ? { companyId: company._id, name: company.name, commission: company.commission }
+        ? { companyId: company._id, name: company.name, commission: company.commission, paid }
         : { companyId: null, name: '', commission: 0 },
     })
   }

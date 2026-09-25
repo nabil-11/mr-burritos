@@ -4,6 +4,7 @@ import { Order } from './models/Order'
 import { Recette } from './models/Recette'
 import { ORDER_SOURCES, type OrderSource } from './orderSource'
 import { MOVEMENT_KINDS, type MovementKind, isMovementKind } from './movementKinds'
+import { companyOf, isPaid, moneyPocket } from './platformSettlement'
 
 /**
  * Till sessions ("recettes") and their figures.
@@ -71,6 +72,12 @@ export interface CompanyBucket {
    * fois. La somme des `due` fait exactement `platformDue`.
    */
   due: number
+  /**
+   * La part de `due` dont le versement a déjà été pointé — voir
+   * lib/platformSettlement. Ce qui reste réellement à encaisser est donc
+   * `due − settled`.
+   */
+  settled: number
 }
 
 export interface RecetteTotals {
@@ -111,12 +118,32 @@ export interface RecetteTotals {
    * plateformes, `unsettled` nulle part de connu. Avec les commissions des
    * commandes non encaissées en espèces, les quatre font le chiffre d'affaires.
    */
-  /** Ce que les plateformes doivent reverser, commissions déduites. */
+  /** Ce que les plateformes ont encaissé pour le restaurant, commissions déduites. */
   platformDue: number
+  /**
+   * La part de `platformDue` dont le versement a déjà été pointé. Elle reste
+   * dans `platformDue` — c'est bien la plateforme qui a encaissé — mais elle
+   * n'est plus attendue : voir `receivable`.
+   */
+  platformPaid: number
   /** Ventes dont le règlement n'a jamais été enregistré. Ni un reproche, ni un oubli à cacher. */
   unsettled: number
   /** Une ligne par plateforme, la plus grosse d'abord. */
   byCompany: CompanyBucket[]
+  /**
+   * La question de la fin de journée, en deux nombres.
+   *
+   * `collected` : l'argent réellement arrivé — les espèces du tiroir, ce que
+   * le TPE a pris (payé, mais en banque et non dans la caisse), et les
+   * versements de plateformes déjà pointés.
+   *
+   * `receivable` : ce qui manque encore à l'appel — le net que les
+   * plateformes n'ont pas versé, et les ventes dont personne n'a noté le
+   * règlement. Rien n'est compté deux fois : chaque commande tombe dans une
+   * seule poche (voir lib/platformSettlement).
+   */
+  collected: number
+  receivable: number
   /** What the drawer should hold on top of the opening float. */
   cashExpected: number
   /** Net takings once achats and dépenses are paid. Top-ups change nothing here. */
@@ -163,8 +190,11 @@ export function emptyTotals(): RecetteTotals {
     apports: 0,
     retraits: 0,
     platformDue: 0,
+    platformPaid: 0,
     unsettled: 0,
     byCompany: [],
+    collected: 0,
+    receivable: 0,
     cashExpected: 0,
     solde: 0,
     byType: { delivery: { count: 0, revenue: 0 }, pickup: { count: 0, revenue: 0 } },
@@ -177,7 +207,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 const MONEY_KEYS = [
   'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
   'cashSales', 'cardSales', 'achats', 'depenses', 'apports', 'retraits',
-  'platformDue', 'unsettled', 'cashExpected', 'solde',
+  'platformDue', 'platformPaid', 'unsettled', 'collected', 'receivable', 'cashExpected', 'solde',
 ] as const
 
 /**
@@ -218,22 +248,20 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
     totals.bySource[source].count++
     totals.bySource[source].revenue += total
 
-    const method = order.payment?.method
-    const onPremises = source === 'counter' || source === 'kiosk'
-    const company = order.deliveryCompany?.name?.trim() ?? ''
-    const inDrawer = method ? method === 'cash' : onPremises && !company
-    if (inDrawer) totals.cashSales += total
-    if (method === 'card') totals.cardSales += total
-
-    // La même commande ne tombe que dans une poche. Une commande Glovo payée
-    // dans l'application n'est pas encore de l'argent reçu : elle est due.
-    if (inDrawer || method === 'card') {
-      // Déjà comptée au-dessus.
-    } else if (company) {
+    // La même commande ne tombe que dans une poche, et c'est lib/platformSettlement
+    // qui tranche — le même arbitrage que celui des créances plateformes. Deux
+    // copies de cette règle finiraient par se contredire, et le tiroir aurait
+    // tort contre les factures.
+    const company = companyOf(order)
+    const pocket = moneyPocket(order)
+    if (pocket === 'drawer') totals.cashSales += total
+    else if (pocket === 'bank') totals.cardSales += total
+    // Une commande Glovo payée dans l'application n'est pas encore de l'argent
+    // reçu : elle est due, jusqu'à ce que le versement soit pointé.
+    else if (pocket === 'platform') {
       totals.platformDue += total - commission
-    } else {
-      totals.unsettled += total
-    }
+      if (isPaid(order)) totals.platformPaid += total - commission
+    } else totals.unsettled += total
 
     if (company) {
       const bucket = companies.get(company) ?? {
@@ -245,13 +273,17 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
         net: 0,
         cash: 0,
         due: 0,
+        settled: 0,
       }
       bucket.count++
       bucket.revenue += total
       bucket.commission += commission
       bucket.net += total - commission
-      if (inDrawer) bucket.cash += total
-      else if (method !== 'card') bucket.due += total - commission
+      if (pocket === 'drawer') bucket.cash += total
+      else if (pocket === 'platform') {
+        bucket.due += total - commission
+        if (isPaid(order)) bucket.settled += total - commission
+      }
       // Un taux renégocié en cours de journée : mieux vaut n'en afficher aucun
       // qu'en afficher un qui ne vaut que pour la moitié des commandes.
       if (bucket.rate !== null && bucket.rate !== rate) bucket.rate = null
@@ -268,6 +300,7 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
       net: round2(c.net),
       cash: round2(c.cash),
       due: round2(c.due),
+      settled: round2(c.settled),
     }))
     .sort((a, b) => b.revenue - a.revenue)
 
@@ -286,6 +319,11 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
   totals.cashExpected =
     totals.cashSales + totals.apports - totals.retraits - totals.achats - totals.depenses
   totals.solde = totals.net - totals.achats - totals.depenses
+
+  // Payé / pas payé : les quatre poches, regroupées selon la seule question
+  // qui compte à la fermeture — cet argent est-il arrivé, oui ou non ?
+  totals.collected = totals.cashSales + totals.cardSales + totals.platformPaid
+  totals.receivable = totals.platformDue - totals.platformPaid + totals.unsettled
 
   // Sums of prices drift into 12.300000000000001; a report shows centimes.
   for (const key of MONEY_KEYS) totals[key] = round2(totals[key])
@@ -324,14 +362,27 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
   // arrived after some sessions had already been closed. A missing figure
   // reads as zero rather than being recomputed: a status changed weeks later
   // must not rewrite a report that has been signed off.
+  const cardSales = base.cardSales ?? 0
+  const platformDue = base.platformDue ?? 0
+  const platformPaid = base.platformPaid ?? 0
+  const unsettled = base.unsettled ?? 0
   return {
     ...base,
-    cardSales: base.cardSales ?? 0,
+    cardSales,
     apports: base.apports ?? 0,
     retraits: base.retraits ?? 0,
-    platformDue: base.platformDue ?? 0,
-    unsettled: base.unsettled ?? 0,
-    byCompany: Array.isArray(base.byCompany) ? base.byCompany : [],
+    platformDue,
+    platformPaid,
+    unsettled,
+    byCompany: Array.isArray(base.byCompany)
+      ? base.byCompany.map((c) => ({ ...c, settled: c.settled ?? 0 }))
+      : [],
+    // « Encaissé » et « à recevoir » sont arrivés après certaines clôtures.
+    // Ils se déduisent des poches déjà figées plutôt que d'être recalculés sur
+    // les commandes : une session close garde les chiffres de son soir, y
+    // compris l'ignorance où l'on était alors des versements à venir.
+    collected: base.collected ?? round2((base.cashSales ?? 0) + cardSales + platformPaid),
+    receivable: base.receivable ?? round2(platformDue - platformPaid + unsettled),
   }
 }
 
