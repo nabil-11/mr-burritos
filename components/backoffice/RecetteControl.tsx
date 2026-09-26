@@ -437,7 +437,21 @@ function CloseDialog({
             La clôture fige ces chiffres : la recette ne pourra plus être rouverte.
           </p>
 
-          <div className="flex justify-end gap-2 pt-1">
+          {/* Collée au bas de la fenêtre : sur un portable, le bilan au-dessus
+              dépasse souvent la hauteur de l'écran, et le bouton qui clôture
+              ne doit jamais être celui qu'on cherche en défilant. L'écart y
+              est répété, pour appuyer en sachant ce qu'on fige. */}
+          <div className="sticky -bottom-4 -mx-4 -mb-4 flex items-center justify-end gap-2 border-t bg-background px-4 py-3">
+            {gap !== null && (
+              <span
+                className={`mr-auto text-xs font-bold tabular-nums ${
+                  Math.abs(gap) < 0.005 ? 'text-green-600' : gap > 0 ? 'text-amber-600' : 'text-red-600'
+                }`}
+              >
+                Écart {gap > 0 ? '+' : ''}
+                {gap.toFixed(2)} DT
+              </span>
+            )}
             <Button type="button" variant="outline" onClick={onClose}>
               Annuler
             </Button>
