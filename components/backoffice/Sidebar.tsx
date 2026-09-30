@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, Tag, PlusCircle, ShoppingBag,
-  CalendarDays, Users, Settings, LogOut, ClipboardPlus, Menu, X, Bike, BarChart3,
+  CalendarDays, Users, Settings, LogOut, ClipboardPlus, Menu, X, Bike,
   BookOpen, MessageSquare, Wallet, HandCoins,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -17,7 +17,6 @@ const nav = [
   { href: '/orders/new',   label: 'Nouvelle commande', icon: ClipboardPlus, highlight: true },
   { href: '/orders',       label: 'Commandes',        icon: ShoppingBag },
   { href: '/recettes',     label: 'Recettes (caisse)', icon: Wallet },
-  { href: '/reports',      label: 'Rapports',         icon: BarChart3 },
   { href: '/products',     label: 'Produits',         icon: UtensilsCrossed },
   { href: '/categories',   label: 'Catégories',       icon: Tag },
   { href: '/supplements',  label: 'Suppléments',      icon: PlusCircle },

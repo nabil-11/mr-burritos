@@ -1,5 +1,32 @@
 import { Sequence } from './models/Sequence'
-import { DEFAULT_TIME_ZONE, wallClock } from './reportTime'
+
+const DEFAULT_TIME_ZONE = 'Africa/Tunis'
+
+/**
+ * Reads an instant on the shop's wall clock.
+ */
+export function wallClock(tz: string) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    hourCycle: 'h23',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+  })
+  return (instant: Date | number | string) => {
+    const parts: Record<string, string> = {}
+    for (const p of fmt.formatToParts(new Date(instant))) parts[p.type] = p.value
+    return {
+      day: `${parts.year}-${parts.month}-${parts.day}`,
+      hour: Number(parts.hour),
+      /** The wall-clock reading written as if it were UTC — used to find the offset. */
+      asUtcMs: Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second),
+    }
+  }
+}
 
 /**
  * MB-20260919-0012 — the shop's day, then the order's rank within it.

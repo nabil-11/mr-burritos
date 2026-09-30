@@ -28,6 +28,8 @@ interface OrderItem {
   selectedSupplements: BuilderSupplement[]
 }
 
+const round2 = (n: number) => Math.round(n * 100) / 100
+
 // ── Pickup: the same step-by-step builder the customers use ────────────────
 function PickupForm({
   categories,
@@ -177,8 +179,22 @@ function DeliveryForm({
 
   const company = deliveryCompanies.find((c) => c._id === selectedCompanyId) ?? null
   const amountNum = parseFloat(amount) || 0
-  const commissionAmt = company ? amountNum * (company.commission / 100) : 0
-  const netAmt = amountNum - commissionAmt
+
+  let grossAmt = amountNum
+  let commissionAmt = 0
+  let netAmt = amountNum
+  if (company && amountNum > 0) {
+    if (paid) {
+      const rate = company.commission / 100
+      grossAmt = rate < 1 ? round2(amountNum / (1 - rate)) : amountNum
+      commissionAmt = round2(grossAmt - amountNum)
+      netAmt = amountNum
+    } else {
+      commissionAmt = round2(amountNum * (company.commission / 100))
+      netAmt = round2(amountNum - commissionAmt)
+      grossAmt = amountNum
+    }
+  }
 
   return (
     <div className="max-w-lg mx-auto space-y-6">
@@ -282,7 +298,7 @@ function DeliveryForm({
           <p className="text-xs font-black text-orange-700 uppercase tracking-widest mb-3">Calcul commission</p>
           <div className="flex justify-between text-muted-foreground">
             <span>Total commande</span>
-            <span className="font-bold">{amountNum.toFixed(2)} DT</span>
+            <span className="font-bold">{grossAmt.toFixed(2)} DT</span>
           </div>
           <div className="flex justify-between text-orange-600">
             <span>Commission {company.name} ({company.commission}%)</span>
@@ -297,16 +313,16 @@ function DeliveryForm({
 
       {/* Submit */}
       <button
-        onClick={() => onSubmit(amountNum, reference, company, paid)}
+        onClick={() => onSubmit(company && paid && company.commission > 0 && company.commission < 100 ? grossAmt : amountNum, reference, company, paid)}
         disabled={loading || amountNum <= 0}
         className="w-full bg-[#F5A800] hover:bg-[#FF6B00] disabled:opacity-50 disabled:cursor-not-allowed text-black font-black py-4 rounded-xl transition-all text-sm"
       >
         {loading
           ? '⏳ Création...'
           : amountNum > 0
-            ? `✓ Valider — ${amountNum.toFixed(2)} DT`
+            ? `✓ Valider — ${(company && paid && company.commission > 0 && company.commission < 100 ? grossAmt : amountNum).toFixed(2)} DT`
             : '✓ Valider la commande'
-        }
+      }
       </button>
     </div>
   )
@@ -374,11 +390,14 @@ export default function NewOrderForm({
     paid: boolean
   ) => {
     if (amount <= 0) return toast.error('Saisissez un montant valide')
+    const effectiveTotal = company && paid && company.commission > 0 && company.commission < 100
+      ? round2(amount / (1 - company.commission / 100))
+      : amount
     submitOrder({
       customer: { name: 'Livraison', phone: '—', address: '' },
       items: [],
-      subtotal: amount,
-      total: amount,
+      subtotal: effectiveTotal,
+      total: effectiveTotal,
       type: 'delivery',
       source: 'counter',
       status: 'confirmed',

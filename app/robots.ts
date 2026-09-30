@@ -20,8 +20,6 @@ const PRIVATE = [
   '/configuration',
   '/delivery-companies',
   '/posts',
-  '/recettes',
-  '/reports',
   '/reservations',
   '/reviews',
   '/users',
