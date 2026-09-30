@@ -119,6 +119,7 @@ export function moneyPocket(order: PlatformOrderLike): MoneyPocket {
   if (method === 'cash') return 'drawer'
   if (method === 'card') return 'bank'
   if (companyOf(order)) return 'platform'
+  if (String(order.source) === 'website') return 'drawer'
   if (!method && ON_SPOT.includes(String(order.source))) return 'drawer'
   return 'unknown'
 }
