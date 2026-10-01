@@ -42,7 +42,7 @@ export function startOfDay(day: string, tz: string): Date {
   const parts: Record<string, string> = {}
   for (const p of fmt.formatToParts(new Date(target))) parts[p.type] = p.value
   const asUtcMs = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second)
-  let guess = target - (asUtcMs - target)
+  const guess = target - (asUtcMs - target)
   const parts2: Record<string, string> = {}
   for (const p of fmt.formatToParts(new Date(guess))) parts2[p.type] = p.value
   const asUtcMs2 = Date.UTC(+parts2.year, +parts2.month - 1, +parts2.day, +parts2.hour, +parts2.minute, +parts2.second)
@@ -58,4 +58,32 @@ export function daysBetween(from: string, to: string): string[] {
   const days: string[] = []
   for (let d = from; d <= to && days.length < 400; d = nextDay(d)) days.push(d)
   return days
+}
+
+/** The shop's calendar day an instant falls on — 00:30 in Tunis is that day, not the UTC one before. */
+export function dayOf(at: Date | string | number, tz: string): string {
+  const parts: Record<string, string> = {}
+  for (const p of new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date(at))) {
+    parts[p.type] = p.value
+  }
+  return `${parts.year}-${parts.month}-${parts.day}`
+}
+
+/** The hour on the shop's wall clock, 0–23. */
+export function hourOf(at: Date | string | number, tz: string): number {
+  const h = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', hourCycle: 'h23' })
+    .formatToParts(new Date(at))
+    .find((p) => p.type === 'hour')?.value
+  return Number(h) % 24
+}
+
+/** The day `n` days before (negative: after) a YYYY-MM-DD day. */
+export function addDays(day: string, n: number): string {
+  const [y, m, d] = day.split('-').map(Number)
+  return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10)
 }
