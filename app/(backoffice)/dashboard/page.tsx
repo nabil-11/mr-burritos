@@ -137,14 +137,14 @@ export default async function DashboardPage() {
           className="xl:col-span-2"
           title="14 derniers jours"
           subtitle={
-            <span className="inline-flex flex-wrap items-center gap-x-2">
+            <div className="inline-flex flex-wrap items-center gap-x-2">
               7 jours : <b className="text-foreground">{money(d.week.current.revenue)}</b> · {d.week.current.orders} cmd
               <Delta
                 current={d.week.current.revenue}
                 previous={d.week.previous.revenue}
                 label="vs les 7 jours précédents, à heure égale"
               />
-            </span>
+            </div>
           }
         >
           <TrendChart days={d.days} />

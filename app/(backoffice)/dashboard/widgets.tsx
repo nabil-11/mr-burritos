@@ -40,7 +40,8 @@ export function Panel({
       <div className="flex items-start justify-between gap-3 px-4 pt-4 pb-3">
         <div className="min-w-0">
           <h2 className="font-semibold text-sm">{title}</h2>
-          {subtitle && <p className="text-xs text-muted-foreground mt-0.5">{subtitle}</p>}
+          {/* Un div et pas un p : le sous-titre peut contenir un <Delta>, lui-même un p. */}
+          {subtitle && <div className="text-xs text-muted-foreground mt-0.5">{subtitle}</div>}
         </div>
         {href && (
           <Link
