@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Eye } from 'lucide-react'
 import { overview } from '@/lib/employeeAccount'
 import { currentMonth, isMonth } from '@/lib/payroll'
 import StatusSwitch from '@/components/backoffice/StatusSwitch'
@@ -59,7 +60,7 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
           <table className="w-full text-sm min-w-190">
             <thead className="bg-muted/50 border-b">
               <tr>
-                {['Employé', 'Salaire', 'Avances', 'Primes / retenues', 'Payé', 'Reste à payer', 'Actif', ''].map((h) => (
+                {['Employé', 'Salaire', 'Avances', 'Primes / retenues', 'Payé', 'Reste à payer', 'Actif', 'Actions'].map((h) => (
                   <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground whitespace-nowrap">
                     {h}
                   </th>
@@ -110,6 +111,12 @@ export default async function EmployeesPage({ searchParams }: { searchParams: Pr
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        <Link
+                          href={`/employees/${e._id}?month=${month}`}
+                          className="inline-flex items-center gap-1 rounded-lg border px-2.5 py-1 text-xs font-semibold text-muted-foreground hover:border-[#F5A800]/60 hover:text-[#F5A800] transition-colors"
+                        >
+                          <Eye size={13} /> Voir
+                        </Link>
                         <EditEmployeeButton employee={e} />
                         <DeleteEmployeeButton employee={e} />
                       </div>
