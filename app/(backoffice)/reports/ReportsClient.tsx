@@ -458,6 +458,39 @@ function MovementsCard({ data }: { data: RecetteReport }) {
               ))}
             </div>
           )}
+          {m.staff.byEmployee.length > 0 && (
+            <div className="space-y-1.5 rounded-lg border p-3">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Personnel, payé depuis la caisse
+                </p>
+                <Link href="/employees" className="text-xs font-semibold text-muted-foreground hover:text-[#F5A800]">
+                  Comptes employés →
+                </Link>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Avances <span className="font-semibold text-foreground">{money(m.staff.avances)}</span>
+                {m.staff.salaires > 0 && (
+                  <>
+                    {' · '}Salaires <span className="font-semibold text-foreground">{money(m.staff.salaires)}</span>
+                  </>
+                )}
+                {' '}— compris dans les dépenses.
+              </p>
+              {m.staff.byEmployee.map((s) => (
+                <div key={s.id} className="flex justify-between gap-3 text-sm">
+                  <Link href={`/employees/${s.id}`} className="truncate hover:text-[#F5A800]">
+                    {s.name} <span className="text-xs text-muted-foreground">×{s.count}</span>
+                  </Link>
+                  <span className="tabular-nums text-right">
+                    {s.avances > 0 && <span className="text-orange-700 dark:text-orange-400">avances {money(s.avances)}</span>}
+                    {s.avances > 0 && s.salaires > 0 && ' · '}
+                    {s.salaires > 0 && <span className="text-sky-700 dark:text-sky-400">salaire {money(s.salaires)}</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
           {m.cancelled > 0 && (
             <p className="text-[11px] text-muted-foreground">
               {m.cancelled} ligne{m.cancelled > 1 ? 's' : ''} annulée{m.cancelled > 1 ? 's' : ''}, hors des totaux.

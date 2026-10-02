@@ -47,6 +47,7 @@ export interface ReportRecetteDoc {
     label?: string
     amount?: number
     cancelledAt?: Date | string | null
+    employee?: { id?: unknown; name?: string; reason?: string } | null
   }[] | null
 }
 
@@ -108,6 +109,25 @@ export interface ReportMovements {
   top: ReportMovementLine[]
   /** Lignes annulées : hors des totaux, mais pas hors de vue. */
   cancelled: number
+  /**
+   * Les dépenses versées au personnel depuis le tiroir — déjà comptées dans
+   * `byKind.depense`, détaillées ici par employé.
+   */
+  staff: ReportStaff
+}
+
+export interface ReportStaffLine {
+  id: string
+  name: string
+  avances: number
+  salaires: number
+  count: number
+}
+
+export interface ReportStaff {
+  avances: number
+  salaires: number
+  byEmployee: ReportStaffLine[]
 }
 
 export interface ReportDay {
@@ -186,6 +206,17 @@ export interface RecetteReport {
 }
 
 /** « Légumes », « legumes » et « LÉGUMES » sont une seule ligne du rapport. */
+function staffSummary(lines: ReportStaffLine[]): ReportStaff {
+  const byEmployee = lines
+    .map((l) => ({ ...l, avances: round2(l.avances), salaires: round2(l.salaires) }))
+    .sort((a, b) => b.avances + b.salaires - (a.avances + a.salaires))
+  return {
+    avances: round2(byEmployee.reduce((s, l) => s + l.avances, 0)),
+    salaires: round2(byEmployee.reduce((s, l) => s + l.salaires, 0)),
+    byEmployee,
+  }
+}
+
 const labelKey = (kind: string, label: string) =>
   `${kind}:${label.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')}`
 
@@ -251,6 +282,7 @@ export function buildRecetteReport(
   const byKind = {} as ReportMovements['byKind']
   for (const kind of MOVEMENT_KINDS) byKind[kind] = { count: 0, amount: 0 }
   const labels = new Map<string, ReportMovementLine>()
+  const staff = new Map<string, ReportStaffLine>()
   let cancelledMovements = 0
 
   const days = new Map<string, ReportDay>()
@@ -319,6 +351,15 @@ export function buildRecetteReport(
       line.count++
       line.amount += amount
       labels.set(key, line)
+
+      if (m.employee?.id) {
+        const id = String(m.employee.id)
+        const s = staff.get(id) ?? { id, name: m.employee.name ?? '—', avances: 0, salaires: 0, count: 0 }
+        if (m.employee.reason === 'salaire') s.salaires += amount
+        else s.avances += amount
+        s.count++
+        staff.set(id, s)
+      }
     }
 
     // ── Par jour d'ouverture ─────────────────────────────────
@@ -434,6 +475,7 @@ export function buildRecetteReport(
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 12),
       cancelled: cancelledMovements,
+      staff: staffSummary([...staff.values()]),
     },
     byDay,
     byCashier: [...cashiers.values()]

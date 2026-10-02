@@ -85,6 +85,20 @@ const MovementSchema = new Schema({
   label: { type: String, required: true, trim: true, maxlength: 80 },
   amount: { type: Number, required: true, min: 0.01 },
   note: { type: String, default: '', trim: true, maxlength: 200 },
+  // Set on a dépense paid to an employee — an advance, or their salary paid
+  // from the drawer. The name is copied in, like the cashier's: renaming the
+  // employee later does not rewrite the drawer's history.
+  employee: {
+    type: new Schema(
+      {
+        id: { type: Schema.Types.ObjectId, ref: 'Employee', required: true },
+        name: { type: String, required: true },
+        reason: { type: String, enum: ['avance', 'salaire'], default: 'avance' },
+      },
+      { _id: false }
+    ),
+    default: null,
+  },
   createdAt: { type: Date, default: Date.now },
   createdBy: { name: { type: String, default: '' } },
   cancelledAt: { type: Date, default: null },

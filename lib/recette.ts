@@ -2,6 +2,7 @@ import mongoose from 'mongoose'
 import { connectDB } from './mongodb'
 import { Order } from './models/Order'
 import { Recette } from './models/Recette'
+import { Employee } from './models/Employee'
 import { ORDER_SOURCES, type OrderSource } from './orderSource'
 import { MOVEMENT_KINDS, type MovementKind, isMovementKind } from './movementKinds'
 import { companyOf, isPaid, moneyPocket } from './platformSettlement'
@@ -553,6 +554,10 @@ export interface MovementInput {
   label?: unknown
   amount?: unknown
   note?: unknown
+  /** Une dépense versée à un employé : à qui elle a été remise. */
+  employeeId?: unknown
+  /** 'avance' (par défaut) ou 'salaire' — son salaire payé depuis le tiroir. */
+  employeeReason?: unknown
   userName?: string
 }
 
@@ -561,14 +566,55 @@ function cleanMovement(input: MovementInput) {
   if (!isMovementKind(kind)) {
     throw new RecetteError('Type de mouvement invalide : achat, dépense, apport ou retrait', 400)
   }
+  const employeeId = input.employeeId ? String(input.employeeId) : null
+  if (employeeId && kind !== 'depense') {
+    throw new RecetteError('Une avance à un employé est une dépense', 400)
+  }
+  const reason = input.employeeReason === 'salaire' ? 'salaire' : 'avance'
   const label = typeof input.label === 'string' ? input.label.trim().slice(0, 80) : ''
-  if (!label) throw new RecetteError('Indiquez un libellé', 400)
+  // A line paid to an employee gets its label from them — see attachEmployees.
+  if (!label && !employeeId) throw new RecetteError('Indiquez un libellé', 400)
   // A till types "12,5" as readily as 12.5.
   const amount = round2(Number(String(input.amount ?? '').replace(',', '.')))
   if (!Number.isFinite(amount) || amount <= 0) throw new RecetteError('Montant invalide', 400)
   if (amount > MAX_MOVEMENT) throw new RecetteError('Montant trop élevé', 400)
   const note = typeof input.note === 'string' ? input.note.trim().slice(0, 200) : ''
-  return { kind, label, amount, note }
+  return { kind, label, amount, note, employeeId, reason }
+}
+
+/**
+ * Turns `employeeId` into the employee stamped on the line, and the line's
+ * label into « Avance · Houssine » or « Salaire · Houssine » — the same words on
+ * the till, the back-office and the closing ticket, whoever typed it.
+ *
+ * Someone who has left can still be paid what they are owed, but no longer be
+ * advanced anything.
+ */
+async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[]) {
+  const ids = [...new Set(cleaned.map((m) => m.employeeId).filter((id): id is string => Boolean(id)))]
+  if (!ids.every((id) => mongoose.isValidObjectId(id))) throw new RecetteError('Employé introuvable', 400)
+  const found = ids.length
+    ? ((await Employee.find({ _id: { $in: ids } }).select('name isActive').lean()) as {
+        _id: unknown
+        name: string
+        isActive: boolean
+      }[])
+    : []
+  const byId = new Map(found.map((e) => [String(e._id), e]))
+
+  return cleaned.map(({ employeeId, reason, ...movement }) => {
+    if (!employeeId) return movement
+    const employee = byId.get(employeeId)
+    if (!employee) throw new RecetteError('Employé introuvable', 400)
+    if (!employee.isActive && reason === 'avance') {
+      throw new RecetteError(`${employee.name} n'est plus actif : plus d'avance possible`, 400)
+    }
+    return {
+      ...movement,
+      label: `${reason === 'salaire' ? 'Salaire' : 'Avance'} · ${employee.name}`.slice(0, 80),
+      employee: { id: employeeId, name: employee.name, reason },
+    }
+  })
 }
 
 /** Why an update guarded on an open session matched nothing. */
@@ -599,9 +645,10 @@ export async function addMovements(recetteId: string, inputs: MovementInput[], u
     throw new RecetteError('Aucun mouvement à enregistrer', 400)
   }
   if (inputs.length > MAX_AT_ONCE) throw new RecetteError('Trop de mouvements en une fois', 400)
-  const cleaned = inputs.map(cleanMovement)
+  const parsed = inputs.map(cleanMovement)
   if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404)
   await connectDB()
+  const cleaned = await attachEmployees(parsed)
 
   // One instant, one millisecond apart, so the list keeps the order they were
   // decided in: the top-up above the achat it paid for.
