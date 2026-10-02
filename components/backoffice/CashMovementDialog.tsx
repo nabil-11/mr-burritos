@@ -104,14 +104,15 @@ function MovementForm({
   const [saving, setSaving] = useState(false)
   // Une dépense peut être versée à un employé — une avance, ou son salaire. Elle
   // est alors rattachée à son compte, et le serveur l'intitule « Avance ·
-  // Houssine ». Son solde est affiché pour qu'on voie avant de donner.
+  // Houssine ». Son solde est affiché pour qu'on voie avant de donner — ici
+  // seulement : la caisse, elle, ne reçoit que les noms.
   const [employees, setEmployees] = useState<{ _id: string; name: string; poste?: string; balance?: number }[]>([])
   const [employeeId, setEmployeeId] = useState<string | null>(null)
   const [reason, setReason] = useState<'avance' | 'salaire'>('avance')
 
   useEffect(() => {
     let live = true
-    fetch('/api/employees?active=1')
+    fetch('/api/employees?active=1&balance=1')
       .then((r) => (r.ok ? r.json() : []))
       .then((list) => live && Array.isArray(list) && setEmployees(list))
       .catch(() => {})

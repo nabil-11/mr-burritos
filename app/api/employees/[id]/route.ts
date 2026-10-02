@@ -3,7 +3,7 @@ import mongoose from 'mongoose'
 import { connectDB } from '@/lib/mongodb'
 import { Employee } from '@/lib/models/Employee'
 import { requireAuth } from '@/lib/auth'
-import { accountOf, hasHistory, setupOf } from '@/lib/employeeAccount'
+import { hasHistory, setupOf } from '@/lib/employeeAccount'
 import { currentMonth } from '@/lib/payroll'
 import { employeeError, employeeFields } from '../fields'
 
@@ -11,18 +11,8 @@ type Ctx = { params: Promise<{ id: string }> }
 
 export const dynamic = 'force-dynamic'
 
-/** GET /api/employees/[id] — la fiche, le compte mois par mois et toutes ses lignes. */
-export async function GET(req: NextRequest, { params }: Ctx) {
-  try {
-    requireAuth(req)
-    const { id } = await params
-    const account = await accountOf(id)
-    if (!account) return NextResponse.json({ error: 'Non trouvé' }, { status: 404 })
-    return NextResponse.json(account)
-  } catch (e: unknown) {
-    return employeeError(e)
-  }
-}
+// No GET here on purpose: an employee's account (salary, balance, CIN) is
+// private, and the back-office page reads it server-side. See ../route.ts.
 
 /**
  * Un changement de salaire ne réécrit pas le passé : il entre dans le barème

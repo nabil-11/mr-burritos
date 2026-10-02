@@ -9,27 +9,30 @@ import { employeeError, employeeFields } from './fields'
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/employees — les employés, chacun avec ce qui lui est dû
- * aujourd'hui (`balance`) et ses avances du mois. `?active=1` : seulement ceux
- * qu'on peut encore payer d'une avance — ce que la caisse et le formulaire de
- * dépense proposent, solde compris, pour qu'on voie avant de donner.
+ * GET /api/employees — qui peut recevoir une dépense : nom et poste.
+ * `?active=1` : seulement ceux qu'on peut encore payer.
+ *
+ * Ce que chacun touche et ce qui lui reste dû ne s'affiche pas sur la caisse,
+ * devant le comptoir : par défaut cette liste n'en dit rien. Le formulaire de
+ * dépense du back-office demande `?balance=1` pour montrer le reste à payer.
  */
 export async function GET(req: NextRequest) {
   try {
     requireAuth(req)
     const activeOnly = req.nextUrl.searchParams.get('active') === '1'
-    const list = await overview(currentMonth(), { activeOnly })
+    if (req.nextUrl.searchParams.get('balance') === '1') {
+      const list = await overview(currentMonth(), { activeOnly })
+      return NextResponse.json(
+        list.map(({ employee: e, balance }) => ({ _id: e._id, name: e.name, poste: e.poste, isActive: e.isActive, balance }))
+      )
+    }
+    await connectDB()
+    const list = (await Employee.find(activeOnly ? { isActive: true } : {})
+      .sort({ name: 1 })
+      .select('name poste isActive')
+      .lean()) as { _id: unknown; name: string; poste?: string; isActive?: boolean }[]
     return NextResponse.json(
-      list.map(({ employee: e, month, balance }) => ({
-        _id: e._id,
-        name: e.name,
-        poste: e.poste,
-        phone: e.phone,
-        salary: e.salary,
-        isActive: e.isActive,
-        balance,
-        monthAdvances: month.avances,
-      }))
+      list.map((e) => ({ _id: String(e._id), name: e.name, poste: e.poste ?? '', isActive: e.isActive !== false }))
     )
   } catch (e: unknown) {
     return employeeError(e)
