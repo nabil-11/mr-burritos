@@ -42,6 +42,24 @@ const EmployeeSchema = new Schema(
     /** Ce qui lui était dû au début du suivi (négatif : ce qu'il devait). */
     openingBalance: { type: Number, default: 0 },
     notes: { type: String, default: '', trim: true, maxlength: 500 },
+    /**
+     * Sa semaine type : les créneaux qui se répètent chaque semaine. `day` de
+     * 0 (lundi) à 6 (dimanche) ; un jour absent est un jour de repos. Les
+     * exceptions d'un jour précis vivent dans PlanningDay — voir lib/planning.
+     */
+    schedule: {
+      type: [
+        new Schema(
+          {
+            day: { type: Number, required: true, min: 0, max: 6 },
+            from: { type: String, required: true },
+            to: { type: String, required: true },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
     isActive: { type: Boolean, default: true },
     /** Quand il a été désactivé : son salaire cesse de courir après ce mois-là. */
     leftAt: { type: Date, default: null },
