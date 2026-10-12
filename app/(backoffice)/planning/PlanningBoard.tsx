@@ -4,7 +4,7 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { Plus, X } from 'lucide-react'
+import { Copy, Plus, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -43,7 +43,7 @@ const hoursLabel = (h: number) => `${Number.isInteger(h) ? h : h.toFixed(1).repl
 const dayNum = (date: string) => `${date.slice(8, 10)}/${date.slice(5, 7)}`
 const DEFAULT_SHIFT: Shift = { from: '11:00', to: '16:00' }
 
-async function send(method: 'PUT' | 'PATCH', body: unknown) {
+async function send(method: 'PUT' | 'PATCH' | 'POST', body: unknown) {
   const res = await fetch('/api/planning', {
     method,
     headers: { 'Content-Type': 'application/json' },
@@ -56,6 +56,7 @@ async function send(method: 'PUT' | 'PATCH', body: unknown) {
 export default function PlanningBoard({ planning }: { planning: Planning }) {
   const [day, setDay] = useState<{ employee: PlanningEmployee; date: string } | null>(null)
   const [week, setWeek] = useState<PlanningEmployee | null>(null)
+  const [copying, setCopying] = useState(false)
   const { employees, days, today, canEdit } = planning
   const unplanned = employees.filter((e) => e.schedule.length === 0).length
 
@@ -78,6 +79,14 @@ export default function PlanningBoard({ planning }: { planning: Planning }) {
           {unplanned} employé{unplanned > 1 ? 's' : ''} sans semaine type — appuyez sur un nom pour la
           définir : elle se répétera chaque semaine.
         </p>
+      )}
+
+      {canEdit && (
+        <div className="mb-3 flex justify-end">
+          <Button type="button" variant="outline" onClick={() => setCopying(true)}>
+            <Copy size={14} /> Dupliquer la semaine ou le mois
+          </Button>
+        </div>
       )}
 
       <div className="bg-card rounded-xl border overflow-hidden">
@@ -172,7 +181,10 @@ export default function PlanningBoard({ planning }: { planning: Planning }) {
         </p>
       </div>
 
-      {day && <DayDialog key={`${day.employee._id}:${day.date}`} target={day} onClose={() => setDay(null)} />}
+      {day && (
+        <DayDialog key={`${day.employee._id}:${day.date}`} target={day} weekDays={days.map((d) => d.date)} onClose={() => setDay(null)} />
+      )}
+      {copying && <CopyDialog planning={planning} onClose={() => setCopying(false)} />}
       {week && <WeekDialog key={week._id} employee={week} onClose={() => setWeek(null)} />}
     </>
   )
@@ -212,7 +224,16 @@ function ShiftInputs({ shifts, onChange }: { shifts: Shift[]; onChange: (s: Shif
 }
 
 /** Ce jour-là seulement. */
-function DayDialog({ target, onClose }: { target: { employee: PlanningEmployee; date: string }; onClose: () => void }) {
+function DayDialog({
+  target,
+  weekDays,
+  onClose,
+}: {
+  target: { employee: PlanningEmployee; date: string }
+  /** Les jours de la semaine affichée : ceux sur lesquels ce jour peut être recopié. */
+  weekDays: string[]
+  onClose: () => void
+}) {
   const router = useRouter()
   const { employee, date } = target
   const cell = employee.cells[date]
@@ -220,12 +241,19 @@ function DayDialog({ target, onClose }: { target: { employee: PlanningEmployee; 
   const [shifts, setShifts] = useState<Shift[]>(cell.shifts.length ? cell.shifts : [DEFAULT_SHIFT])
   const [note, setNote] = useState(cell.note)
   const [busy, setBusy] = useState(false)
+  /** Les autres jours qui recevront la même chose. */
+  const [also, setAlso] = useState<string[]>([])
+  const others = weekDays.filter((d) => d !== date)
 
   const save = async (body: Record<string, unknown>, done: string) => {
     setBusy(true)
     try {
       await send('PUT', { employeeId: employee._id, date, ...body })
-      toast.success(done)
+      // Dupliquer après avoir enregistré : c'est ce qui vient d'être saisi qu'on recopie.
+      if (also.length && body.kind !== 'semaine') {
+        await send('POST', { mode: 'day', employeeId: employee._id, from: date, to: also })
+      }
+      toast.success(also.length && body.kind !== 'semaine' ? `${done} — recopié sur ${also.length} jour${also.length > 1 ? 's' : ''}` : done)
       onClose()
       router.refresh()
     } catch (err) {
@@ -264,6 +292,35 @@ function DayDialog({ target, onClose }: { target: { employee: PlanningEmployee; 
           </div>
           {kind === 'travail' && <ShiftInputs shifts={shifts} onChange={setShifts} />}
           <Input value={note} maxLength={200} onChange={(e) => setNote(e.target.value)} placeholder="Note (optionnel) — ex : remplace Sami" />
+          <div>
+            <p className="mb-1.5 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              Dupliquer aussi sur
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {others.map((d) => {
+                const on = also.includes(d)
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setAlso(on ? also.filter((x) => x !== d) : [...also, d])}
+                    className={`rounded-full border px-2.5 py-1 text-xs font-semibold transition-colors ${
+                      on ? 'border-[#F5A800] bg-[#F5A800]/15 text-foreground' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {WEEKDAYS[weekDays.indexOf(d)].slice(0, 3)}. {dayNum(d)}
+                  </button>
+                )
+              })}
+              <button
+                type="button"
+                onClick={() => setAlso(also.length === others.length ? [] : others)}
+                className="rounded-full px-2.5 py-1 text-xs font-semibold text-[#F5A800] hover:underline"
+              >
+                {also.length === others.length ? 'Aucun' : 'Toute la semaine'}
+              </button>
+            </div>
+          </div>
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
             {cell.source === 'exception' ? (
               <Button type="button" variant="ghost" disabled={busy} onClick={() => save({ kind: 'semaine' }, 'Jour rendu à la semaine type')}>
@@ -279,6 +336,109 @@ function DayDialog({ target, onClose }: { target: { employee: PlanningEmployee; 
               className="bg-[#F5A800] text-black hover:bg-[#FF6B00]"
             >
               {busy ? 'Enregistrement…' : 'Enregistrer ce jour'}
+            </Button>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/**
+ * Dupliquer la semaine affichée sur les suivantes, ou son mois sur le mois
+ * d'après. Pour tout le monde, ou pour un seul employé.
+ */
+function CopyDialog({ planning, onClose }: { planning: Planning; onClose: () => void }) {
+  const router = useRouter()
+  const [mode, setMode] = useState<'week' | 'month'>('week')
+  const [weeks, setWeeks] = useState(1)
+  const [employeeId, setEmployeeId] = useState('')
+  const [busy, setBusy] = useState(false)
+  const month = planning.from.slice(0, 7)
+  const monthName = (m: string) =>
+    new Date(`${m}-15T12:00:00Z`).toLocaleDateString('fr-FR', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const following = new Date(Date.UTC(Number(month.slice(0, 4)), Number(month.slice(5, 7)), 1)).toISOString().slice(0, 7)
+  const chip = (on: boolean) =>
+    `rounded-full border px-3 py-1.5 text-sm font-semibold transition-colors ${
+      on ? 'border-[#F5A800] bg-[#F5A800] text-black' : 'text-muted-foreground hover:text-foreground'
+    }`
+
+  const run = async () => {
+    setBusy(true)
+    try {
+      await send(
+        'POST',
+        mode === 'week'
+          ? { mode, from: planning.from, weeks, ...(employeeId ? { employeeId } : {}) }
+          : { mode, from: month, ...(employeeId ? { employeeId } : {}) }
+      )
+      toast.success(
+        mode === 'week'
+          ? `Semaine recopiée sur ${weeks > 1 ? `les ${weeks} suivantes` : 'la suivante'}`
+          : `${monthName(month)} recopié sur ${monthName(following)}`
+      )
+      onClose()
+      router.refresh()
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Erreur')
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <Dialog open onOpenChange={(v) => !v && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Dupliquer le planning</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 pt-1">
+          <div className="flex flex-wrap gap-2">
+            <button type="button" className={chip(mode === 'week')} onClick={() => setMode('week')}>
+              Cette semaine
+            </button>
+            <button type="button" className={chip(mode === 'month')} onClick={() => setMode('month')}>
+              Ce mois
+            </button>
+          </div>
+          {mode === 'week' ? (
+            <div>
+              <p className="mb-1.5 text-sm">Recopier la semaine affichée sur les…</p>
+              <div className="flex flex-wrap gap-2">
+                {[1, 2, 3, 4, 8, 12].map((n) => (
+                  <button key={n} type="button" className={chip(weeks === n)} onClick={() => setWeeks(n)}>
+                    {n === 1 ? 'Semaine suivante' : `${n} suivantes`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm">
+              Recopier <b className="capitalize">{monthName(month)}</b> sur <b className="capitalize">{monthName(following)}</b>,
+              jour de semaine pour jour de semaine : le 1er lundi sur le 1er lundi, le 2e mardi sur le 2e mardi.
+            </p>
+          )}
+          <label className="block text-sm">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Pour qui</span>
+            <select
+              value={employeeId}
+              onChange={(e) => setEmployeeId(e.target.value)}
+              className="w-full rounded-lg border bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Tous les employés</option>
+              {planning.employees.map((e) => (
+                <option key={e._id} value={e._id}>
+                  {e.name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <p className="text-xs text-muted-foreground">
+            Les jours d&apos;arrivée sont remplacés : ce qui y avait été noté à la main est écrasé.
+          </p>
+          <div className="flex justify-end">
+            <Button type="button" disabled={busy} onClick={run} className="bg-[#F5A800] text-black hover:bg-[#FF6B00]">
+              {busy ? 'Duplication…' : 'Dupliquer'}
             </Button>
           </div>
         </div>

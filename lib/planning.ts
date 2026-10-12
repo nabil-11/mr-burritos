@@ -220,3 +220,81 @@ export function buildPlanning(
 
   return { from: opts.from, to: opts.to, today: opts.today, days, employees: rows, canEdit: opts.canEdit }
 }
+
+// ── Dupliquer ──────────────────────────────────────────────────────────────
+// Recopier un jour, une semaine ou un mois, c'est faire en sorte que le jour
+// d'arrivée se lise comme le jour de départ. Pas « copier des exceptions » :
+// si le jour de départ suit simplement la semaine type, le jour d'arrivée doit
+// la suivre aussi — et une exception qui traînait là est retirée.
+
+/** Ce qu'il faut écrire sur le jour d'arrivée pour qu'il vaille le jour de départ. */
+export type CopyOp = { op: 'clear' } | { op: 'set'; kind: DayKind; shifts: Shift[]; note: string }
+
+const sameShifts = (a: Shift[], b: Shift[]) =>
+  a.length === b.length && a.every((s, i) => s.from === b[i].from && s.to === b[i].to)
+
+export function copyOp(
+  schedule: WeekSlot[] | null | undefined,
+  sourceException: PlanningException | null | undefined,
+  sourceDay: string,
+  targetDay: string
+): CopyOp {
+  const source = resolveCell(schedule, sourceException, sourceDay)
+  // Un employé sans planning ce jour-là : rien à recopier, sinon l'absence d'exception.
+  if (source.status === 'none') return { op: 'clear' }
+  const usual = resolveCell(schedule, null, targetDay)
+  // Le jour d'arrivée dit déjà la même chose par sa semaine type : inutile de
+  // le figer, il continuera de la suivre si elle change.
+  if (!source.note && usual.status === source.status && sameShifts(usual.shifts, source.shifts)) return { op: 'clear' }
+  return { op: 'set', kind: source.status, shifts: source.shifts, note: source.note }
+}
+
+const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
+export const isPlanningMonth = (v: unknown): v is string => typeof v === 'string' && MONTH.test(v)
+
+/** Le mois d'après : « 2026-12 » → « 2027-01 ». */
+export function nextMonth(month: string): string {
+  const [y, m] = month.split('-').map(Number)
+  return new Date(Date.UTC(y, m, 1)).toISOString().slice(0, 7)
+}
+
+const daysOfMonth = (month: string): string[] => {
+  const days: string[] = []
+  for (let d = `${month}-01`; d.slice(0, 7) === month; d = addDays(d, 1)) days.push(d)
+  return days
+}
+
+/**
+ * D'un mois sur l'autre, les dates ne tombent pas le même jour : le 12 octobre
+ * est un lundi, le 12 novembre un jeudi. Recopier date pour date mettrait le
+ * repos du lundi sur un jeudi. On recopie donc par rang dans le mois : le
+ * premier lundi sur le premier lundi, le deuxième mardi sur le deuxième
+ * mardi. Un cinquième vendredi sans équivalent reprend le quatrième.
+ */
+export function monthPairs(fromMonth: string, toMonth: string): { source: string; target: string }[] {
+  const byRank = new Map<string, string>()
+  const lastRank = new Map<number, number>()
+  for (const day of daysOfMonth(fromMonth)) {
+    const weekday = weekdayOf(day)
+    const rank = Math.floor((Number(day.slice(8, 10)) - 1) / 7)
+    byRank.set(`${weekday}:${rank}`, day)
+    lastRank.set(weekday, rank)
+  }
+  return daysOfMonth(toMonth).map((target) => {
+    const weekday = weekdayOf(target)
+    const rank = Math.min(Math.floor((Number(target.slice(8, 10)) - 1) / 7), lastRank.get(weekday) ?? 0)
+    return { source: byRank.get(`${weekday}:${rank}`)!, target }
+  })
+}
+
+/** Une semaine recopiée sur les `weeks` suivantes, jour pour jour. */
+export function weekPairs(monday: string, weeks: number): { source: string; target: string }[] {
+  const pairs: { source: string; target: string }[] = []
+  for (let w = 1; w <= weeks; w++) {
+    for (let d = 0; d < 7; d++) pairs.push({ source: addDays(monday, d), target: addDays(monday, d + 7 * w) })
+  }
+  return pairs
+}
+
+/** Jusqu'où on recopie une semaine d'un coup : trois mois. */
+export const MAX_COPY_WEEKS = 12

@@ -1,7 +1,21 @@
 import { connectDB } from './mongodb'
 import { Employee } from './models/Employee'
 import { PlanningDay } from './models/PlanningDay'
-import { buildPlanning, mondayOf, type Planning, type PlanningException, type WeekSlot } from './planning'
+import mongoose from 'mongoose'
+import {
+  MAX_COPY_WEEKS,
+  PlanningError,
+  buildPlanning,
+  copyOp,
+  isPlanningMonth,
+  mondayOf,
+  monthPairs,
+  nextMonth,
+  weekPairs,
+  type Planning,
+  type PlanningException,
+  type WeekSlot,
+} from './planning'
 import { DEFAULT_TIME_ZONE, addDays, dayOf, isDay } from './reportTime'
 
 /** Un planning se lit à la semaine ou au mois ; au-delà, ce n'est plus un planning. */
@@ -42,4 +56,87 @@ export async function loadPlanning(from?: string | null, to?: string | null, can
     byKey,
     { ...range, canEdit }
   )
+}
+
+export type CopyRequest =
+  /** Un jour d'un employé, recopié sur d'autres jours. */
+  | { mode: 'day'; employeeId: string; from: string; to: string[] }
+  /** Une semaine (son lundi) recopiée sur les suivantes ; tous les employés, ou un seul. */
+  | { mode: 'week'; from: string; weeks: number; employeeId?: string }
+  /** Un mois recopié sur un autre — le suivant par défaut. */
+  | { mode: 'month'; from: string; to?: string; employeeId?: string }
+
+/** Lit ce qu'on demande de dupliquer, et refuse ce qui n'a pas de sens. */
+export function cleanCopy(body: Record<string, unknown>): CopyRequest {
+  const employeeId = body.employeeId ? String(body.employeeId) : undefined
+  if (employeeId && !mongoose.isValidObjectId(employeeId)) throw new PlanningError('Employé introuvable', 404)
+
+  if (body.mode === 'day') {
+    if (!employeeId) throw new PlanningError('Employé introuvable', 404)
+    if (!isDay(body.from as string)) throw new PlanningError('Jour invalide')
+    const to = Array.isArray(body.to) ? [...new Set(body.to.map(String))] : []
+    if (to.length === 0 || to.length > MAX_DAYS || !to.every((d) => isDay(d))) throw new PlanningError('Jours de destination invalides')
+    return { mode: 'day', employeeId, from: body.from as string, to: to.filter((d) => d !== body.from) }
+  }
+  if (body.mode === 'week') {
+    if (!isDay(body.from as string)) throw new PlanningError('Semaine invalide')
+    const weeks = Math.floor(Number(body.weeks ?? 1))
+    if (!(weeks >= 1 && weeks <= MAX_COPY_WEEKS)) throw new PlanningError(`De 1 à ${MAX_COPY_WEEKS} semaines`)
+    return { mode: 'week', from: mondayOf(body.from as string), weeks, employeeId }
+  }
+  if (body.mode === 'month') {
+    if (!isPlanningMonth(body.from)) throw new PlanningError('Mois invalide')
+    const to = body.to == null || body.to === '' ? nextMonth(body.from) : body.to
+    if (!isPlanningMonth(to) || to === body.from) throw new PlanningError('Mois de destination invalide')
+    return { mode: 'month', from: body.from, to, employeeId }
+  }
+  throw new PlanningError('Que faut-il dupliquer : un jour, une semaine ou un mois ?')
+}
+
+/**
+ * Duplique un jour, une semaine ou un mois — voir `copyOp` dans lib/planning
+ * pour ce que « dupliquer » veut dire. Tout ce qui se trouvait sur les jours
+ * d'arrivée est remplacé. Rend le nombre de jours écrits.
+ */
+export async function copyPlanning(request: CopyRequest, editor: string): Promise<{ days: number; employees: number }> {
+  const pairs =
+    request.mode === 'day'
+      ? request.to.map((target) => ({ source: request.from, target }))
+      : request.mode === 'week'
+        ? weekPairs(request.from, request.weeks)
+        : monthPairs(request.from, request.to ?? nextMonth(request.from))
+  if (pairs.length === 0) return { days: 0, employees: 0 }
+
+  await connectDB()
+  const employees = (await Employee.find(request.employeeId ? { _id: request.employeeId } : { isActive: true })
+    .select('schedule')
+    .lean()) as { _id: unknown; schedule?: WeekSlot[] }[]
+  if (employees.length === 0) throw new PlanningError('Employé introuvable', 404)
+
+  const sources = [...new Set(pairs.map((p) => p.source))]
+  const found = (await PlanningDay.find({
+    employee: { $in: employees.map((e) => e._id) },
+    date: { $in: sources },
+  })
+    .select('employee date kind shifts note')
+    .lean()) as ({ employee: unknown; date: string } & PlanningException)[]
+  const exceptions = new Map(found.map((x) => [`${String(x.employee)}:${x.date}`, x]))
+
+  const writes = employees.flatMap((e) =>
+    pairs.map(({ source, target }) => {
+      const op = copyOp(e.schedule, exceptions.get(`${String(e._id)}:${source}`), source, target)
+      const filter = { employee: e._id, date: target }
+      return op.op === 'clear'
+        ? { deleteOne: { filter } }
+        : {
+            updateOne: {
+              filter,
+              update: { $set: { kind: op.kind, shifts: op.shifts, note: op.note, updatedBy: { name: editor } } },
+              upsert: true,
+            },
+          }
+    })
+  )
+  await PlanningDay.bulkWrite(writes, { ordered: false })
+  return { days: pairs.length, employees: employees.length }
 }

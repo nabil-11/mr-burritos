@@ -5,7 +5,7 @@ import { getTokenFromRequest } from '@/lib/auth'
 import { Employee } from '@/lib/models/Employee'
 import { PlanningDay } from '@/lib/models/PlanningDay'
 import { PlanningError, cleanSchedule, cleanShifts, isDayKind } from '@/lib/planning'
-import { canEditPlanning, loadPlanning } from '@/lib/planningData'
+import { canEditPlanning, cleanCopy, copyPlanning, loadPlanning } from '@/lib/planningData'
 import { isDay } from '@/lib/reportTime'
 
 export const dynamic = 'force-dynamic'
@@ -83,6 +83,27 @@ export async function PATCH(req: NextRequest) {
     const schedule = cleanSchedule(body.schedule)
     await Employee.updateOne({ _id: employeeId }, { $set: { schedule } })
     return NextResponse.json({ ok: true, schedule })
+  } catch (e: unknown) {
+    return fail(e)
+  }
+}
+
+/**
+ * POST /api/planning — dupliquer.
+ *
+ * Body, au choix :
+ *   { mode: 'day',   employeeId, from: 'AAAA-MM-JJ', to: ['AAAA-MM-JJ', …] }
+ *   { mode: 'week',  from: 'AAAA-MM-JJ' (un jour de la semaine), weeks: 1…12, employeeId? }
+ *   { mode: 'month', from: 'AAAA-MM', to?: 'AAAA-MM' (le mois suivant par défaut), employeeId? }
+ *
+ * Sans `employeeId`, la semaine ou le mois est recopié pour tous les employés
+ * actifs. Ce qui se trouvait sur les jours d'arrivée est remplacé.
+ */
+export async function POST(req: NextRequest) {
+  try {
+    const editor = editorOf(req)
+    const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
+    return NextResponse.json({ ok: true, ...(await copyPlanning(cleanCopy(body), editor)) })
   } catch (e: unknown) {
     return fail(e)
   }
