@@ -73,7 +73,7 @@ export interface PricedOrder {
     total: number
     type: 'delivery' | 'pickup'
     source: OrderSource
-    status: 'pending' | 'confirmed' | 'preparing'
+    status: 'pending' | 'confirmed' | 'preparing' | 'delivered'
     deliveryCompany: { companyId: unknown; name: string; commission: number; paid: boolean }
     deliveryFee: number
     reference: string
@@ -300,9 +300,20 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
   // ── Status ───────────────────────────────────────────────────────────────
   // The public site places orders; it does not get to mark them confirmed or
   // delivered. The till and the kiosk take theirs in hand as they ring them up.
+  const deliveryCompany = counter
+    ? await platformOf(body.deliveryCompany)
+    : { companyId: null, name: '', commission: 0, paid: false }
   const requested = String(body.status ?? '')
-  const status =
-    source !== 'website' && (requested === 'confirmed' || requested === 'preparing') ? requested : 'pending'
+  // A platform's amount keyed in with no items is a statement — the day's
+  // Glovo total, typed from the platform's own tablet. The food left hours
+  // ago: there is nothing to prepare, so no clock to run and nothing for the
+  // closing to report as « encore en cours ».
+  const status: PricedOrder['doc']['status'] =
+    !items.length && deliveryCompany.name
+      ? 'delivered'
+      : source !== 'website' && (requested === 'confirmed' || requested === 'preparing')
+        ? requested
+        : 'pending'
 
   // ── How it was paid, where someone was there to take the money ──────────
   let payment: PricedOrder['doc']['payment']
@@ -326,9 +337,7 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
       type,
       source,
       status,
-      deliveryCompany: counter
-        ? await platformOf(body.deliveryCompany)
-        : { companyId: null, name: '', commission: 0, paid: false },
+      deliveryCompany,
       deliveryFee,
       reference: counter ? text(body.reference, 60) : '',
       notes: text(body.notes, 500),

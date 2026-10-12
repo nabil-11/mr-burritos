@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { ORDER_SOURCE_SHORT, isOrderSource } from '@/lib/orderSource'
 import { renderWebPromoCard } from '@/lib/receiptPromoCard'
+import { commissionOf, companyOf, isPaid, moneyPocket, netOf, type PlatformOrderLike } from '@/lib/platformSettlement'
 
 export const dynamic = 'force-dynamic'
 
@@ -126,6 +127,84 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   // On screen the ticket is shown at its true paper width so what you see is
   // what the roll gets. 1mm = 96/25.4 CSS px.
   const screenMax = Math.round(paperMm * (96 / 25.4))
+
+  // ── Relevé plateforme ──────────────────────────────────────────────────
+  // Un montant saisi sans articles pour une plateforme n'est pas une commande
+  // qu'un client emporte : c'est le total que Glovo a encaissé, recopié à la
+  // caisse. Le ticket client — temps de préparation, « merci », bon de -15 % —
+  // n'a rien à y faire. Ce qui sort à la place est une pièce de caisse : qui
+  // doit quoi, commission déduite, et si c'est déjà arrivé.
+  const platform = companyOf(order as PlatformOrderLike)
+  if (platform && items.length === 0) {
+    const o = order as PlatformOrderLike
+    const company = (order.deliveryCompany ?? {}) as { commission?: number; paidAt?: Date | string | null; payoutRef?: string }
+    const commission = commissionOf(o)
+    const net = netOf(o)
+    const pocket = moneyPocket(o)
+    const settled = pocket === 'platform' && isPaid(o)
+    const paidAt = company.paidAt ? new Date(company.paidAt) : null
+    // Même arbitrage que la recette : des espèces prises au comptoir ne sont
+    // pas dues une seconde fois.
+    const state =
+      pocket === 'drawer'
+        ? { head: 'ENCAISSE EN ESPECES', sub: 'deja dans le tiroir', label: 'Net pour le restaurant' }
+        : pocket === 'bank'
+          ? { head: 'ENCAISSE AU TPE', sub: 'en banque', label: 'Net pour le restaurant' }
+          : settled
+            ? {
+                head: 'REGLE',
+                sub: `versement recu${paidAt && !Number.isNaN(paidAt.getTime()) ? ` le ${paidAt.toLocaleDateString('fr-FR')}` : ''}${company.payoutRef ? ` · ${esc(company.payoutRef)}` : ''}`,
+                label: 'Net verse par la plateforme',
+              }
+            : { head: 'A RECEVOIR', sub: `${esc(platform)} n'a pas encore verse`, label: 'Net que la plateforme doit verser' }
+    const placedAt = new Date(String(order.createdAt ?? ''))
+    const when = Number.isNaN(placedAt.getTime()) ? new Date() : placedAt
+    const reference = String(order.reference ?? '').trim()
+    const line = (label: string, value: string, cls = '') =>
+      `<tr class="${cls}"><td class="l">${label}</td><td class="r">${value}</td></tr>`
+
+    const slip = `<!DOCTYPE html><html lang="fr"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Releve ${esc(platform)} #${esc(orderNumber)}</title><style>
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:Arial,Helvetica,sans-serif;font-size:${S.body}px;padding:10px 10px 28px;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;max-width:${screenMax}px;margin:0 auto;overflow-wrap:anywhere}
+    .brand{font-size:${S.brand}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;margin-bottom:2px}.tagline{font-size:${S.tiny}px;text-align:center;font-weight:600}
+    .dash{border:none;border-top:1.5px dashed #000;margin:7px 0}
+    .lbl{font-size:${S.micro}px;font-weight:700;text-align:center;letter-spacing:2px;text-transform:uppercase;margin-top:5px}
+    .who{font-size:${S.brand}px;font-weight:900;text-align:center;letter-spacing:${S.track}px;text-transform:uppercase;border:2px solid #000;padding:5px 0;margin:6px 0}
+    .meta{font-size:${S.small}px;text-align:center;font-weight:600}
+    table{width:100%;border-collapse:collapse;table-layout:fixed;margin-top:4px}
+    td{padding-bottom:5px;vertical-align:top;font-size:${S.body}px}
+    .l{font-weight:600;line-height:1.4}.r{text-align:right;white-space:nowrap;font-weight:800;width:${S.price + 34}px}
+    .state .amt{font-size:${S.brand + 4}px;letter-spacing:0;margin:2px 0 4px}
+    .state{border:2px solid #000;padding:7px 6px;margin:8px 0 4px;text-align:center}
+    .state b{display:block;font-size:${S.mode}px;font-weight:900;letter-spacing:${S.track}px}
+    .state span{display:block;font-size:${S.tiny}px;font-weight:600;margin-top:2px}
+    .foot{font-size:${S.tiny}px;font-weight:600;text-align:center;margin-top:8px;line-height:1.5}
+    .printbtn{display:block;width:100%;margin:16px 0 0;padding:14px;border:none;border-radius:10px;background:#F5A800;color:#1C1200;font-size:16px;font-weight:800;cursor:pointer}
+    @media print{@page{size:${pageMm}mm auto;margin:0}html{width:100%}body{width:${paperMm}mm;max-width:${paperMm}mm;margin:0;padding:${S.pad}}.printbtn{display:none}}
+  </style></head><body>
+    <div class="brand">MR. BURRITOS</div><div class="tagline">Piece de caisse</div><hr class="dash">
+    <div class="lbl">Releve plateforme</div>
+    <div class="who">${esc(platform)}</div>
+    <div class="meta">${esc(orderNumber)}</div>
+    <div class="meta">Saisi le ${when.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })} a ${when.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</div>
+    ${reference ? `<div class="meta">Ref. ${esc(reference)}</div>` : ''}
+    <hr class="dash">
+    <table><tbody>
+      ${line('Brut encaisse', `${total.toFixed(2)} DT`)}
+      ${line(`Commission${company.commission ? ` ${company.commission}%` : ''}`, `- ${commission.toFixed(2)} DT`)}
+      
+    </tbody></table>
+    <div class="state"><span>${state.label}</span><b class="amt">${net.toFixed(2)} DT</b><b>${state.head}</b><span>${state.sub}</span></div>
+    ${notes ? `<div class="foot" style="text-align:left">NOTE : ${esc(notes)}</div>` : ''}
+    <hr class="dash">
+    <div class="foot">Document interne — a ranger avec la caisse.<br>Ce n'est pas un ticket client.</div>
+    <button class="printbtn" onclick="window.print()">Imprimer</button>
+    ${autoprint ? '<script>window.addEventListener("load",function(){setTimeout(function(){window.print()},350)})</script>' : ''}
+  </body></html>`
+    return new Response(slip, {
+      headers: { 'Content-Type': 'text/html; charset=utf-8', 'Cache-Control': 'no-store' },
+    })
+  }
 
   // ── Website promo card ─────────────────────────────────────────────────
   // Printed on delivery tickets by default: that order left the shop without

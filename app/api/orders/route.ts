@@ -10,8 +10,12 @@ import { ORDER_SOURCE_LABELS, normalizeOrderSource } from '@/lib/orderSource'
 import { isDuplicateKey, nextOrderNumber } from '@/lib/orderNumber'
 import { OrderInputError, priceOrder } from '@/lib/orderPricing'
 import { autoReadyOnSiteOrders, autoSettleOverdueOrders } from '@/lib/orderTimers'
-import { getOpenRecette } from '@/lib/recette'
+import { computeTotals, getOpenRecette } from '@/lib/recette'
 import { callerFrom } from '@/lib/caisseCaller'
+
+const MAX_LIMIT = 500
+/** What computeTotals reads off an order — nothing else is loaded for a summary. */
+const SUMMARY_FIELDS = 'status type source total deliveryFee discount surcharge deliveryCompany payment'
 
 export async function GET(req: NextRequest) {
   try {
@@ -38,9 +42,19 @@ export async function GET(req: NextRequest) {
       if (to) createdAt.$lte = new Date(to)
       query.createdAt = createdAt
     }
-    const orders = await Order.find(query).sort({ createdAt: -1 }).limit(100)
+    // 100 by default, as it has always been; a caller that lists a whole
+    // service or a busy week asks for more, up to a ceiling.
+    const limit = Math.min(Math.max(Math.floor(Number(searchParams.get('limit'))) || 100, 1), MAX_LIMIT)
+    const orders = await Order.find(query).sort({ createdAt: -1 }).limit(limit)
       .populate('assignedDelivery', 'name phone')
-    return NextResponse.json(orders)
+    if (!searchParams.get('summary')) return NextResponse.json(orders)
+
+    // The caisse's order list: the page of rows, plus the figures of the whole
+    // period — how many there are, and the very addition a recette is made of
+    // (lib/recette), so the list and the till session cannot disagree. Summed
+    // over every matching order, not over the rows above, which stop at `limit`.
+    const all = (await Order.find(query).select(SUMMARY_FIELDS).lean()) as Parameters<typeof computeTotals>[0]
+    return NextResponse.json({ orders, matching: all.length, totals: computeTotals(all) })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur'
     return NextResponse.json({ error: msg }, { status: 500 })
