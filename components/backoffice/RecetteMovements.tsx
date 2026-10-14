@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { MOVEMENT_LIST, MOVEMENT_META, isMovementKind, type MovementKind } from '@/lib/movementKinds'
 import CashMovementDialog from './CashMovementDialog'
+import { useCorrections } from './RecetteCorrections'
 
 /**
  * Les mouvements d'espèces d'une session, et de quoi en ajouter.
@@ -27,6 +28,8 @@ export interface MovementView {
   createdBy: string
   cancelledAt: string | null
   cancelledBy: string
+  /** ISO — saisi après la clôture, par une correction. */
+  addedLater?: string | null
 }
 
 const money = (n: number) => `${(Number(n) || 0).toFixed(2)} DT`
@@ -49,6 +52,9 @@ export default function RecetteMovements({
   summary: { achats: number; depenses: number; apports: number; retraits: number; solde: number }
 }) {
   const router = useRouter()
+  // Une recette close se corrige : par un responsable, avec une raison — voir RecetteCorrections.
+  const corrections = useCorrections()
+  const lateEdit = !isOpen && corrections !== null
   const [dialogKind, setDialogKind] = useState<MovementKind | null>(null)
   const [cancelling, setCancelling] = useState<string | null>(null)
 
@@ -107,6 +113,15 @@ export default function RecetteMovements({
             )}
           </p>
         </div>
+
+        {lateEdit && (
+          <button
+            onClick={() => corrections.open({ kind: 'addMovement' })}
+            className="rounded-lg border px-2.5 py-1.5 text-xs font-bold text-muted-foreground hover:border-[#F5A800] hover:text-foreground transition-colors"
+          >
+            + Mouvement oublié
+          </button>
+        )}
 
         {isOpen && (
           <div className="flex flex-wrap gap-1.5">
@@ -180,6 +195,9 @@ export default function RecetteMovements({
                             m.cancelledBy ? ` par ${m.cancelledBy}` : ''
                           }`
                         : m.note || '—'}
+                      {m.addedLater && !cancelled && (
+                        <span className="ml-1.5 text-[11px] font-semibold text-amber-600">ajouté après clôture</span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-muted-foreground">{m.createdBy || '—'}</td>
                     <td
@@ -190,6 +208,19 @@ export default function RecetteMovements({
                       {meta && meta.sign > 0 ? '+' : '−'} {money(m.amount)}
                     </td>
                     <td className="px-4 py-3 text-right">
+                      {lateEdit && !cancelled && (
+                        <button
+                          onClick={() =>
+                            corrections.open({
+                              kind: 'cancelMovement',
+                              movement: { id: m._id, label: m.label, amount: m.amount, kind: m.kind },
+                            })
+                          }
+                          className="text-xs font-semibold text-muted-foreground hover:text-red-600"
+                        >
+                          Annuler
+                        </button>
+                      )}
                       {isOpen && !cancelled && (
                         <button
                           onClick={() => cancel(m)}

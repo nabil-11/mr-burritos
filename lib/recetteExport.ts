@@ -131,6 +131,8 @@ export interface RecetteDetailInput {
     cancelledBy: string
   }[]
   orders: Record<string, unknown>[]
+  /** Le journal des corrections, déjà mis en mots. */
+  corrections?: { at: string; by: string; action: string; target: string; changes: string[]; reason: string; revenue: number }[]
 }
 
 const STATUS_LABELS: Record<string, string> = {
@@ -139,7 +141,15 @@ const STATUS_LABELS: Record<string, string> = {
 }
 
 /** Une recette : sa synthèse, sa caisse, ses plateformes, ses mouvements, ses commandes. */
-export function recetteDetailExport({ recette, totals: t, gap, expectedCash, movements, orders }: RecetteDetailInput): ExportDocument {
+export function recetteDetailExport({
+  recette,
+  totals: t,
+  gap,
+  expectedCash,
+  movements,
+  orders,
+  corrections = [],
+}: RecetteDetailInput): ExportDocument {
   const isOpen = recette.status === 'open'
   const kv = (title: string, rows: [string, ExportValue][], note?: string): ExportTable => ({
     title,
@@ -286,6 +296,23 @@ export function recetteDetailExport({ recette, totals: t, gap, expectedCash, mov
     }),
     foot: [`TOTAL hors annulées (${kept.length})`, '', '', '', '', '', round2(kept.reduce((s, o) => s + Number(o.total ?? 0), 0))],
   })
+
+  if (corrections.length > 0) {
+    tables.push({
+      title: 'Corrections',
+      note: 'Modifications apportées après coup, avec leur raison. Les totaux ci-dessus en tiennent compte.',
+      columns: [
+        { label: 'Date' },
+        { label: 'Par' },
+        { label: 'Correction' },
+        { label: 'Sur' },
+        { label: 'Détail' },
+        { label: 'Raison' },
+        { label: 'Effet sur le CA', type: 'money' },
+      ],
+      rows: corrections.map((c) => [stamp(c.at), c.by, c.action, c.target, c.changes.join(' ; '), c.reason, c.revenue]),
+    })
+  }
 
   if (recette.notes) {
     tables.push({ title: 'Note', columns: [{ label: 'Note' }], rows: [[recette.notes]] })

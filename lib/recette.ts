@@ -408,6 +408,29 @@ export async function recetteTotals(recette: {
 }
 
 /**
+ * Les totaux d'une recette clôturée, recalculés après une correction.
+ *
+ * Même addition qu'à la clôture, à une nuance près : un versement plateforme
+ * pointé *après* la clôture n'y entre pas. Le soir de la clôture, on ne savait
+ * pas encore que Glovo paierait la semaine suivante — corriger une commande ne
+ * doit pas réécrire ce qu'on savait alors, seulement ce qui était faux.
+ */
+export function refrozenTotals(
+  recette: { closedAt?: Date | string | null; mouvements?: MovementLike[] | null },
+  orders: (Omit<OrderLike, 'deliveryCompany'> & {
+    deliveryCompany?: { name?: string; commission?: number; paid?: boolean; paidAt?: Date | string | null } | null
+  })[]
+): RecetteTotals {
+  const closedAt = recette.closedAt ? new Date(recette.closedAt).getTime() : Date.now()
+  const asOfClosing = orders.map((o) => {
+    const dc = o.deliveryCompany
+    if (!dc?.paid || !dc.paidAt || new Date(dc.paidAt).getTime() <= closedAt) return o
+    return { ...o, deliveryCompany: { ...dc, paid: false } }
+  })
+  return computeTotals(asOfClosing, (recette.mouvements ?? []) as MovementLike[])
+}
+
+/**
  * What the drawer should hold at this instant: the float it opened with, plus
  * everything that came in, less everything that went out.
  *
@@ -561,7 +584,7 @@ export interface MovementInput {
   userName?: string
 }
 
-function cleanMovement(input: MovementInput) {
+export function cleanMovement(input: MovementInput) {
   const kind = input.kind
   if (!isMovementKind(kind)) {
     throw new RecetteError('Type de mouvement invalide : achat, dépense, apport ou retrait', 400)
@@ -590,7 +613,7 @@ function cleanMovement(input: MovementInput) {
  * Someone who has left can still be paid what they are owed, but no longer be
  * advanced anything.
  */
-async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[]) {
+export async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[]) {
   const ids = [...new Set(cleaned.map((m) => m.employeeId).filter((id): id is string => Boolean(id)))]
   if (!ids.every((id) => mongoose.isValidObjectId(id))) throw new RecetteError('Employé introuvable', 400)
   const found = ids.length

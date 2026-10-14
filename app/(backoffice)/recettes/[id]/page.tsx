@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { ArrowLeft, Printer } from 'lucide-react'
+import { cookies } from 'next/headers'
+import { ArrowLeft, History } from 'lucide-react'
 import { connectDB } from '@/lib/mongodb'
 import { Recette } from '@/lib/models/Recette'
 import { cashDifference, cashInDrawer, recetteOrders, recetteTotals, type RecetteTotals } from '@/lib/recette'
@@ -8,6 +9,17 @@ import { ORDER_SOURCES, orderSourceIcon, orderSourceLabel } from '@/lib/orderSou
 import RecetteMovements, { type MovementView } from '@/components/backoffice/RecetteMovements'
 import ExportButtons from '@/components/backoffice/ExportButtons'
 import { recetteDetailExport } from '@/lib/recetteExport'
+import { verifyToken } from '@/lib/auth'
+import { DeliveryCompany } from '@/lib/models/DeliveryCompany'
+import { CORRECTION_LABELS, CORRECTION_ROLES, type CorrectionAction } from '@/lib/correctionKinds'
+import { DEFAULT_TIME_ZONE } from '@/lib/reportTime'
+import {
+  CorrectionToolbar,
+  CorrectionsProvider,
+  RecetteOrdersTable,
+  type CorrectableOrder,
+  type CorrectionCompany,
+} from '@/components/backoffice/RecetteCorrections'
 
 /**
  * Le détail d'une session de caisse : les chiffres, les mouvements d'espèces
@@ -17,6 +29,11 @@ import { recetteDetailExport } from '@/lib/recetteExport'
  * Une session clôturée affiche le total figé au moment de la clôture ; une
  * session encore ouverte est recalculée à chaque affichage — et peut encore
  * recevoir des mouvements, d'où le panneau interactif plus bas.
+ *
+ * Un responsable (admin, manager) peut la corriger après coup — plateforme,
+ * règlement, montant ou annulation d'une commande, vente ou mouvement oublié,
+ * comptage. Chaque correction recalcule les totaux figés et s'inscrit au
+ * journal, en bas de page. Voir lib/recetteCorrection.
  */
 
 type Doc = {
@@ -32,6 +49,18 @@ type Doc = {
   notes?: string
   mouvements?: MovementDoc[]
   totals?: RecetteTotals | null
+  corrections?: CorrectionDoc[]
+}
+
+type CorrectionDoc = {
+  _id: unknown
+  at?: Date
+  by?: { name?: string }
+  action?: string
+  target?: string
+  changes?: string[]
+  reason?: string
+  delta?: { revenue?: number; cashExpected?: number; receivable?: number }
 }
 
 type MovementDoc = {
@@ -44,28 +73,17 @@ type MovementDoc = {
   createdBy?: { name?: string }
   cancelledAt?: Date | null
   cancelledBy?: { name?: string }
+  addedLater?: Date | null
 }
 
 type OrderDoc = Record<string, unknown>
 
-const statusLabels: Record<string, string> = {
-  pending: 'En attente', confirmed: 'Confirmée', preparing: 'En préparation',
-  ready: 'Prête', delivered: 'Livrée', cancelled: 'Annulée',
-}
-
-const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-500/15 dark:text-yellow-300',
-  confirmed: 'bg-blue-100 text-blue-800 dark:bg-blue-500/15 dark:text-blue-300',
-  preparing: 'bg-orange-100 text-orange-800 dark:bg-orange-500/15 dark:text-orange-300',
-  ready: 'bg-purple-100 text-purple-800 dark:bg-purple-500/15 dark:text-purple-300',
-  delivered: 'bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300',
-  cancelled: 'bg-red-100 text-red-800 dark:bg-red-500/15 dark:text-red-300',
-}
-
 const money = (n: number) => `${(n || 0).toFixed(2)} DT`
-const dateFr = (d: unknown) => (d ? new Date(d as string).toLocaleDateString('fr-FR') : '')
+const TZ = DEFAULT_TIME_ZONE
+const dateFr = (d: unknown) => (d ? new Date(d as string).toLocaleDateString('fr-FR', { timeZone: TZ }) : '')
 const timeFr = (d: unknown) =>
-  d ? new Date(d as string).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) : ''
+  d ? new Date(d as string).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit', timeZone: TZ }) : ''
+const signed = (n: number) => `${n > 0.004 ? '+' : n < -0.004 ? '−' : ''}${Math.abs(n).toFixed(2)} DT`
 
 export default async function RecetteDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await connectDB()
@@ -73,10 +91,25 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
   const recette = (await Recette.findById(id).lean()) as Doc | null
   if (!recette) notFound()
 
-  const [totals, orders] = await Promise.all([
+  const token = (await cookies()).get('token')?.value
+  const canCorrect = CORRECTION_ROLES.includes(verifyToken(token ?? '')?.role ?? '')
+
+  const [totals, orders, companyDocs] = await Promise.all([
     recetteTotals(recette),
     recetteOrders(recette._id) as Promise<OrderDoc[]>,
+    canCorrect
+      ? (DeliveryCompany.find().sort({ isActive: -1, name: 1 }).lean() as Promise<
+          { _id: unknown; name?: string; commission?: number; isActive?: boolean }[]
+        >)
+      : Promise.resolve([]),
   ])
+  const companies: CorrectionCompany[] = companyDocs.map((c) => ({
+    id: String(c._id),
+    name: c.name ?? '',
+    commission: Number(c.commission) || 0,
+    isActive: c.isActive !== false,
+  }))
+  const corrections = recette.corrections ?? []
   const gap = cashDifference(recette, totals)
   const isOpen = recette.status === 'open'
   const expectedCash = cashInDrawer(recette, totals)
@@ -93,10 +126,63 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
     createdBy: m.createdBy?.name ?? '',
     cancelledAt: m.cancelledAt ? new Date(m.cancelledAt).toISOString() : null,
     cancelledBy: m.cancelledBy?.name ?? '',
+    addedLater: m.addedLater ? new Date(m.addedLater).toISOString() : null,
   }))
-  const exportDoc = recetteDetailExport({ recette, totals, gap, expectedCash, movements, orders })
+
+  // Ce que le tableau client a besoin de savoir d'une commande — rien de plus.
+  const tableOrders: CorrectableOrder[] = orders.map((o) => {
+    const dc = (o.deliveryCompany ?? {}) as { companyId?: unknown; name?: string; paid?: boolean; payoutRef?: string }
+    return {
+      id: String(o._id),
+      orderNumber: String(o.orderNumber ?? ''),
+      time: timeFr(o.createdAt),
+      customer: String((o.customer as { name?: string } | undefined)?.name ?? ''),
+      type: o.type === 'delivery' ? 'delivery' : 'pickup',
+      sourceLabel: `${orderSourceIcon(o.source)} ${orderSourceLabel(o.source)}`.trim(),
+      status: String(o.status ?? ''),
+      total: Number(o.total ?? 0),
+      companyId: dc.companyId ? String(dc.companyId) : null,
+      companyName: dc.name?.trim() ?? '',
+      paymentMethod: (o.payment as { method?: string } | undefined)?.method ?? null,
+      payoutLocked: dc.paid === true,
+      payoutRef: dc.payoutRef ?? '',
+      correction: Number((o.correction as { amount?: number } | undefined)?.amount ?? 0),
+    }
+  })
+
+  const exportDoc = recetteDetailExport({
+    recette,
+    totals,
+    gap,
+    expectedCash,
+    movements,
+    orders,
+    corrections: corrections.map((c) => ({
+      at: c.at ? new Date(c.at).toISOString() : '',
+      by: c.by?.name ?? '',
+      action: CORRECTION_LABELS[c.action as CorrectionAction] ?? String(c.action ?? ''),
+      target: c.target ?? '',
+      changes: c.changes ?? [],
+      reason: c.reason ?? '',
+      revenue: Number(c.delta?.revenue ?? 0),
+    })),
+  })
+  const last = corrections.at(-1)
 
   return (
+    <CorrectionsProvider
+      canCorrect={canCorrect}
+      companies={companies}
+      recette={{
+        id: String(recette._id),
+        closed: !isOpen,
+        openedAt: recette.openedAt ? new Date(recette.openedAt).toISOString() : new Date().toISOString(),
+        closedAt: recette.closedAt ? new Date(recette.closedAt).toISOString() : null,
+        openingFloat: Number(recette.openingFloat) || 0,
+        closingCash: typeof recette.closingCash === 'number' ? recette.closingCash : null,
+        expectedCash,
+      }}
+    >
     <div>
       <Link
         href="/recettes"
@@ -117,6 +203,15 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           {isOpen && <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />}
           {isOpen ? 'Ouverte' : 'Clôturée'}
         </span>
+        {last && (
+          <a
+            href="#journal"
+            title={`Dernière le ${dateFr(last.at)} à ${timeFr(last.at)}${last.by?.name ? ` par ${last.by.name}` : ''}`}
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300 hover:underline"
+          >
+            <History size={12} /> Corrigée {corrections.length} fois
+          </a>
+        )}
         <div className="ml-auto">
           <ExportButtons doc={exportDoc} />
         </div>
@@ -130,6 +225,8 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
         )}
         {isOpen && ' · les chiffres bougent encore'}
       </p>
+
+      <CorrectionToolbar count={corrections.length} />
 
       {/* ── Chiffres clés ─────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
@@ -345,64 +442,58 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
       )}
 
       {/* ── Commandes de la session ───────────────────────────── */}
-      <div className="bg-card rounded-xl border overflow-hidden">
-        <div className="px-4 py-3 border-b">
-          <p className="font-semibold text-sm">
-            Commandes de la recette{' '}
-            <span className="text-muted-foreground font-normal">({orders.length})</span>
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-150">
-            <thead className="bg-muted/50 border-b">
-              <tr>
-                {['N° Commande', 'Heure', 'Client', 'Type', 'Origine', 'Statut', 'Total', ''].map((h) => (
-                  <th key={h} className="px-4 py-3 text-left font-medium text-muted-foreground">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {orders.map((order) => {
-                const customer = (order.customer ?? {}) as Record<string, string>
-                const status = String(order.status)
-                return (
-                  <tr key={String(order._id)} className="hover:bg-muted/50">
-                    <td className="px-4 py-3 font-semibold">{String(order.orderNumber ?? '')}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{timeFr(order.createdAt)}</td>
-                    <td className="px-4 py-3">{customer.name ?? ''}</td>
-                    <td className="px-4 py-3">{order.type === 'delivery' ? '🛵 Livraison' : '🥡 À emporter'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap">
-                      {orderSourceIcon(order.source)} {orderSourceLabel(order.source)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${statusColors[status] ?? 'bg-muted text-muted-foreground'}`}>
-                        {statusLabels[status] ?? status}
-                      </span>
-                    </td>
-                    <td className={`px-4 py-3 font-bold ${status === 'cancelled' ? 'line-through text-muted-foreground' : ''}`}>
-                      {money(Number(order.total ?? 0))}
-                    </td>
-                    <td className="px-4 py-3">
-                      <Link
-                        href={`/orders/${String(order._id)}/print`}
-                        title="Ticket"
-                        className="inline-flex items-center justify-center w-8 h-8 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-                      >
-                        <Printer size={15} />
-                      </Link>
-                    </td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-        {orders.length === 0 && (
-          <p className="text-center text-muted-foreground py-10 text-sm">
-            Aucune commande rattachée à cette recette
-          </p>
-        )}
+      <RecetteOrdersTable orders={tableOrders} />
+
+      {/* ── Journal des corrections ───────────────────────────── */}
+      {corrections.length > 0 && <CorrectionsLog corrections={corrections} />}
+    </div>
+    </CorrectionsProvider>
+  )
+}
+
+/**
+ * Le journal : ce qui a été changé après coup, par qui, pourquoi, et ce que
+ * ça a fait aux chiffres. Le plus récent en haut.
+ */
+function CorrectionsLog({ corrections }: { corrections: CorrectionDoc[] }) {
+  return (
+    <div id="journal" className="mt-4 bg-card rounded-xl border overflow-hidden scroll-mt-4">
+      <div className="px-4 py-3 border-b">
+        <p className="font-semibold text-sm">
+          Journal des corrections <span className="text-muted-foreground font-normal">({corrections.length})</span>
+        </p>
+        <p className="text-xs text-muted-foreground mt-0.5">
+          Ce qui a été changé après coup. Rien ne s&apos;efface : une commande annulée se rétablit, un mouvement annulé reste barré.
+        </p>
       </div>
+      <ol className="divide-y">
+        {[...corrections].reverse().map((c) => {
+          const d = c.delta ?? {}
+          const effects = [
+            Math.abs(d.revenue ?? 0) >= 0.005 && `CA ${signed(d.revenue ?? 0)}`,
+            Math.abs(d.cashExpected ?? 0) >= 0.005 && `tiroir ${signed(d.cashExpected ?? 0)}`,
+            Math.abs(d.receivable ?? 0) >= 0.005 && `à recevoir ${signed(d.receivable ?? 0)}`,
+          ].filter(Boolean)
+          return (
+            <li key={String(c._id)} className="px-4 py-3 text-sm">
+              <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="font-semibold">{CORRECTION_LABELS[c.action as CorrectionAction] ?? c.action}</span>
+                {c.target && <span className="text-muted-foreground">· {c.target}</span>}
+                <span className="ml-auto text-xs text-muted-foreground">
+                  {dateFr(c.at)} à {timeFr(c.at)}
+                  {c.by?.name && ` · ${c.by.name}`}
+                </span>
+              </div>
+              {(c.changes ?? []).map((line, i) => (
+                <p key={i} className="text-foreground/90">{line}</p>
+              ))}
+              <p className="text-xs text-muted-foreground mt-0.5">
+                « {c.reason} »{effects.length > 0 && <span className="font-semibold text-foreground"> · {effects.join(' · ')}</span>}
+              </p>
+            </li>
+          )
+        })}
+      </ol>
     </div>
   )
 }

@@ -91,6 +91,14 @@ const OrderSchema = new Schema(
       payoutRef: { type: String, default: '' },
     },
     deliveryFee: { type: Number, default: 0, min: 0, max: 10 },
+    // Un montant rectifié après coup, depuis la recette. Le total devient
+    // sous-total − remise + supplément + livraison + correction : la remise du
+    // caissier reste ce qu'elle était, et le ticket réimprimé tombe juste.
+    // Le pourquoi est dans le journal de la recette.
+    correction: {
+      amount: { type: Number, default: 0 },
+      label: { type: String, default: '' },
+    },
     assignedDelivery: { type: Schema.Types.ObjectId, ref: 'User', default: null },
     reference: { type: String, default: '' },
     notes: { type: String, default: '' },

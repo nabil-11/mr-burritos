@@ -103,6 +103,39 @@ const MovementSchema = new Schema({
   createdBy: { name: { type: String, default: '' } },
   cancelledAt: { type: Date, default: null },
   cancelledBy: { name: { type: String, default: '' } },
+  // Saisi après la clôture, par une correction : `createdAt` dit quand l'argent
+  // a bougé, celui-ci quand on l'a écrit.
+  addedLater: { type: Date, default: null },
+})
+
+/**
+ * Une correction apportée à une recette — clôturée le plus souvent.
+ *
+ * Une recette clôturée ne se rouvre pas : on la corrige, ligne à ligne, et
+ * chaque correction recalcule ses totaux figés. Mais un chiffre qui change
+ * après coup doit pouvoir s'expliquer : qui, quand, pourquoi, et ce que ça a
+ * changé. D'où ce journal, qu'on ne modifie ni n'efface.
+ */
+const CorrectionSchema = new Schema({
+  at: { type: Date, default: Date.now },
+  by: {
+    user: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+    name: { type: String, default: '' },
+  },
+  /** order.settle, order.amount, order.cancel, order.restore, order.add, count, movement.add, movement.cancel */
+  action: { type: String, required: true },
+  /** Ce qui a été touché, lisible sans jointure : « MB-20260912-0004 », « Pain ». */
+  target: { type: String, default: '' },
+  /** Une ligne par champ changé : « Plateforme : aucune → Glovo ». */
+  changes: { type: [String], default: [] },
+  reason: { type: String, required: true, trim: true, maxlength: 300 },
+  /** Ce que la correction a changé aux chiffres de la recette. */
+  delta: {
+    revenue: { type: Number, default: 0 },
+    net: { type: Number, default: 0 },
+    cashExpected: { type: Number, default: 0 },
+    receivable: { type: Number, default: 0 },
+  },
 })
 
 const RecetteSchema = new Schema(
@@ -131,6 +164,8 @@ const RecetteSchema = new Schema(
     mouvements: { type: [MovementSchema], default: [] },
     /** Snapshot of the figures taken at closing. Empty while the session runs. */
     totals: { type: TotalsSchema, default: null },
+    /** Le journal des corrections, de la plus ancienne à la plus récente. */
+    corrections: { type: [CorrectionSchema], default: [] },
   },
   { timestamps: true }
 )
