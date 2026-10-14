@@ -6,6 +6,8 @@ import { Recette } from '@/lib/models/Recette'
 import { cashDifference, cashInDrawer, recetteOrders, recetteTotals, type RecetteTotals } from '@/lib/recette'
 import { ORDER_SOURCES, orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
 import RecetteMovements, { type MovementView } from '@/components/backoffice/RecetteMovements'
+import ExportButtons from '@/components/backoffice/ExportButtons'
+import { recetteDetailExport } from '@/lib/recetteExport'
 
 /**
  * Le détail d'une session de caisse : les chiffres, les mouvements d'espèces
@@ -92,6 +94,7 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
     cancelledAt: m.cancelledAt ? new Date(m.cancelledAt).toISOString() : null,
     cancelledBy: m.cancelledBy?.name ?? '',
   }))
+  const exportDoc = recetteDetailExport({ recette, totals, gap, expectedCash, movements, orders })
 
   return (
     <div>
@@ -114,6 +117,9 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
           {isOpen && <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />}
           {isOpen ? 'Ouverte' : 'Clôturée'}
         </span>
+        <div className="ml-auto">
+          <ExportButtons doc={exportDoc} />
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Ouverte le {dateFr(recette.openedAt)} à {timeFr(recette.openedAt)}

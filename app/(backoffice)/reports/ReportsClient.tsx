@@ -2,11 +2,13 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
-import { AlertTriangle, Download, RefreshCw } from 'lucide-react'
+import { AlertTriangle, Download, FileText, RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 import { ORDER_SOURCE_ICONS, ORDER_SOURCE_LABELS, type OrderSource } from '@/lib/orderSource'
 import { MOVEMENT_LIST, MOVEMENT_META } from '@/lib/movementKinds'
 // Types seulement : le calcul vit côté serveur, rien de Mongo n'arrive ici.
 import type { RecetteReport, ReportRecetteRow } from '@/lib/recetteReport'
+import { downloadReportPdf } from './reportPdf'
 
 /**
  * Le rapport des recettes : une période, la somme exacte de ses sessions de
@@ -90,6 +92,20 @@ export default function ReportsClient() {
   const [data, setData] = useState<RecetteReport | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
+
+  /** Le rapport en PDF, pour le comptable : les mêmes chiffres que l'écran. */
+  const exportPdf = async () => {
+    if (!data) return
+    setExporting(true)
+    try {
+      await downloadReportPdf(data)
+    } catch (e) {
+      toast.error(e instanceof Error ? `Export PDF impossible : ${e.message}` : 'Export PDF impossible')
+    } finally {
+      setExporting(false)
+    }
+  }
 
   const fetchReport = useCallback(async (r: { from: string; to: string }) => {
     setLoading(true)
@@ -156,6 +172,14 @@ export default function ReportsClient() {
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-[#1A1A1A] text-white hover:bg-[#F5A800] hover:text-black transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
               <Download size={14} /> CSV
+            </button>
+            <button
+              onClick={exportPdf}
+              disabled={!data || data.recettes.length === 0 || exporting}
+              title="Le rapport complet en PDF, pour le comptable"
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-semibold bg-[#F5A800] text-black hover:bg-[#FF6B00] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <FileText size={14} /> {exporting ? 'Export…' : 'PDF'}
             </button>
           </div>
         </div>
