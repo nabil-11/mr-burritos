@@ -42,6 +42,8 @@ const TotalsSchema = new Schema(
     platformDue: { type: Number },
     /** The part of platformDue whose payout had been ticked off by closing time. */
     platformPaid: { type: Number },
+    /** The part of platformPaid a rider handed over in cash at the counter — it is in the drawer. */
+    platformCash: { type: Number },
     /** Sales whose settlement was never recorded — neither cash, TPE nor platform. */
     unsettled: { type: Number },
     /**

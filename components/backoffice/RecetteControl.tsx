@@ -37,6 +37,8 @@ interface Totals {
   cardSales?: number
   platformDue?: number
   platformPaid?: number
+  /** Réglé au comptoir par le coursier : dans le tiroir. Absent des serveurs plus anciens. */
+  platformCash?: number
   unsettled?: number
   /** Encaisse et reste du : voir lib/recette. Absents des serveurs plus anciens. */
   collected?: number
@@ -347,6 +349,9 @@ function CloseDialog({
             <Row label="Net (après commissions)" value={money(totals.net)} />
             <Row label="Fond à l'ouverture" value={money(recette.openingFloat || 0)} />
             <Row label="Ventes en espèces" value={`+ ${money(totals.cashSales ?? 0)}`} />
+            {(totals.platformCash ?? 0) > 0 && (
+              <Row label="Plateformes réglées (net)" value={`+ ${money(totals.platformCash ?? 0)}`} />
+            )}
             {/* Seules les lignes qui ont bougé : une colonne de zéros apprend à
                 ne plus lire le bloc. */}
             {(totals.apports ?? 0) > 0 && (

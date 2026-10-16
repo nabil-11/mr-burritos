@@ -51,6 +51,7 @@ export interface PlatformOrderLike {
   source?: string
   total?: number
   payment?: { method?: string } | null
+  createdAt?: Date | string | null
   deliveryCompany?: {
     name?: string
     commission?: number
@@ -58,6 +59,7 @@ export interface PlatformOrderLike {
     companyId?: unknown
     paid?: boolean
     paidAt?: Date | string | null
+    payout?: unknown
     payoutRef?: string
   } | null
 }
@@ -138,6 +140,29 @@ export function receivableOf(order: PlatformOrderLike): number {
 export function isPaid(order: PlatformOrderLike): boolean {
   return order.deliveryCompany?.paid === true
 }
+
+/**
+ * Un coursier qui règle au comptoir, au moment où la commande est saisie.
+ *
+ * C'est le « déjà réglé » de la caisse : le livreur Presto ou Yassir remet le
+ * net en espèces en emportant le sac, et la caissière coche la case en
+ * tapant la commande. Ce net est dans le tiroir, au même titre qu'une vente
+ * en espèces — l'oublier, c'est voir un excédent à chaque clôture.
+ *
+ * Un versement pointé plus tard depuis l'écran des règlements n'en est pas :
+ * un virement Glovo n'a jamais touché le tiroir. On les distingue par ce qui
+ * est écrit sur la commande — pas de versement rattaché, et un pointage
+ * apposé au moment même de la saisie (voir `POST /api/orders`).
+ */
+export function paidAtCounter(order: PlatformOrderLike): boolean {
+  const dc = order.deliveryCompany
+  if (!isPaid(order) || dc?.payout || !dc?.paidAt || !order.createdAt) return false
+  const lag = new Date(dc.paidAt).getTime() - new Date(order.createdAt).getTime()
+  return Number.isFinite(lag) && Math.abs(lag) <= COUNTER_WINDOW_MS
+}
+
+/** Le pointage et la création se suivent à quelques millisecondes ; on laisse de la marge. */
+const COUNTER_WINDOW_MS = 2 * 60_000
 
 export interface Settlement {
   state: SettlementState

@@ -59,7 +59,7 @@ export interface ReportInput {
 /** Les montants qui s'additionnent tels quels d'une recette à l'autre. */
 const SUMMED = [
   'revenue', 'net', 'commission', 'discounts', 'surcharges', 'deliveryFees',
-  'cashSales', 'cardSales', 'platformDue', 'platformPaid', 'unsettled',
+  'cashSales', 'cardSales', 'platformDue', 'platformPaid', 'platformCash', 'unsettled',
   'collected', 'receivable', 'achats', 'depenses', 'apports', 'retraits',
   'cashExpected', 'solde',
 ] as const

@@ -5,7 +5,7 @@ import { Recette } from './models/Recette'
 import { Employee } from './models/Employee'
 import { ORDER_SOURCES, type OrderSource } from './orderSource'
 import { MOVEMENT_KINDS, type MovementKind, isMovementKind } from './movementKinds'
-import { companyOf, isPaid, moneyPocket } from './platformSettlement'
+import { companyOf, isPaid, moneyPocket, paidAtCounter } from './platformSettlement'
 
 /**
  * Till sessions ("recettes") and their figures.
@@ -129,6 +129,13 @@ export interface RecetteTotals {
    * n'est plus attendue : voir `receivable`.
    */
   platformPaid: number
+  /**
+   * La part de `platformPaid` réglée au comptoir par le coursier, en espèces,
+   * au moment de la saisie — voir `paidAtCounter`. Le net, jamais le brut :
+   * c'est ce que le livreur remet. Elle est dans le tiroir, donc dans
+   * `cashExpected`.
+   */
+  platformCash: number
   /** Ventes dont le règlement n'a jamais été enregistré. Ni un reproche, ni un oubli à cacher. */
   unsettled: number
   /** Une ligne par plateforme, la plus grosse d'abord. */
@@ -163,7 +170,14 @@ type OrderLike = {
   deliveryFee?: number
   discount?: { amount?: number } | null
   surcharge?: { amount?: number } | null
-  deliveryCompany?: { name?: string; commission?: number } | null
+  createdAt?: Date | string | null
+  deliveryCompany?: {
+    name?: string
+    commission?: number
+    paid?: boolean
+    paidAt?: Date | string | null
+    payout?: unknown
+  } | null
   payment?: { method?: string } | null
 }
 
@@ -194,6 +208,7 @@ export function emptyTotals(): RecetteTotals {
     retraits: 0,
     platformDue: 0,
     platformPaid: 0,
+    platformCash: 0,
     unsettled: 0,
     byCompany: [],
     collected: 0,
@@ -210,7 +225,7 @@ const round2 = (n: number) => Math.round(n * 100) / 100
 const MONEY_KEYS = [
   'revenue', 'net', 'discounts', 'surcharges', 'deliveryFees', 'commission',
   'cashSales', 'cardSales', 'achats', 'depenses', 'apports', 'retraits',
-  'platformDue', 'platformPaid', 'unsettled', 'collected', 'receivable', 'cashExpected', 'solde',
+  'platformDue', 'platformPaid', 'platformCash', 'unsettled', 'collected', 'receivable', 'cashExpected', 'solde',
 ] as const
 
 /**
@@ -264,6 +279,8 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
     else if (pocket === 'platform') {
       totals.platformDue += total - commission
       if (isPaid(order)) totals.platformPaid += total - commission
+      // Réglée par le coursier en emportant le sac : le net est dans le tiroir.
+      if (paidAtCounter(order)) totals.platformCash += total - commission
     } else totals.unsettled += total
 
     if (company) {
@@ -319,8 +336,9 @@ export function computeTotals(orders: OrderLike[], movements: MovementLike[] = [
 
   // The drawer counts every movement; the result counts only what was spent.
   // Putting 50 DT of change in makes the drawer heavier, not the day better.
+  // A platform net handed over by the rider at the counter is cash too.
   totals.cashExpected =
-    totals.cashSales + totals.apports - totals.retraits - totals.achats - totals.depenses
+    totals.cashSales + totals.platformCash + totals.apports - totals.retraits - totals.achats - totals.depenses
   totals.solde = totals.net - totals.achats - totals.depenses
 
   // Payé / pas payé : les quatre poches, regroupées selon la seule question
@@ -368,6 +386,9 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
   const cardSales = base.cardSales ?? 0
   const platformDue = base.platformDue ?? 0
   const platformPaid = base.platformPaid ?? 0
+  // Absente d'un instantané figé avant que le tiroir compte les règlements au
+  // comptoir : `recetteTotals` la complète avant d'arriver ici.
+  const platformCash = base.platformCash ?? 0
   const unsettled = base.unsettled ?? 0
   return {
     ...base,
@@ -376,6 +397,7 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
     retraits: base.retraits ?? 0,
     platformDue,
     platformPaid,
+    platformCash,
     unsettled,
     byCompany: Array.isArray(base.byCompany)
       ? base.byCompany.map((c) => ({ ...c, settled: c.settled ?? 0 }))
@@ -397,14 +419,43 @@ function normalizeTotals(raw: RecetteTotals): RecetteTotals {
 export async function recetteTotals(recette: {
   _id: unknown
   status?: string
+  closedAt?: Date | string | null
   totals?: RecetteTotals | null
   mouvements?: MovementLike[] | null
 }): Promise<RecetteTotals> {
-  if (recette.status === 'closed' && recette.totals) return normalizeTotals(recette.totals)
+  if (recette.status === 'closed' && recette.totals) {
+    const frozen = recette.totals as RecetteTotals & { toObject?: () => RecetteTotals }
+    const plain = typeof frozen.toObject === 'function' ? frozen.toObject() : frozen
+    if (typeof plain.platformCash === 'number') return normalizeTotals(plain)
+    return normalizeTotals(await withPlatformCash(recette, plain))
+  }
   return computeTotals(
     (await recetteOrders(recette._id)) as OrderLike[],
     (recette.mouvements ?? []) as MovementLike[]
   )
+}
+
+/**
+ * Une recette clôturée avant que le tiroir compte les plateformes réglées au
+ * comptoir : son attendu figé les a oubliées, d'où un excédent à tort.
+ *
+ * On ne refait pas la recette — seulement ce net, calculé comme à la clôture
+ * (`refrozenTotals`), ajouté à l'attendu. Puis on l'écrit, une fois : la
+ * condition sur `platformCash` absent rend l'écriture idempotente, et la
+ * lecture suivante ne refait plus la requête.
+ */
+async function withPlatformCash(
+  recette: { _id: unknown; closedAt?: Date | string | null; mouvements?: MovementLike[] | null },
+  frozen: RecetteTotals
+): Promise<RecetteTotals> {
+  const orders = (await recetteOrders(recette._id)) as OrderLike[]
+  const platformCash = refrozenTotals(recette, orders).platformCash
+  const cashExpected = round2((Number(frozen.cashExpected) || 0) + platformCash)
+  await Recette.updateOne(
+    { _id: recette._id, status: 'closed', 'totals.platformCash': { $exists: false } },
+    { $set: { 'totals.platformCash': platformCash, 'totals.cashExpected': cashExpected } }
+  ).catch(() => {})
+  return { ...frozen, platformCash, cashExpected }
 }
 
 /**
@@ -417,9 +468,7 @@ export async function recetteTotals(recette: {
  */
 export function refrozenTotals(
   recette: { closedAt?: Date | string | null; mouvements?: MovementLike[] | null },
-  orders: (Omit<OrderLike, 'deliveryCompany'> & {
-    deliveryCompany?: { name?: string; commission?: number; paid?: boolean; paidAt?: Date | string | null } | null
-  })[]
+  orders: OrderLike[]
 ): RecetteTotals {
   const closedAt = recette.closedAt ? new Date(recette.closedAt).getTime() : Date.now()
   const asOfClosing = orders.map((o) => {

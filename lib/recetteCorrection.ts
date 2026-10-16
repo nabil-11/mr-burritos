@@ -6,6 +6,7 @@ import { DeliveryCompany } from './models/DeliveryCompany'
 import { isDuplicateKey, nextOrderNumber } from './orderNumber'
 import { orderBus } from './orderBus'
 import { MOVEMENT_META, isMovementKind } from './movementKinds'
+import { paidAtCounter } from './platformSettlement'
 import {
   CORRECTION_ACTIONS,
   CORRECTION_LABELS,
@@ -116,11 +117,14 @@ type OrderLean = {
   total?: number
   payment?: { method?: string } | null
   correction?: { amount?: number } | null
+  createdAt?: Date | null
   deliveryCompany?: {
     companyId?: unknown
     name?: string
     commission?: number
     paid?: boolean
+    paidAt?: Date | null
+    payout?: unknown
     payoutRef?: string
   } | null
 }
@@ -172,7 +176,9 @@ async function orderOf(recetteId: string, orderId: unknown): Promise<OrderLean> 
 /** Une commande dont le versement a été pointé ne bouge plus : le versement mentirait. */
 function guardPayout(order: OrderLean) {
   const dc = order.deliveryCompany
-  if (dc?.paid) {
+  // Réglée au comptoir par le coursier : aucun versement à défaire, l'argent
+  // est dans le tiroir de cette recette — la corriger ne contredit personne.
+  if (dc?.paid && !paidAtCounter(order)) {
     throw new RecetteError(
       `Le versement de ${dc.name || 'la plateforme'} est déjà pointé sur cette commande${
         dc.payoutRef ? ` (${dc.payoutRef})` : ''

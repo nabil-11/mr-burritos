@@ -420,6 +420,7 @@ function CaisseCard({ data }: { data: RecetteReport }) {
     <Section title="Tiroir-caisse" subtitle="Ce que les espèces auraient dû devenir, et ce que les comptages ont trouvé">
       <dl className="divide-y">
         <Line label="Ventes en espèces" value={`+ ${money(s.cashSales)}`} />
+        {s.platformCash > 0 && <Line label="Plateformes réglées au comptoir (net)" value={`+ ${money(s.platformCash)}`} />}
         {s.apports > 0 && <Line label="Ajouts au fond" value={`+ ${money(s.apports)}`} />}
         {s.achats > 0 && <Line label="Achats" value={`− ${money(s.achats)}`} />}
         {s.depenses > 0 && <Line label="Dépenses" value={`− ${money(s.depenses)}`} />}

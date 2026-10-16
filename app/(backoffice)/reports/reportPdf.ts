@@ -199,6 +199,7 @@ export async function downloadReportPdf(r: RecetteReport): Promise<void> {
     ]),
     column(2, 'TIROIR-CAISSE', [
       ['Ventes en espèces', `+ ${money(s.cashSales)}`],
+      ...(s.platformCash > 0 ? [['Plateformes réglées au comptoir (net)', `+ ${money(s.platformCash)}`]] : []),
       ...(s.apports > 0 ? [['Ajouts au fond', `+ ${money(s.apports)}`]] : []),
       ...(s.achats > 0 ? [['Achats', minus(s.achats)]] : []),
       ...(s.depenses > 0 ? [['Dépenses', minus(s.depenses)]] : []),

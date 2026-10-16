@@ -179,7 +179,12 @@ export function recetteDetailExport({
         ['Encaissé — l’argent est arrivé', t.collected],
         ['  dont espèces (dans le tiroir)', t.cashSales],
         ['  dont TPE (en banque)', t.cardSales],
-        ...(t.platformPaid > 0 ? [['  dont plateformes déjà réglées', t.platformPaid] as [string, ExportValue]] : []),
+        ...(t.platformCash > 0
+          ? [['  dont plateformes réglées au comptoir (dans le tiroir)', t.platformCash] as [string, ExportValue]]
+          : []),
+        ...(t.platformPaid - t.platformCash > 0.004
+          ? [['  dont plateformes · versement pointé', round2(t.platformPaid - t.platformCash)] as [string, ExportValue]]
+          : []),
         ['À recevoir — pas encore payé', t.receivable],
         ['  dont plateformes', round2(t.platformDue - t.platformPaid)],
         ['  dont règlement non renseigné', t.unsettled],
@@ -189,6 +194,7 @@ export function recetteDetailExport({
     kv('Caisse', [
       ["Fond à l'ouverture", recette.openingFloat || 0],
       ['Ventes sur place (espèces)', t.cashSales],
+      ...(t.platformCash > 0 ? [['Plateformes réglées (net)', t.platformCash] as [string, ExportValue]] : []),
       ...(t.apports > 0 ? [['Ajouts au fond', t.apports] as [string, ExportValue]] : []),
       ...(t.achats > 0 ? [['Achats', -t.achats] as [string, ExportValue]] : []),
       ...(t.depenses > 0 ? [['Dépenses', -t.depenses] as [string, ExportValue]] : []),

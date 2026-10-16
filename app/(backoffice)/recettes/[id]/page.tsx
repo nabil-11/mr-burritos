@@ -9,6 +9,7 @@ import { ORDER_SOURCES, orderSourceIcon, orderSourceLabel } from '@/lib/orderSou
 import RecetteMovements, { type MovementView } from '@/components/backoffice/RecetteMovements'
 import ExportButtons from '@/components/backoffice/ExportButtons'
 import { recetteDetailExport } from '@/lib/recetteExport'
+import { paidAtCounter } from '@/lib/platformSettlement'
 import { verifyToken } from '@/lib/auth'
 import { DeliveryCompany } from '@/lib/models/DeliveryCompany'
 import { CORRECTION_LABELS, CORRECTION_ROLES, type CorrectionAction } from '@/lib/correctionKinds'
@@ -144,7 +145,8 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
       companyId: dc.companyId ? String(dc.companyId) : null,
       companyName: dc.name?.trim() ?? '',
       paymentMethod: (o.payment as { method?: string } | undefined)?.method ?? null,
-      payoutLocked: dc.paid === true,
+      // Réglée au comptoir : rien à défaire ailleurs, elle reste corrigeable.
+      payoutLocked: dc.paid === true && !paidAtCounter(o),
       payoutRef: dc.payoutRef ?? '',
       correction: Number((o.correction as { amount?: number } | undefined)?.amount ?? 0),
     }
@@ -276,10 +278,18 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
               <span>TPE · payé, en banque — pas dans le tiroir</span>
               <span className="font-semibold text-foreground">{money(totals.cardSales)}</span>
             </p>
-            {totals.platformPaid > 0 && (
+            {totals.platformCash > 0 && (
               <p className="flex justify-between gap-3">
-                <span>Plateformes déjà réglées</span>
-                <span className="font-semibold text-foreground">{money(totals.platformPaid)}</span>
+                <span>Plateformes réglées au comptoir · net, dans le tiroir</span>
+                <span className="font-semibold text-foreground">{money(totals.platformCash)}</span>
+              </p>
+            )}
+            {totals.platformPaid - totals.platformCash > 0.004 && (
+              <p className="flex justify-between gap-3">
+                <span>Plateformes · versement reçu et pointé</span>
+                <span className="font-semibold text-foreground">
+                  {money(totals.platformPaid - totals.platformCash)}
+                </span>
               </p>
             )}
           </div>
@@ -327,6 +337,9 @@ export default async function RecetteDetailPage({ params }: { params: Promise<{ 
         <Card title="Caisse">
           <Line label="Fond à l'ouverture" value={money(recette.openingFloat || 0)} />
           <Line label="Ventes sur place" value={`+ ${money(totals.cashSales)}`} />
+          {totals.platformCash > 0 && (
+            <Line label="Plateformes réglées (net)" value={`+ ${money(totals.platformCash)}`} />
+          )}
           {totals.apports > 0 && (
             <Line label="Ajouts au fond" value={`+ ${money(totals.apports)}`} tone="good" />
           )}
