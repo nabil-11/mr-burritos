@@ -13,8 +13,8 @@ import { applyWebPromo } from '@/lib/promo'
 
 /**
  * Three jobs, nothing else: say whether we're open, let you find an order in
- * progress, and get you to the cart. The old nav listed five marketing links
- * that all led to the same menu page — none of them are a reason to be here.
+ * progress, and get you to the cart. On a desktop, two links — the menu and
+ * the reviews — are the only other places a customer needs from any page.
  */
 export default function WebNavbar() {
   // `hydrated` is the cart's own flag for "localStorage has been read", which
@@ -40,6 +40,15 @@ export default function WebNavbar() {
 
           <div className="hidden sm:block">
             <OpenStatus compact />
+          </div>
+
+          <div className="hidden md:flex items-center gap-1 ml-2 text-sm font-bold">
+            <Link href="/#menu" className="px-3 py-2 rounded-full text-muted-foreground hover:text-foreground transition-colors">
+              Menu
+            </Link>
+            <Link href="/avis" className="px-3 py-2 rounded-full text-muted-foreground hover:text-foreground transition-colors">
+              Avis
+            </Link>
           </div>
 
           <div className="ml-auto flex items-center gap-2">

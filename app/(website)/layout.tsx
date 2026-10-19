@@ -7,7 +7,7 @@ import CartBar from '@/components/website/CartBar'
 /**
  * La mise en page du site. Composant serveur : le panier est isolé dans
  * `CartShell`, qui l'est, lui, côté client — sans quoi tout ce qui est importé
- * ici le deviendrait aussi, y compris le pied de page qui lit sur le disque.
+ * ici le deviendrait aussi, y compris le pied de page.
  */
 export default function WebsiteLayout({ children }: { children: React.ReactNode }) {
   return (

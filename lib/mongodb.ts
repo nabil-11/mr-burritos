@@ -6,7 +6,6 @@ const MONGO_URL = process.env.MONGO_URL!
 if (!MONGO_URL) throw new Error('MONGO_URL is not defined')
 
 declare global {
-  // eslint-disable-next-line no-var
   var mongoose: { conn: mongoose.Connection | null; promise: Promise<mongoose.Connection> | null }
 }
 

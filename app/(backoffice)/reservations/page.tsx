@@ -1,6 +1,5 @@
 import { connectDB } from '@/lib/mongodb'
 import { Reservation } from '@/lib/models/Reservation'
-import { Badge } from '@/components/ui/badge'
 import ReservationActions from './ReservationActions'
 
 const statusColors: Record<string, string> = {

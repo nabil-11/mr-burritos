@@ -8,7 +8,17 @@ export default async function UsersPage() {
   await connectDB()
   const raw = await User.find().select('-password').sort({ createdAt: -1 }).lean()
 
-  const users: (SerializedUser & { createdAt: string })[] = (raw as any[]).map((u) => ({
+  const users: (SerializedUser & { createdAt: string })[] = (
+    raw as unknown as {
+      _id: unknown
+      name: string
+      email: string
+      phone?: string
+      role: SerializedUser['role']
+      isActive?: boolean
+      createdAt: Date | string
+    }[]
+  ).map((u) => ({
     _id: String(u._id),
     name: u.name,
     email: u.email,

@@ -193,7 +193,7 @@ export default function PayoutsClient() {
     load()
   }, [load])
 
-  const orders = data?.orders ?? []
+  const orders = useMemo(() => data?.orders ?? [], [data])
   const selectedOrders = useMemo(() => orders.filter((o) => selected.has(o.id)), [orders, selected])
   const selectedNet = selectedOrders.reduce((s, o) => s + o.net, 0)
   const selectedCompanies = [...new Set(selectedOrders.map((o) => o.company))]

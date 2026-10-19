@@ -2,9 +2,9 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 /**
- * Les applications de l'équipe, proposées en pied de page.
+ * Les applications de l'équipe, proposées sur la page de connexion (/login).
  *
- * Trois problèmes que le pied de page ne devrait pas avoir à connaître :
+ * Trois problèmes que cette page ne devrait pas avoir à connaître :
  *
  * — Un lien mort est pire que pas de lien. L'installateur Windows pèse une
  *   centaine de mégaoctets : il ne peut pas vivre dans le dépôt (au-delà de
@@ -33,7 +33,7 @@ export interface StaffApp {
   label: string
   /** « Windows · v1.3.0 · 101 Mo » — la plateforme, la version, puis le poids. */
   note: string
-  /** Quelle icône lucide le pied de page dessine. */
+  /** Quelle icône lucide la page dessine. */
   icon: 'store' | 'bike' | 'monitor'
 }
 

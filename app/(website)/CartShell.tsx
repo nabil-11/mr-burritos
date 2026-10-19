@@ -7,8 +7,7 @@ import { CartProvider } from '@/contexts/CartContext'
  *
  * Il vit ici plutôt que dans `layout.tsx` pour une raison de frontière : un
  * layout marqué `'use client'` entraîne avec lui tout ce qu'il importe, et le
- * pied de page a besoin du serveur — il lit sur le disque quelles applications
- * sont réellement téléchargeables (voir lib/downloads).
+ * pied de page comme les pages doivent rester des composants serveur.
  *
  * Le contexte passe malgré tout : React le fait descendre par la position dans
  * l'arbre, pas par les imports. Les enfants restent rendus sur le serveur et

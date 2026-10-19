@@ -8,7 +8,7 @@ import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 import { DoodleArrow, DoodleHeart, DoodleSparkle, DoodleSquiggle, DoodleStar } from '@/components/website/Doodles'
 import { getBuilderCategories } from '@/lib/builder'
 import { getHomeStats, getReviewSummary } from '@/lib/stats'
-import { OPENING_HOURS, PREP_MINUTES, TIMEZONE } from '@/lib/hours'
+import { OPENING_HOURS, PREP_MINUTES, TIMEZONE, hourGroups } from '@/lib/hours'
 import { WEB_PROMO } from '@/lib/promo'
 import { SITE, WHATSAPP_NUMBER } from '@/lib/site'
 
@@ -19,7 +19,6 @@ import { SITE, WHATSAPP_NUMBER } from '@/lib/site'
  */
 export const revalidate = 300
 
-const DAYS = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
 const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
 
@@ -124,18 +123,8 @@ export default async function HomePage() {
     getReviewSummary().catch(() => ({ average: 0, count: 0, latest: [] })),
   ])
 
-  // Collapse identical opening ranges so seven near-identical lines don't
-  // become seven lines of noise.
   const today = todayInTunis()
-  const hourGroups = OPENING_HOURS.reduce<{ label: string; days: number[] }[]>((acc, h, i) => {
-    const label = h
-      ? `${String(h.open).padStart(2, '0')}:00 – ${String(h.close % 24).padStart(2, '0')}:00`
-      : 'Fermé'
-    const last = acc[acc.length - 1]
-    if (last && last.label === label) last.days.push(i)
-    else acc.push({ label, days: [i] })
-    return acc
-  }, [])
+  const hours = hourGroups()
 
   const hasTacos = categories.some((c) => c.slug === 'tacos')
 
@@ -391,17 +380,17 @@ export default async function HomePage() {
                   <Clock size={17} className="text-[#F5A800]" />
                 </span>
                 <ul className="flex-1 space-y-1">
-                  {hourGroups.map((g) => {
-                    const isToday = g.days.includes(today)
+                  {hours.map((g) => {
+                    const isToday = g.indexes.includes(today)
                     return (
                       <li
-                        key={g.label + g.days[0]}
+                        key={g.days}
                         className={`flex justify-between gap-3 text-sm rounded-lg px-2 py-1 -mx-2 ${
                           isToday ? 'bg-[#F5A800]/12 font-bold text-foreground' : 'text-muted-foreground'
                         }`}
                       >
                         <span>
-                          {g.days.length > 1 ? `${DAYS[g.days[0]]} – ${DAYS[g.days[g.days.length - 1]]}` : DAYS[g.days[0]]}
+                          {g.days}
                           {isToday && <span className="ml-1.5 text-[10px] font-black uppercase text-[#F5A800]">aujourd&apos;hui</span>}
                         </span>
                         <span className="tabular-nums text-foreground font-bold">{g.label}</span>

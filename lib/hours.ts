@@ -3,7 +3,7 @@
  *
  * These are hardcoded because nothing in the database holds them yet — the
  * Configuration collection is empty. Change them here, in one place, and the
- * navbar status and the footer both follow.
+ * navbar status, the home page and the footer all follow.
  */
 
 export const TIMEZONE = 'Africa/Tunis'
@@ -59,4 +59,37 @@ export function openStateAt(now: Date): OpenState {
   return isOpen
     ? { open: true, at: hhmm(today.close) }
     : { open: false, at: hhmm(today.open) }
+}
+
+export const DAY_NAMES = ['Dimanche', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi']
+
+export interface HourGroup {
+  /** "11:00 – 23:00", or "Fermé". */
+  label: string
+  /** "Dimanche – Jeudi", or a single day. */
+  days: string
+  /** Day indexes covered, 0 = Sunday. */
+  indexes: number[]
+}
+
+/**
+ * The week collapsed into runs of identical hours, so seven near-identical
+ * lines don't become seven lines of noise. The home page and the footer both
+ * print this.
+ */
+export function hourGroups(): HourGroup[] {
+  const groups = OPENING_HOURS.reduce<{ label: string; indexes: number[] }[]>((acc, h, i) => {
+    const label = h ? `${hhmm(h.open)} – ${hhmm(h.close)}` : 'Fermé'
+    const last = acc[acc.length - 1]
+    if (last && last.label === label) last.indexes.push(i)
+    else acc.push({ label, indexes: [i] })
+    return acc
+  }, [])
+  return groups.map((g) => ({
+    ...g,
+    days:
+      g.indexes.length > 1
+        ? `${DAY_NAMES[g.indexes[0]]} – ${DAY_NAMES[g.indexes[g.indexes.length - 1]]}`
+        : DAY_NAMES[g.indexes[0]],
+  }))
 }

@@ -101,7 +101,7 @@ export default function UserActions({ user }: { user: SerializedUser }) {
           <Pencil size={14} />
         </Button>
         <DialogContent>
-          <DialogHeader><DialogTitle>Modifier l'utilisateur</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Modifier l&apos;utilisateur</DialogTitle></DialogHeader>
           <form onSubmit={handleEdit} className="space-y-4">
             <div className="space-y-1">
               <Label>Nom</Label>
@@ -163,7 +163,7 @@ export default function UserActions({ user }: { user: SerializedUser }) {
           <Trash2 size={14} />
         </Button>
         <DialogContent>
-          <DialogHeader><DialogTitle>Supprimer l'utilisateur</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Supprimer l&apos;utilisateur</DialogTitle></DialogHeader>
           <p className="text-sm text-muted-foreground">
             Êtes-vous sûr de vouloir supprimer <span className="font-semibold text-foreground">{user.name}</span> ?
             Cette action est irréversible.
