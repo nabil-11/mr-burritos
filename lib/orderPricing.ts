@@ -4,21 +4,22 @@ import { Product } from './models/Product'
 import { Supplement } from './models/Supplement'
 import { normalizeOrderSource, type OrderSource } from './orderSource'
 import { normalizeTnPhone } from './phone'
-import { applyWebPromo } from './promo'
+import { applyWebDiscounts, normalizePromoCode, type PromoTerms } from './promo'
+import { checkPromoCode, type PromoCheck } from './promoCodes'
 
 /**
  * Turns what a client posted into the order the shop keeps.
  *
  * Nothing that costs money is taken on trust. Every price comes from the menu
  * in the database — product plus supplements, times quantity, the one rule the
- * website and the till both follow — and the online promo is applied here, not
- * in the browser. A client may post any figure it likes; the order records what
+ * website and the till both follow — and the online promo and any promo code
+ * are applied here, not in the browser. A client may post any figure it likes; the order records what
  * the food actually costs. When the two differ the order still goes through at
  * the real price (a stale basket is a customer, not an attacker), and the
  * caller is told, so the till can show it and refresh its menu.
  *
  * What a channel may add on top is the channel's to decide:
- *  - website: the online promo, nothing else;
+ *  - website: the online promo, and a promo code checked by lib/promoCodes;
  *  - kiosk: full price;
  *  - counter (the till): a remise and a supplement typed by the cashier, held
  *    within bounds, and platform orders keyed in as a bare amount.
@@ -29,9 +30,12 @@ import { applyWebPromo } from './promo'
 
 export class OrderInputError extends Error {
   status: number
-  constructor(message: string, status = 400) {
+  /** The part of the order the message is about, when the client can point at it. */
+  field?: 'promo'
+  constructor(message: string, status = 400, field?: 'promo') {
     super(message)
     this.status = status
+    this.field = field
   }
 }
 
@@ -69,6 +73,7 @@ export interface PricedOrder {
     items: Record<string, unknown>[]
     subtotal: number
     discount: { label: string; rate: number; amount: number }
+    promo: { code: string; amount: number }
     surcharge: { label: string; amount: number }
     total: number
     type: 'delivery' | 'pickup'
@@ -172,6 +177,8 @@ export interface WebQuote {
   subtotal: number
   discount: { label: string; rate: number; amount: number }
   total: number
+  /** The code the basket asked for, when it asked for one: accepted with its terms, or why not. */
+  promo: PromoCheck | null
 }
 
 /**
@@ -180,8 +187,11 @@ export interface WebQuote {
  * each item was added: a price changed in backoffice, or a dish taken off the
  * menu, is seen before the customer presses "commander", not after.
  */
-export async function quoteWebBasket(rawItems: ItemInput[]): Promise<WebQuote> {
-  const menu = await loadMenuFor(rawItems)
+export async function quoteWebBasket(rawItems: ItemInput[], promoCode?: unknown): Promise<WebQuote> {
+  const [menu, promo] = await Promise.all([
+    loadMenuFor(rawItems),
+    normalizePromoCode(promoCode) ? checkPromoCode(promoCode) : Promise.resolve(null),
+  ])
   const lines: WebQuote['lines'] = rawItems.map((raw) => {
     try {
       const line = priceLine(raw, menu)
@@ -198,8 +208,8 @@ export async function quoteWebBasket(rawItems: ItemInput[]): Promise<WebQuote> {
     }
   })
   const subtotal = round2(lines.reduce((s, l) => s + (l.ok ? l.lineTotal : 0), 0))
-  const { discount, total } = applyWebPromo(subtotal)
-  return { lines, subtotal, discount, total }
+  const { discount, total } = applyWebDiscounts(subtotal, promo?.ok ? promo.terms : null)
+  return { lines, subtotal, discount, total, promo }
 }
 
 /**
@@ -277,9 +287,22 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
 
   // ── What each channel may take off or add ───────────────────────────────
   let discount = { label: '', rate: 0, amount: 0 }
+  let promo = { code: '', amount: 0 }
   let surcharge = { label: '', amount: 0 }
   if (source === 'website') {
-    discount = applyWebPromo(subtotal).discount
+    // A code the customer saw accepted and that no longer is — expired since,
+    // used up, already used on this number — stops the order rather than
+    // charging more than the cart showed. The message says which, and the
+    // customer decides to order without it.
+    let terms: PromoTerms | null = null
+    if (normalizePromoCode(body.promoCode)) {
+      const check = await checkPromoCode(body.promoCode, { phone: customer.phone })
+      if (!check.ok) throw new OrderInputError(check.error, 409, 'promo')
+      terms = check.terms
+    }
+    const applied = applyWebDiscounts(subtotal, terms)
+    discount = applied.discount
+    if (applied.promo) promo = applied.promo
   } else if (counter) {
     const d = (body.discount ?? {}) as Record<string, unknown>
     const off = num(d.amount) ?? 0
@@ -332,6 +355,7 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
       items,
       subtotal,
       discount,
+      promo,
       surcharge,
       total,
       type,

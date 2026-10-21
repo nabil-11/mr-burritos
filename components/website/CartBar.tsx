@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { ShoppingBag, ChevronRight } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
-import { applyWebPromo } from '@/lib/promo'
+import { applyWebDiscounts } from '@/lib/promo'
 
 /**
  * On a phone the navbar's cart button sits at the top while the thumb is at
@@ -13,11 +13,11 @@ import { applyWebPromo } from '@/lib/promo'
  * order being tracked) and from `sm` up, where the navbar is close enough.
  */
 export default function CartBar() {
-  const { itemCount, total, hydrated, drawerOpen, setDrawerOpen } = useCart()
+  const { itemCount, total, hydrated, drawerOpen, setDrawerOpen, promo } = useCart()
   const pathname = usePathname()
   const hidden = !hydrated || itemCount === 0 || pathname === '/cart' || pathname.startsWith('/order/')
   if (hidden) return null
-  const { total: payable } = applyWebPromo(total)
+  const { total: payable } = applyWebDiscounts(total, promo?.terms)
 
   return (
     <>

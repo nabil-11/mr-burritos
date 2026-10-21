@@ -12,17 +12,22 @@ import type { WebQuote } from '@/lib/orderPricing'
  * cost; a dish no longer on the menu comes back as a problem on its own line.
  * A failed check changes nothing: the order route prices everything again
  * anyway, this only spares the customer a surprise.
+ *
+ * The promo code rides along: typing one, or coming back with one saved, asks
+ * the server whether it still holds, and the answer lands in the cart.
  */
 export function useCartQuote(active = true) {
-  const { items, hydrated, reprice } = useCart()
+  const { items, hydrated, reprice, promo, setPromoResult } = useCart()
   const [problems, setProblems] = useState<Record<string, string>>({})
   const [checking, setChecking] = useState(false)
 
   // What the server prices: which dishes, which supplements, how many. Prices
   // are left out, so correcting them does not trigger another check.
-  const signature = items
+  const promoCode = promo?.code ?? ''
+  const lines = items
     .map((i) => `${i.id}:${i.productId}:${i.selectedSupplements.map((s) => s._id).join('.')}:${i.quantity}`)
     .join('|')
+  const signature = lines && `${lines}#${promoCode}`
   const itemsRef = useRef(items)
   useEffect(() => {
     itemsRef.current = items
@@ -38,7 +43,7 @@ export function useCartQuote(active = true) {
         const res = await fetch('/api/orders/quote', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ items: snapshot.map(toOrderLine) }),
+          body: JSON.stringify({ items: snapshot.map(toOrderLine), ...(promoCode ? { promoCode } : {}) }),
           signal: ctrl.signal,
         })
         if (!res.ok) return
@@ -53,6 +58,13 @@ export function useCartQuote(active = true) {
         })
         setProblems(next)
         reprice(prices)
+        if (promoCode && quote.promo) {
+          setPromoResult(
+            quote.promo.ok
+              ? { code: promoCode, terms: quote.promo.terms, error: '' }
+              : { code: promoCode, terms: null, error: quote.promo.error }
+          )
+        }
       } catch {
         // offline or aborted: keep what we had
       } finally {
@@ -63,7 +75,7 @@ export function useCartQuote(active = true) {
       clearTimeout(timer)
       ctrl.abort()
     }
-  }, [signature, active, hydrated, reprice])
+  }, [signature, promoCode, active, hydrated, reprice, setPromoResult])
 
   // Problems for lines since removed are simply not looked up.
   const blocking = items.some((i) => problems[i.id])

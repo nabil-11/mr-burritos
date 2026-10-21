@@ -1,6 +1,7 @@
 'use client'
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useReducer, useState, ReactNode } from 'react'
+import { normalizePromoCode, type PromoTerms } from '@/lib/promo'
 
 export interface CartSupplement {
   _id: string
@@ -19,8 +20,21 @@ export interface CartItem {
   notes: string
 }
 
+/**
+ * The promo code the customer typed. `terms` is what the server said it is
+ * worth the last time the basket was quoted; null with no `error` means it has
+ * not answered yet. Kept with the basket, so it is still there on the next visit
+ * — and checked again then, since it may have expired meanwhile.
+ */
+export interface CartPromo {
+  code: string
+  terms: PromoTerms | null
+  error: string
+}
+
 interface CartState {
   items: CartItem[]
+  promo?: CartPromo | null
   /** The saved basket has been read — before that, "empty" means "not loaded yet". */
   hydrated?: boolean
 }
@@ -40,6 +54,8 @@ type CartAction =
   | { type: 'REMOVE_ITEM'; payload: string }
   | { type: 'UPDATE_QTY'; payload: { id: string; quantity: number } }
   | { type: 'REPRICE'; payload: LinePrices[] }
+  | { type: 'SET_PROMO'; payload: string | null }
+  | { type: 'PROMO_RESULT'; payload: CartPromo }
   | { type: 'HYDRATE'; payload: CartState }
   | { type: 'CLEAR' }
 
@@ -63,10 +79,32 @@ const newLineId = (productId: string) =>
     ? crypto.randomUUID()
     : `${productId}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`
 
+function sanitizePromo(raw: unknown): CartPromo | null {
+  const p = raw as Partial<CartPromo> | null
+  const code = normalizePromoCode(p?.code)
+  if (!code) return null
+  const t = p?.terms as Partial<PromoTerms> | null | undefined
+  const terms =
+    t && t.code === code && (t.kind === 'percent' || t.kind === 'fixed') && typeof t.value === 'number' && typeof t.expiresAt === 'string'
+      ? {
+          code,
+          description: typeof t.description === 'string' ? t.description : '',
+          kind: t.kind,
+          value: t.value,
+          minSubtotal: typeof t.minSubtotal === 'number' ? t.minSubtotal : 0,
+          stackable: t.stackable === true,
+          expiresAt: t.expiresAt,
+        }
+      : null
+  // Past its date, the saved terms would show a reduction the order will refuse.
+  return { code, terms: terms && Date.parse(terms.expiresAt) > Date.now() ? terms : null, error: '' }
+}
+
 /** A saved cart is only trusted as far as its shape: anything malformed is dropped, not crashed on. */
 function sanitize(raw: unknown): CartState {
   const list = (raw as { items?: unknown })?.items
-  if (!Array.isArray(list)) return { items: [] }
+  const promo = sanitizePromo((raw as { promo?: unknown })?.promo)
+  if (!Array.isArray(list)) return { items: [], promo }
   const seen = new Set<string>()
   const items: CartItem[] = []
   for (const it of list as Partial<CartItem>[]) {
@@ -87,13 +125,24 @@ function sanitize(raw: unknown): CartState {
       notes: typeof it.notes === 'string' ? it.notes : '',
     })
   }
-  return { items }
+  return { items, promo }
 }
 
 function cartReducer(state: CartState, action: CartAction): CartState {
   switch (action.type) {
     case 'HYDRATE':
-      return { items: action.payload.items, hydrated: true }
+      return { items: action.payload.items, promo: action.payload.promo ?? null, hydrated: true }
+    case 'SET_PROMO': {
+      const code = normalizePromoCode(action.payload)
+      return { ...state, promo: code ? { code, terms: null, error: '' } : null }
+    }
+    case 'PROMO_RESULT': {
+      // An answer about a code since replaced or removed is no answer at all.
+      const p = state.promo
+      if (!p || p.code !== action.payload.code) return state
+      const same = p.error === action.payload.error && JSON.stringify(p.terms) === JSON.stringify(action.payload.terms)
+      return same ? state : { ...state, promo: action.payload }
+    }
     case 'ADD_ITEM': {
       const key = configKey(action.payload)
       const existing = state.items.find((i) => configKey(i) === key)
@@ -136,7 +185,7 @@ function cartReducer(state: CartState, action: CartAction): CartState {
       return changed ? { ...state, items } : state
     }
     case 'CLEAR':
-      return { ...state, items: [] }
+      return { ...state, items: [], promo: null }
     default:
       return state
   }
@@ -152,6 +201,10 @@ interface CartContextType {
   updateQty: (id: string, quantity: number) => void
   reprice: (prices: LinePrices[]) => void
   clearCart: () => void
+  promo: CartPromo | null
+  /** A code to try, or null to remove it; the next quote says what it is worth. */
+  setPromoCode: (code: string | null) => void
+  setPromoResult: (result: CartPromo) => void
   /** Food total before the online promo. */
   total: number
   itemCount: number
@@ -168,7 +221,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
   // Start empty so the server-rendered HTML matches the first client render,
   // then load the saved cart from localStorage after mount to avoid a
   // hydration mismatch.
-  const [state, dispatch] = useReducer(cartReducer, { items: [], hydrated: false })
+  const [state, dispatch] = useReducer(cartReducer, { items: [], promo: null, hydrated: false })
   const hydrated = state.hydrated === true
   const [drawerOpen, setDrawerOpen] = useState(false)
 
@@ -201,11 +254,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
     // state doesn't overwrite it before hydration completes.
     if (!hydrated) return
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items }))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ items: state.items, promo: state.promo ?? null }))
     } catch {
       // storage full or blocked: the cart still works for this visit
     }
-  }, [state.items, hydrated])
+  }, [state.items, state.promo, hydrated])
 
   const addItem = useCallback(
     (item: Omit<CartItem, 'id'>) => dispatch({ type: 'ADD_ITEM', payload: { ...item, id: newLineId(item.productId) } }),
@@ -218,6 +271,9 @@ export function CartProvider({ children }: { children: ReactNode }) {
   )
   const reprice = useCallback((prices: LinePrices[]) => dispatch({ type: 'REPRICE', payload: prices }), [])
   const clearCart = useCallback(() => dispatch({ type: 'CLEAR' }), [])
+  const setPromoCode = useCallback((code: string | null) => dispatch({ type: 'SET_PROMO', payload: code }), [])
+  const setPromoResult = useCallback((result: CartPromo) => dispatch({ type: 'PROMO_RESULT', payload: result }), [])
+  const promo = state.promo ?? null
 
   const value = useMemo<CartContextType>(() => {
     const total = Math.round(state.items.reduce((sum, i) => sum + lineUnitPrice(i) * i.quantity, 0) * 100) / 100
@@ -229,13 +285,16 @@ export function CartProvider({ children }: { children: ReactNode }) {
       updateQty,
       reprice,
       clearCart,
+      promo,
+      setPromoCode,
+      setPromoResult,
       total,
       itemCount,
       hydrated,
       drawerOpen,
       setDrawerOpen,
     }
-  }, [state.items, addItem, removeItem, updateQty, reprice, clearCart, hydrated, drawerOpen])
+  }, [state.items, addItem, removeItem, updateQty, reprice, clearCart, promo, setPromoCode, setPromoResult, hydrated, drawerOpen])
 
   return <CartContext.Provider value={value}>{children}</CartContext.Provider>
 }

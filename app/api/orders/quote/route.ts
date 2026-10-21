@@ -9,6 +9,10 @@ import { OrderInputError, quoteWebBasket } from '@/lib/orderPricing'
  * the figure it shows is the figure POST /api/orders will charge, and a dish
  * that left the menu since it was added is flagged on its own line instead of
  * failing the whole order at the last step.
+ *
+ * `promoCode`, when sent, is checked too: the answer says whether it is valid
+ * right now and on what terms. Per-customer limits need the phone number and
+ * are held when the order is placed.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +20,7 @@ export async function POST(req: NextRequest) {
     const items = Array.isArray(body?.items) ? body.items : null
     if (!items) return NextResponse.json({ error: 'Panier illisible' }, { status: 400 })
     await connectDB()
-    return NextResponse.json(await quoteWebBasket(items))
+    return NextResponse.json(await quoteWebBasket(items, body?.promoCode))
   } catch (e: unknown) {
     if (e instanceof OrderInputError) return NextResponse.json({ error: e.message }, { status: e.status })
     const msg = e instanceof Error ? e.message : 'Erreur serveur'

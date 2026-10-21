@@ -9,7 +9,7 @@ import CartDrawer from './CartDrawer'
 import TrackOrderDrawer from './TrackOrderDrawer'
 import OpenStatus from './OpenStatus'
 import ThemeToggle from '@/components/ThemeToggle'
-import { applyWebPromo } from '@/lib/promo'
+import { applyWebDiscounts } from '@/lib/promo'
 
 /**
  * Three jobs, nothing else: say whether we're open, let you find an order in
@@ -19,10 +19,10 @@ import { applyWebPromo } from '@/lib/promo'
 export default function WebNavbar() {
   // `hydrated` is the cart's own flag for "localStorage has been read", which
   // is exactly the guard the badge needs — no second mounted state required.
-  const { itemCount, total, hydrated, setDrawerOpen } = useCart()
+  const { itemCount, total, hydrated, setDrawerOpen, promo } = useCart()
   const [trackOpen, setTrackOpen] = useState(false)
   // The same figure the drawer and the mobile bar end on: what will be paid.
-  const payable = applyWebPromo(total).total
+  const payable = applyWebDiscounts(total, promo?.terms).total
 
   return (
     <>

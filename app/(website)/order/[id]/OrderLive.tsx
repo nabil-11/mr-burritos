@@ -143,7 +143,7 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
     (delivery && order.customer.address ? `📍 ${order.customer.address}\n` : '') +
     `\n${order.items.map((i) => `- ${i.quantity}× ${i.name}${i.details ? ` (${i.details})` : ''} = ${i.lineTotal.toFixed(2)} DT`).join('\n')}` +
     (order.notes ? `\n\n📝 ${order.notes}` : '') +
-    `\n\nTotal : ${order.total.toFixed(2)} DT${order.discount.amount ? ` (promo en ligne −${order.discount.amount.toFixed(2)} DT incluse)` : ''}` +
+    `\n\nTotal : ${order.total.toFixed(2)} DT${order.discount.amount ? ` (réduction −${order.discount.amount.toFixed(2)} DT incluse)` : ''}` +
     (SITE_URL ? `\nSuivi : ${SITE_URL}/order/${order._id}` : '')
   const wa = whatsappLink(waText)
 

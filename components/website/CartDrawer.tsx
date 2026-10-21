@@ -1,21 +1,23 @@
 'use client'
 
 import Link from 'next/link'
-import { ShoppingBag, ArrowRight, BadgePercent } from 'lucide-react'
+import { ShoppingBag, ArrowRight } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useCart } from '@/contexts/CartContext'
 import { useCartQuote } from '@/hooks/useCartQuote'
-import { WEB_PROMO, applyWebPromo } from '@/lib/promo'
+import { WEB_PROMO, applyWebDiscounts } from '@/lib/promo'
 import CartLine from './CartLine'
+import DiscountLines from './DiscountLines'
 
 /**
  * The basket, one tap from anywhere. Opened by the navbar, the mobile cart bar
  * and the "ajouté" toast, all through the cart context.
  */
 export default function CartDrawer() {
-  const { items, total, itemCount, drawerOpen, setDrawerOpen } = useCart()
+  const { items, total, itemCount, drawerOpen, setDrawerOpen, promo } = useCart()
   const { problems, blocking } = useCartQuote(drawerOpen)
-  const { discount, total: payable } = applyWebPromo(total)
+  const applied = applyWebDiscounts(total, promo?.terms)
+  const payable = applied.total
   const close = () => setDrawerOpen(false)
 
   return (
@@ -67,11 +69,8 @@ export default function CartDrawer() {
                 <span>Sous-total</span>
                 <span className="tabular-nums">{total.toFixed(2)} DT</span>
               </div>
-              <div className="flex justify-between text-sm font-semibold text-emerald-600 dark:text-emerald-400">
-                <span className="flex items-center gap-1.5">
-                  <BadgePercent size={14} /> {WEB_PROMO.label} ({WEB_PROMO.badge})
-                </span>
-                <span className="tabular-nums">− {discount.amount.toFixed(2)} DT</span>
+              <div className="space-y-2 text-sm">
+                <DiscountLines applied={applied} terms={promo?.terms ?? null} />
               </div>
               <div className="flex justify-between items-baseline pt-1">
                 <span className="font-black text-foreground">Total</span>

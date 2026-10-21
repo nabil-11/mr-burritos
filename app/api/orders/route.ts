@@ -144,7 +144,9 @@ export async function POST(req: NextRequest) {
       { status: 201 }
     )
   } catch (e: unknown) {
-    if (e instanceof OrderInputError) return NextResponse.json({ error: e.message }, { status: e.status })
+    if (e instanceof OrderInputError) {
+      return NextResponse.json({ error: e.message, ...(e.field ? { field: e.field } : {}) }, { status: e.status })
+    }
     // A field the schema requires is missing — a customer with no name, say.
     // The caller's mistake, answered as one: not a server error.
     if (e instanceof mongoose.Error.ValidationError) {

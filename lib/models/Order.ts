@@ -39,6 +39,13 @@ const OrderSchema = new Schema(
       rate: { type: Number, default: 0 },
       amount: { type: Number, default: 0 },
     },
+    // The promo code typed on the website, and its own share of `discount` —
+    // which stays the whole reduction, so every receipt and total reads it as
+    // before. Also how a code's uses are counted (lib/promoCodes).
+    promo: {
+      code: { type: String, default: '' },
+      amount: { type: Number, default: 0 },
+    },
     // What was added to the subtotal, and why. The counterpart of `discount`,
     // stored the same way and for the same reason: a supplement agreed at the
     // counter — a fee, an extra portion, a delivery arranged on the spot —
@@ -131,6 +138,8 @@ const OrderSchema = new Schema(
 // réglées ou non, les plus anciennes d'abord. Sans cet index, l'écran des
 // règlements balaie toutes les commandes que le restaurant ait jamais prises.
 OrderSchema.index({ 'deliveryCompany.name': 1, 'deliveryCompany.paid': 1, createdAt: -1 })
+// Un code promo se compte à chaque commande qui le porte, et par client.
+OrderSchema.index({ 'promo.code': 1, 'customer.phone': 1 }, { partialFilterExpression: { 'promo.code': { $gt: '' } } })
 
 export const Order = models.Order || model('Order', OrderSchema)
 export type OrderDoc = mongoose.InferSchemaType<typeof OrderSchema>

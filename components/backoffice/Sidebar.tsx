@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import {
   LayoutDashboard, UtensilsCrossed, Tag, PlusCircle, ShoppingBag,
   CalendarDays, Users, Settings, LogOut, ClipboardPlus, Menu, X, Bike,
-  BookOpen, MessageSquare, Wallet, HandCoins, BarChart3, IdCard, CalendarClock,
+  BookOpen, MessageSquare, Wallet, HandCoins, BarChart3, IdCard, CalendarClock, Ticket,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import ThemeToggle from '@/components/ThemeToggle'
@@ -21,6 +21,7 @@ const nav = [
   { href: '/products',     label: 'Produits',         icon: UtensilsCrossed },
   { href: '/categories',   label: 'Catégories',       icon: Tag },
   { href: '/supplements',  label: 'Suppléments',      icon: PlusCircle },
+  { href: '/promo-codes',  label: 'Codes promo',      icon: Ticket },
   { href: '/delivery-companies', label: 'Sociétés livraison', icon: Bike },
   { href: '/platform-payouts', label: 'Règlements plateformes', icon: HandCoins },
   { href: '/posts',        label: 'Blog',             icon: BookOpen },

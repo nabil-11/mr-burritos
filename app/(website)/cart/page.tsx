@@ -4,14 +4,16 @@ import Link from 'next/link'
 import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ArrowLeft, BadgePercent, Clock, LocateFixed, Loader2, MapPin, ShoppingBag, Store, Bike, Check } from 'lucide-react'
+import { ArrowLeft, Clock, LocateFixed, Loader2, MapPin, ShoppingBag, Store, Bike, Check } from 'lucide-react'
 import { toOrderLine, useCart } from '@/contexts/CartContext'
 import CartLine from '@/components/website/CartLine'
+import DiscountLines from '@/components/website/DiscountLines'
+import PromoCodeField from '@/components/website/PromoCodeField'
 import { useCartQuote } from '@/hooks/useCartQuote'
 import { useOpenState } from '@/hooks/useOpenState'
 import { PREP_MINUTES } from '@/lib/hours'
 import { normalizeTnPhone } from '@/lib/phone'
-import { WEB_PROMO, applyWebPromo } from '@/lib/promo'
+import { WEB_PROMO, applyWebDiscounts } from '@/lib/promo'
 import { loadCustomer, rememberOrder, saveCustomer } from '@/lib/webMemory'
 
 type OrderType = 'delivery' | 'pickup'
@@ -28,13 +30,17 @@ const inputCls = (bad: boolean) =>
   }`
 
 export default function CartPage() {
-  const { items, total, clearCart, hydrated } = useCart()
+  const { items, total, clearCart, hydrated, promo, setPromoResult } = useCart()
   const { problems, blocking } = useCartQuote()
   const open = useOpenState()
   const router = useRouter()
   // `total` is the food; `payable` is what the customer owes after the
-  // online-ordering discount — the same function the server applies.
-  const { discount, total: payable } = applyWebPromo(total)
+  // online-ordering discount and the promo code — the same function the
+  // server applies.
+  const terms = promo?.terms ?? null
+  const applied = applyWebDiscounts(total, terms)
+  const { discount, total: payable } = applied
+  const promoPending = !!promo && !promo.terms && !promo.error
 
   const [type, setType] = useState<OrderType>('delivery')
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' })
@@ -127,6 +133,7 @@ export default function CartPage() {
     if (submitLock.current || items.length === 0) return
     if (isClosed) return toast.error(`Nous sommes fermés — commandes en ligne dès ${opensAt}`)
     if (blocking) return toast.error('Retirez d’abord les articles indisponibles')
+    if (promoPending) return toast.error('Vérification du code promo en cours, un instant…')
     if (!validate()) return
 
     submitLock.current = true
@@ -146,6 +153,10 @@ export default function CartPage() {
           items: items.map(toOrderLine),
           subtotal: total,
           discount,
+          // Only a code that takes something off: one below its minimum, or
+          // beaten by the online promo, would change nothing but could still
+          // be refused for its limits.
+          ...(applied.promo ? { promoCode: applied.promo.code } : {}),
           total: payable,
           type,
           source: 'website',
@@ -155,6 +166,9 @@ export default function CartPage() {
       const data = await res.json().catch(() => null)
       if (!res.ok) {
         if (data?.closed) setClosedAt(String(data.opensAt ?? ''))
+        // Expired or used up since it was accepted: shown on the code itself,
+        // and the totals fall back to what ordering without it costs.
+        if (data?.field === 'promo' && promo) setPromoResult({ code: promo.code, terms: null, error: String(data.error) })
         throw new Error(data?.error || 'Une erreur est survenue, réessayez')
       }
 
@@ -197,7 +211,7 @@ export default function CartPage() {
     )
   }
 
-  const canSend = !sending && !isClosed && !blocking
+  const canSend = !sending && !isClosed && !blocking && !promoPending
   const buttonLabel = sending
     ? 'Envoi…'
     : isClosed
@@ -390,12 +404,7 @@ export default function CartPage() {
                 <span>Sous-total</span>
                 <span className="tabular-nums">{total.toFixed(2)} DT</span>
               </div>
-              <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
-                <span className="flex items-center gap-1.5">
-                  <BadgePercent size={14} /> {WEB_PROMO.label} ({WEB_PROMO.badge})
-                </span>
-                <span className="tabular-nums">− {discount.amount.toFixed(2)} DT</span>
-              </div>
+              <DiscountLines applied={applied} terms={terms} />
               {type === 'delivery' && (
                 <div className="flex justify-between text-muted-foreground">
                   <span>Livraison</span>
@@ -410,6 +419,8 @@ export default function CartPage() {
                 Vous économisez {discount.amount.toFixed(2)} DT en commandant en ligne
               </p>
             </div>
+
+            <PromoCodeField subtotal={total} status={applied.promoStatus} />
 
             <button
               type="submit"
