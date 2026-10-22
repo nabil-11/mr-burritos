@@ -7,6 +7,7 @@ import Diaporama from './Diaporama'
 import Photo from './Photo'
 import ShareButton from './ShareButton'
 import IngredientStack from './IngredientStack'
+import MeatArt, { hasMeatArt } from './MeatArt'
 
 export interface BuilderSupplement {
   _id: string
@@ -646,9 +647,15 @@ export default function ProductBuilder({
                     <button
                       onClick={() => (quota === 1 ? pickSingleMeat(v._id) : bumpMeat(v._id, 1))}
                       disabled={quota > 1 && meatTotal >= quota && count === 0}
-                      className="relative block w-full aspect-[4/3] bg-muted disabled:opacity-40 transition-opacity"
+                      className="group relative block w-full aspect-[4/3] overflow-hidden bg-muted disabled:opacity-40 transition-opacity"
                     >
-                      {v.image ? (
+                      {/* The drawn portrait wins: the uploads so far are one placeholder shot. */}
+                      {hasMeatArt(v.name.fr) ? (
+                        <MeatArt
+                          name={v.name.fr}
+                          className="absolute inset-0 w-full h-full transition-transform duration-500 group-hover:scale-105"
+                        />
+                      ) : v.image ? (
                         <Photo src={v.image} alt={v.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
                       ) : (
                         <span className="absolute inset-0 grid place-items-center text-4xl">🥩</span>
