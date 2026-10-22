@@ -5,6 +5,9 @@ import Image from 'next/image'
 import { Upload, X, ImageIcon, Loader2 } from 'lucide-react'
 import { toast } from 'sonner'
 
+/** Shortest side under which a photo shows soft on the menu. */
+const MIN_SHARP_PX = 1200
+
 interface Props {
   value: string
   onChange: (url: string) => void
@@ -19,6 +22,16 @@ export default function ImageUpload({ value, onChange }: Props) {
     if (!file.type.startsWith('image/')) {
       toast.error('Fichier non supporté — images uniquement')
       return
+    }
+    // A small photo is blurred on the menu's large cards and on 2× screens.
+    try {
+      const bmp = await createImageBitmap(file)
+      if (Math.min(bmp.width, bmp.height) < MIN_SHARP_PX) {
+        toast.warning(`Photo petite (${bmp.width}×${bmp.height}) : elle risque d'être floue sur le site. Idéal : ${MIN_SHARP_PX}px ou plus.`)
+      }
+      bmp.close()
+    } catch {
+      // Not every format decodes here (HEIC on some browsers); upload anyway.
     }
     setUploading(true)
     try {
@@ -113,7 +126,7 @@ export default function ImageUpload({ value, onChange }: Props) {
                 <p className="text-sm font-semibold text-foreground">
                   {dragging ? 'Déposer ici' : 'Cliquer ou glisser une image'}
                 </p>
-                <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, WEBP — max 10 MB</p>
+                <p className="text-xs text-muted-foreground mt-0.5">PNG, JPG, WEBP — max 10 MB · idéal : carré, 1200 px ou plus</p>
               </div>
             </>
           )}

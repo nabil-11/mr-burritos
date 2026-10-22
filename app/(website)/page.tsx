@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { MapPin, Phone, Clock, Star, Bike, Store, ChefHat, ListChecks, ArrowRight, BadgePercent } from 'lucide-react'
 import Image from 'next/image'
 import HeroMedia from '@/components/website/HeroMedia'
-import WebsiteBuilder from '@/components/website/WebsiteBuilder'
+import WebsiteMenu from '@/components/website/WebsiteMenu'
 import OpenStatus from '@/components/website/OpenStatus'
 import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
 import { DoodleArrow, DoodleHeart, DoodleSparkle, DoodleSquiggle, DoodleStar } from '@/components/website/Doodles'
@@ -209,8 +209,8 @@ export default async function HomePage() {
       </section>
 
       {/* ── LE MENU ──────────────────────────────────────────────────────
-          The chips stay under the navbar while the menu scrolls, and any of
-          them opens its category directly. */}
+          Every dish on one scroll; the chips stay under the navbar, follow
+          the section being read and jump to any other. */}
       <section id="menu" className="px-4 pb-20 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
           <div className="mb-5">
@@ -220,12 +220,15 @@ export default async function HomePage() {
             </h2>
             <DoodleSquiggle className="w-40 h-3 text-[#FF6B00] mt-1" />
             <p className="text-muted-foreground mt-3 max-w-xl">
-              Les tacos et les burritos se composent étape par étape ; le reste se choisit en un geste.
+              Les tacos et les burritos se composent étape par étape ; le reste s&apos;ajoute d&apos;un geste.
+            </p>
+            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-red-600/10 text-red-700 dark:text-red-300 px-3 py-1.5 text-xs font-black">
+              <BadgePercent size={14} /> {WEB_PROMO.badge} sur toute commande en ligne — déduit dans le panier
             </p>
           </div>
 
           {categories.length > 0 ? (
-            <WebsiteBuilder categories={categories} />
+            <WebsiteMenu categories={categories} />
           ) : (
             <div className="bg-card rounded-3xl border border-border p-10 text-center">
               <p className="text-4xl mb-3">🌮</p>

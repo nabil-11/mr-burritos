@@ -1,10 +1,10 @@
 'use client'
 
-import Image from 'next/image'
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Check, Plus, Minus, ArrowLeft, ShoppingBag, Sparkles } from 'lucide-react'
+import { Check, Plus, Minus, ArrowLeft, ShoppingBag, Sparkles, X } from 'lucide-react'
 import { groupSupplements, meatQuotaFor, configuredPrice } from '@/lib/supplements'
 import Diaporama from './Diaporama'
+import Photo from './Photo'
 import ShareButton from './ShareButton'
 import IngredientStack from './IngredientStack'
 
@@ -64,7 +64,7 @@ const STEP_LABELS: Record<StepKey, string> = {
  * family suffix that keeps "Taille XL (Tacos)" apart from its Burrito twin is
  * for the backoffice, not the customer — both fall away, leaving "XL".
  */
-const shortSize = (fr: string) =>
+export const shortSize = (fr: string) =>
   fr.replace(/^Taille\s+/i, '').replace(/\s*\([^)]*\)\s*$/, '')
 
 const meatLabel = (n: number) =>
@@ -80,6 +80,8 @@ export default function ProductBuilder({
   compact = false,
   initialSlug,
   onCategoryChange,
+  onExit,
+  fill = false,
 }: {
   categories: BuilderCategory[]
   onAdd: (pick: BuilderPick) => void
@@ -93,6 +95,14 @@ export default function ProductBuilder({
   initialSlug?: string
   /** Told whenever the customer enters a category or goes back to the grid. */
   onCategoryChange?: (slug: string | null) => void
+  /**
+   * Leaving the category — the close button, or a confirmed add — hands
+   * control back instead of showing the category grid: the website opens the
+   * builder in a sheet over its own menu.
+   */
+  onExit?: () => void
+  /** Fill the parent: header and footer stay put, only the options scroll. */
+  fill?: boolean
 }) {
   const initial = initialSlug ? (categories.find((c) => c.slug === initialSlug) ?? null) : null
   const [category, setCategory] = useState<BuilderCategory | null>(initial)
@@ -107,6 +117,7 @@ export default function ProductBuilder({
   const [quantity, setQuantity] = useState(1)
 
   const rootRef = useRef<HTMLDivElement>(null)
+  const bodyRef = useRef<HTMLDivElement>(null)
   const mountedOnce = useRef(false)
 
   /**
@@ -116,7 +127,7 @@ export default function ProductBuilder({
    * staring at the footer. Re-anchor the builder under the navbar instead.
    */
   useEffect(() => {
-    if (!mountedOnce.current) {
+    if (!mountedOnce.current || fill) {
       mountedOnce.current = true
       return
     }
@@ -125,7 +136,7 @@ export default function ProductBuilder({
     const NAVBAR = 80
     const top = el.getBoundingClientRect().top + window.scrollY - NAVBAR
     window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' })
-  }, [category])
+  }, [category, fill])
 
   // A composable category configures its base product; anything else
   // configures whichever item the customer picked.
@@ -151,6 +162,11 @@ export default function ProductBuilder({
   // Picking a different item can shorten the flow under our feet.
   const safeIndex = Math.min(stepIndex, Math.max(0, steps.length - 1))
   const step = steps[safeIndex]
+
+  // In a sheet the options scroll on their own: each step starts at its top.
+  useEffect(() => {
+    bodyRef.current?.scrollTo({ top: 0 })
+  }, [safeIndex])
   const quota = meatQuotaFor(size ?? undefined)
   const meatTotal = Object.values(meats).reduce((a, b) => a + b, 0)
 
@@ -181,6 +197,10 @@ export default function ProductBuilder({
   }
 
   const leaveCategory = () => {
+    if (onExit) {
+      onExit()
+      return
+    }
     setCategory(null)
     setProduct(null)
     resetConfig()
@@ -279,7 +299,7 @@ export default function ProductBuilder({
               >
                 <button onClick={() => openCategory(cat)} className="absolute inset-0 w-full h-full text-left" aria-label={`Composer ${cat.name.fr}`}>
                   <Diaporama images={cat.gallery} alt={cat.name.fr} sizes="(max-width: 640px) 100vw, 520px" className="absolute inset-0" preload />
-                  <div className="absolute inset-0 bg-linear-to-t from-black via-black/40 to-transparent" />
+                  <div className="absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-black/90 via-black/45 to-transparent" />
                   <div className="absolute inset-x-0 bottom-0 p-6">
                     <span className="inline-flex items-center gap-1.5 bg-[#F5A800] text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
                       <Sparkles size={11} /> À composer
@@ -323,7 +343,7 @@ export default function ProductBuilder({
                 className="group relative h-40 sm:h-48 rounded-3xl overflow-hidden text-left shadow-lg shadow-black/10 hover:shadow-xl hover:-translate-y-0.5 transition-all duration-300"
               >
                 <Diaporama images={cat.gallery} alt={cat.name.fr} sizes="(max-width: 640px) 50vw, 340px" className="absolute inset-0" />
-                <div className="absolute inset-0 bg-linear-to-t from-black/90 via-black/30 to-transparent" />
+                <div className="absolute inset-x-0 bottom-0 h-2/3 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
                 <div className="absolute inset-x-0 bottom-0 p-3.5 sm:p-4">
                   <p className="text-white font-black text-lg sm:text-xl leading-none flex items-center gap-1.5">
                     <span>{cat.emoji}</span> {cat.name.fr}
@@ -370,7 +390,7 @@ export default function ProductBuilder({
                 className="absolute inset-0"
                 preload={!compact}
               />
-              <div className="absolute inset-0 bg-linear-to-t from-black via-black/50 to-transparent" />
+              <div className="absolute inset-x-0 bottom-0 h-3/4 bg-linear-to-t from-black/90 via-black/45 to-transparent" />
               <div className={`absolute inset-x-0 bottom-0 ${compact ? 'p-4' : 'p-6'}`}>
                 {!compact && (
                   <span className="inline-flex items-center gap-1.5 bg-[#F5A800] text-black text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
@@ -413,24 +433,31 @@ export default function ProductBuilder({
 
   // ── Layers 1..n — configure ───────────────────────────────────────────────
   return (
-    <div ref={rootRef} className="bg-card rounded-3xl shadow-xl border border-border overflow-hidden">
+    <div
+      ref={rootRef}
+      className={
+        fill
+          ? 'bg-card h-full flex flex-col overflow-hidden'
+          : 'bg-card rounded-3xl shadow-xl border border-border overflow-hidden'
+      }
+    >
 
       {/* Header: the category, shown as pictures rather than dish names */}
-      <div className={compact ? 'relative h-28' : 'relative h-40 sm:h-48'}>
+      <div className={`relative shrink-0 ${compact ? 'h-28' : fill ? 'h-32 sm:h-44' : 'h-40 sm:h-48'}`}>
         <Diaporama
           images={category.gallery}
           alt={category.name.fr}
           sizes="(max-width: 1024px) 100vw, 900px"
           className="absolute inset-0"
         />
-        <div className="absolute inset-0 bg-linear-to-r from-black/90 via-black/60 to-black/20" />
+        <div className="absolute inset-0 bg-linear-to-r from-black/85 via-black/45 to-transparent" />
         <div className={`relative h-full flex items-center gap-4 ${padX}`}>
           <button
             onClick={leaveCategory}
             className="p-2.5 rounded-full bg-white/10 hover:bg-white/20 text-white backdrop-blur-md transition-colors shrink-0"
-            aria-label="Changer de catégorie"
+            aria-label={onExit ? 'Fermer' : 'Changer de catégorie'}
           >
-            <ArrowLeft size={18} />
+            {onExit ? <X size={18} /> : <ArrowLeft size={18} />}
           </button>
           <div className="min-w-0">
             <h3
@@ -440,7 +467,7 @@ export default function ProductBuilder({
             >
               <span>{category.emoji}</span> {category.name.fr}
             </h3>
-            <p className="text-white/50 text-xs sm:text-sm mt-1.5 truncate">
+            <p className="text-white/75 text-xs sm:text-sm font-semibold mt-1.5 truncate">
               {category.base
                 ? size
                   ? `${shortSize(size.name.fr)} · ${meatLabel(quota)}`
@@ -454,7 +481,7 @@ export default function ProductBuilder({
       </div>
 
       {/* Step rail — a completed layer stays clickable so nothing is a dead end */}
-      <div className={`flex items-center gap-1 ${padX} py-4 border-b overflow-x-auto scrollbar-hide`}>
+      <div className={`shrink-0 flex items-center gap-1 ${padX} py-4 border-b overflow-x-auto scrollbar-hide`}>
         {steps.map((key, i) => {
           const done = i < safeIndex
           const current = i === safeIndex
@@ -486,9 +513,12 @@ export default function ProductBuilder({
       </div>
 
       {/* Layer body */}
-      <div className={`${pad} ${compact ? 'min-h-56' : 'min-h-72'} ${
-        showStack ? 'grid gap-6 sm:grid-cols-[1fr_auto] items-start' : ''
-      }`}>
+      <div
+        ref={bodyRef}
+        className={`${pad} ${fill ? 'flex-1 min-h-0 overflow-y-auto overscroll-contain' : compact ? 'min-h-56' : 'min-h-72'} ${
+          showStack ? 'grid gap-6 sm:grid-cols-[1fr_auto] items-start content-start' : ''
+        }`}
+      >
 
         {/* Live cross-section — above the options on mobile, beside on desktop */}
         {showStack && (
@@ -526,9 +556,9 @@ export default function ProductBuilder({
                   onClick={() => pickProduct(p)}
                   className="block w-full text-left"
                 >
-                  <div className="relative h-24 sm:h-28 bg-muted">
+                  <div className="relative aspect-[4/3] bg-muted">
                     {p.image ? (
-                      <Image src={p.image} alt={p.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
+                      <Photo src={p.image} alt={p.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
                     ) : (
                       <span className="absolute inset-0 grid place-items-center text-4xl">{category.emoji}</span>
                     )}
@@ -616,10 +646,10 @@ export default function ProductBuilder({
                     <button
                       onClick={() => (quota === 1 ? pickSingleMeat(v._id) : bumpMeat(v._id, 1))}
                       disabled={quota > 1 && meatTotal >= quota && count === 0}
-                      className="relative block w-full h-24 sm:h-28 bg-muted disabled:opacity-40 transition-opacity"
+                      className="relative block w-full aspect-[4/3] bg-muted disabled:opacity-40 transition-opacity"
                     >
                       {v.image ? (
-                        <Image src={v.image} alt={v.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
+                        <Photo src={v.image} alt={v.name.fr} fill sizes="(max-width: 640px) 50vw, 220px" className="object-cover" />
                       ) : (
                         <span className="absolute inset-0 grid place-items-center text-4xl">🥩</span>
                       )}
@@ -783,7 +813,11 @@ export default function ProductBuilder({
       </div>
 
       {/* Footer: running total + navigation */}
-      <div className={`flex items-center gap-3 border-t ${padX} py-4 bg-muted/40`}>
+      <div
+        className={`shrink-0 flex items-center gap-3 border-t ${padX} pt-4 bg-muted/40 ${
+          fill ? 'pb-[max(1rem,env(safe-area-inset-bottom))]' : 'pb-4'
+        }`}
+      >
         {safeIndex > 0 && (
           <button
             onClick={() => setStepIndex(safeIndex - 1)}

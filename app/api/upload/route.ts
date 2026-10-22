@@ -13,9 +13,13 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(arrayBuffer)
     const base64 = `data:${file.type};base64,${buffer.toString('base64')}`
 
+    // Keep the photo whole and sharp: only a phone-camera giant is scaled down.
+    // It used to be cropped to an 800px square and compressed on arrival, so
+    // the menu could never show it larger than that without blurring it. The
+    // site asks Cloudinary for the exact size and format it needs per screen.
     const result = await cloudinary.uploader.upload(base64, {
       folder: 'mr-burritos/products',
-      transformation: [{ width: 800, height: 800, crop: 'fill', quality: 'auto', fetch_format: 'auto' }],
+      transformation: [{ width: 2400, height: 2400, crop: 'limit', quality: 'auto:best' }],
     })
 
     return NextResponse.json({ url: result.secure_url })
