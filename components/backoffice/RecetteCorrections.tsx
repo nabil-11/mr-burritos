@@ -8,6 +8,8 @@ import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { MOVEMENT_LIST, MOVEMENT_META, type MovementKind } from '@/lib/movementKinds'
 import type { SettlePayment } from '@/lib/correctionKinds'
+import { matchEmployee } from '@/lib/payroll'
+import { EmployeePayeePicker, payLabel, usePayableEmployees, type PayReason } from './EmployeePayee'
 
 /**
  * Corriger une recette depuis sa page : les commandes (plateforme, règlement,
@@ -120,7 +122,7 @@ export function CorrectionsProvider({
     <CorrectionsContext.Provider value={{ canCorrect, recette, companies, open: setDialog }}>
       {children}
       <Dialog open={dialog !== null} onOpenChange={(v) => !v && close()}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           {dialog && (
             <>
               <DialogHeader>
@@ -665,16 +667,42 @@ function MovementForm({ onDone }: { onDone: () => void }) {
   const end = recette.closedAt ?? new Date().toISOString()
   const [at, setAt] = useState(toLocalInput(new Date(new Date(end).getTime() - 60_000).toISOString()))
   const [reason, setReason] = useState('')
+  // Une avance ou un salaire oublié : rattaché au compte de l'employé, comme à la caisse.
+  const employees = usePayableEmployees()
+  const [employeeId, setEmployeeId] = useState<string | null>(null)
+  const [payReason, setPayReason] = useState<PayReason>('avance')
   const meta = MOVEMENT_META[kind]
   const value = parseAmount(amount)
-  const valid = value !== null && value > 0 && label.trim() !== '' && reason.trim().length >= 3
+  const employee = kind === 'depense' ? (employees.find((e) => e._id === employeeId) ?? null) : null
+  const lineLabel = employee ? payLabel(employee, payReason) : label.trim()
+  // « houssin » tapé dans le libellé : on propose de rattacher, sans le faire d'office.
+  const named = employee ? null : matchEmployee(label, employees)
+  // Une avance saisie en achat ou en retrait n'irait pas au compte de l'employé :
+  // c'est une dépense. On le dit, sans changer le genre d'office.
+  const looksLikePay = kind !== 'depense' && (named !== null || /avance|salaire/i.test(label))
+  const valid = value !== null && value > 0 && lineLabel !== '' && reason.trim().length >= 3
+
+  const attach = (id: string | null) => {
+    setKind('depense')
+    setEmployeeId(id)
+    setPayReason(/salaire/i.test(label) ? 'salaire' : 'avance')
+  }
 
   return (
     <form
       onSubmit={(e) => {
         e.preventDefault()
         if (valid) {
-          submit({ action: 'movement.add', kind, label, amount: value, note, at: at ? new Date(at).toISOString() : null, reason })
+          submit({
+            action: 'movement.add',
+            kind,
+            label: lineLabel,
+            amount: value,
+            note,
+            at: at ? new Date(at).toISOString() : null,
+            reason,
+            ...(employee ? { employeeId: employee._id, employeeReason: payReason } : {}),
+          })
         }
       }}
       className="space-y-4"
@@ -694,20 +722,52 @@ function MovementForm({ onDone }: { onDone: () => void }) {
         ))}
       </div>
       <p className="text-[11px] text-muted-foreground">{meta.hint}</p>
-      <div className="flex flex-wrap gap-1">
-        {meta.suggestions.map((s) => (
-          <button
-            key={s}
-            type="button"
-            onClick={() => setLabel(s)}
-            className="rounded-full border px-2.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
-          >
-            {s}
-          </button>
-        ))}
-      </div>
+      {kind === 'depense' && (
+        <EmployeePayeePicker
+          employees={employees}
+          employeeId={employeeId}
+          onEmployee={setEmployeeId}
+          reason={payReason}
+          onReason={setPayReason}
+          amount={value}
+          accent={meta.accent}
+        />
+      )}
+      {!employee && (
+        <div className="flex flex-wrap gap-1">
+          {meta.suggestions.map((s) => (
+            <button
+              key={s}
+              type="button"
+              onClick={() => setLabel(s)}
+              className="rounded-full border px-2.5 py-0.5 text-[11px] text-muted-foreground hover:text-foreground"
+            >
+              {s}
+            </button>
+          ))}
+        </div>
+      )}
+      {(looksLikePay || (kind === 'depense' && named)) && (
+        <button
+          type="button"
+          onClick={() => attach(named?._id ?? null)}
+          className={`w-full rounded-lg border px-3 py-2 text-left text-xs font-semibold transition-colors ${MOVEMENT_META.depense.accent}`}
+        >
+          👤{' '}
+          {named
+            ? `C'est une avance à ${named.name} ? Rattacher à son compte`
+            : 'Une avance ou un salaire ? C\'est une dépense — choisir l\'employé'}
+        </button>
+      )}
       <div className="grid grid-cols-2 gap-3">
-        <input value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Libellé" maxLength={80} className={inputClass} />
+        <input
+          value={employee ? lineLabel : label}
+          disabled={Boolean(employee)}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="Libellé"
+          maxLength={80}
+          className={`${inputClass} disabled:opacity-70`}
+        />
         <input
           inputMode="decimal"
           value={amount}

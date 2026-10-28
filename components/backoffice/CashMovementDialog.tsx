@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { MOVEMENT_LIST, MOVEMENT_META, type MovementKind } from '@/lib/movementKinds'
 import { matchEmployee } from '@/lib/payroll'
+import { EmployeePayeePicker, payLabel, usePayableEmployees, type PayReason } from './EmployeePayee'
 
 /**
  * Un mouvement d'espèces sur la recette ouverte.
@@ -102,28 +103,14 @@ function MovementForm({
   const [topUp, setTopUp] = useState(true)
   const [topUpAmount, setTopUpAmount] = useState('')
   const [saving, setSaving] = useState(false)
-  // Une dépense peut être versée à un employé — une avance, ou son salaire. Elle
-  // est alors rattachée à son compte, et le serveur l'intitule « Avance ·
-  // Houssine ». Son solde est affiché pour qu'on voie avant de donner — ici
-  // seulement : la caisse, elle, ne reçoit que les noms.
-  const [employees, setEmployees] = useState<{ _id: string; name: string; poste?: string; balance?: number }[]>([])
+  // Une dépense peut être versée à un employé : voir EmployeePayee.
+  const employees = usePayableEmployees()
   const [employeeId, setEmployeeId] = useState<string | null>(null)
-  const [reason, setReason] = useState<'avance' | 'salaire'>('avance')
-
-  useEffect(() => {
-    let live = true
-    fetch('/api/employees?active=1&balance=1')
-      .then((r) => (r.ok ? r.json() : []))
-      .then((list) => live && Array.isArray(list) && setEmployees(list))
-      .catch(() => {})
-    return () => {
-      live = false
-    }
-  }, [])
+  const [reason, setReason] = useState<PayReason>('avance')
 
   const meta = MOVEMENT_META[kind]
   const employee = kind === 'depense' ? (employees.find((e) => e._id === employeeId) ?? null) : null
-  const lineLabel = employee ? `${reason === 'salaire' ? 'Salaire' : 'Avance'} · ${employee.name}` : label.trim()
+  const lineLabel = employee ? payLabel(employee, reason) : label.trim()
   // « houssin » tapé dans le libellé : on propose de rattacher, sans le faire d'office.
   const suggested = kind === 'depense' && !employee ? matchEmployee(label, employees) : null
   const value = parseAmount(amount)
@@ -246,60 +233,16 @@ function MovementForm({
       </div>
 
       {/* ── Versé à un employé ──────────────────────────────────────── */}
-      {kind === 'depense' && employees.length > 0 && (
-        <div className="space-y-1.5">
-          <Label>Versé à un employé</Label>
-          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Employé">
-            {employees.map((e) => (
-              <button
-                key={e._id}
-                type="button"
-                aria-pressed={employeeId === e._id}
-                title={e.poste || undefined}
-                onClick={() => setEmployeeId(employeeId === e._id ? null : e._id)}
-                className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${
-                  employeeId === e._id ? meta.accent : 'text-muted-foreground hover:bg-muted'
-                }`}
-              >
-                {e.name}
-              </button>
-            ))}
-          </div>
-          {employee && (
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl border bg-muted/40 px-3 py-2">
-              <div className="inline-flex rounded-lg border bg-background p-0.5 text-xs font-semibold" role="radiogroup">
-                {(['avance', 'salaire'] as const).map((r) => (
-                  <button
-                    key={r}
-                    type="button"
-                    role="radio"
-                    aria-checked={reason === r}
-                    onClick={() => setReason(r)}
-                    className={`rounded-md px-2.5 py-1 transition-colors ${
-                      reason === r ? 'bg-foreground text-background' : 'text-muted-foreground hover:text-foreground'
-                    }`}
-                  >
-                    {r === 'avance' ? 'Avance' : 'Salaire'}
-                  </button>
-                ))}
-              </div>
-              {typeof employee.balance === 'number' && (
-                <span className="text-xs text-muted-foreground">
-                  Reste à lui payer :{' '}
-                  <span
-                    className={`font-bold ${
-                      value !== null && value > employee.balance + 0.005
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-foreground'
-                    }`}
-                  >
-                    {money(employee.balance)}
-                  </span>
-                </span>
-              )}
-            </div>
-          )}
-        </div>
+      {kind === 'depense' && (
+        <EmployeePayeePicker
+          employees={employees}
+          employeeId={employeeId}
+          onEmployee={setEmployeeId}
+          reason={reason}
+          onReason={setReason}
+          amount={value}
+          accent={meta.accent}
+        />
       )}
 
       {/* ── Le libellé ──────────────────────────────────────────────── */}
