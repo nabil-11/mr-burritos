@@ -8,6 +8,8 @@ import Photo from './Photo'
 import ShareButton from './ShareButton'
 import IngredientStack from './IngredientStack'
 import MeatArt, { hasMeatArt } from './MeatArt'
+import { formatDT } from '@/lib/format'
+import type { ResolvedSuggestion } from '@/lib/menuExtras'
 
 export interface BuilderSupplement {
   _id: string
@@ -26,6 +28,8 @@ export interface BuilderProduct {
   price: number
   image: string
   supplements: BuilderSupplement[]
+  /** Prix barré (« au lieu de »), facultatif — saisi dans le back-office. */
+  compareAtPrice?: number | null
 }
 
 export interface BuilderCategory {
@@ -49,7 +53,15 @@ export interface BuilderPick {
   label: string
 }
 
-type StepKey = 'product' | 'size' | 'viande' | 'sauce' | 'extra' | 'recap'
+type StepKey = 'product' | 'size' | 'viande' | 'sauce' | 'extra' | 'garnish' | 'menu' | 'recap'
+
+/** Une composition déjà choisie : une taille du tableau M/XL/XXL, une signature à personnaliser. */
+export interface BuilderPreset {
+  sizeId?: string
+  /** Une entrée par portion : deux fois le même id = double. */
+  meatIds?: string[]
+  sauceIds?: string[]
+}
 
 const STEP_LABELS: Record<StepKey, string> = {
   product: 'Produit',
@@ -57,6 +69,8 @@ const STEP_LABELS: Record<StepKey, string> = {
   viande: 'Viandes',
   sauce: 'Sauces',
   extra: 'Extras',
+  garnish: 'Sauces & extras',
+  menu: 'Menu',
   recap: 'Panier',
 }
 
@@ -83,6 +97,11 @@ export default function ProductBuilder({
   onCategoryChange,
   onExit,
   fill = false,
+  web = false,
+  preset,
+  upsell = [],
+  onAddExtras,
+  closedUntil = null,
 }: {
   categories: BuilderCategory[]
   onAdd: (pick: BuilderPick) => void
@@ -104,16 +123,41 @@ export default function ProductBuilder({
   onExit?: () => void
   /** Fill the parent: header and footer stay put, only the options scroll. */
   fill?: boolean
+  /**
+   * Le parcours du site : on avance seul dès que la taille est choisie et que
+   * les viandes sont au complet, sauces et extras sur un seul écran, et le
+   * récapitulatif laisse place à « Faites-en un menu ? ». La borne et le
+   * back-office gardent leur parcours pas à pas.
+   */
+  web?: boolean
+  /** Ouvre directement sur une composition : une taille cliquée, une signature. */
+  preset?: BuilderPreset
+  /** Les formules proposées à la dernière étape (site uniquement). */
+  upsell?: ResolvedSuggestion[]
+  /** Ajoute la formule choisie au panier, autant de fois que de wraps. */
+  onAddExtras?: (s: ResolvedSuggestion, quantity: number) => void
+  /** Restaurant fermé : l'heure d'ouverture, pour dire quand la commande partira. */
+  closedUntil?: string | null
 }) {
   const initial = initialSlug ? (categories.find((c) => c.slug === initialSlug) ?? null) : null
   const [category, setCategory] = useState<BuilderCategory | null>(initial)
   const [product, setProduct] = useState<BuilderProduct | null>(null)
-  const [stepIndex, setStepIndex] = useState(0)
+  const initialGroups = groupSupplements(initial?.base?.supplements ?? [])
   const [size, setSize] = useState<BuilderSupplement | null>(
-    () => groupSupplements(initial?.base?.supplements ?? []).sizes[0] ?? null
+    () => initialGroups.sizes.find((s) => s._id === preset?.sizeId) ?? initialGroups.sizes[0] ?? null
   )
-  const [meats, setMeats] = useState<Record<string, number>>({})
-  const [sauces, setSauces] = useState<BuilderSupplement[]>([])
+  const [meats, setMeats] = useState<Record<string, number>>(() => {
+    const m: Record<string, number> = {}
+    for (const id of preset?.meatIds ?? []) if (initialGroups.viandes.some((v) => v._id === id)) m[id] = (m[id] ?? 0) + 1
+    return m
+  })
+  const [sauces, setSauces] = useState<BuilderSupplement[]>(() =>
+    initialGroups.sauces.filter((s) => preset?.sauceIds?.includes(s._id))
+  )
+  // Une taille déjà choisie (tableau M/XL/XXL, signature) : on ouvre sur les viandes.
+  const [stepIndex, setStepIndex] = useState(() => (preset?.sizeId && initialGroups.viandes.length ? 1 : 0))
+  // La formule de la dernière étape : aucune tant que le client n'en a pas pris.
+  const [menuPick, setMenuPick] = useState<string | null>(null)
   const [extras, setExtras] = useState<BuilderSupplement[]>([])
   const [quantity, setQuantity] = useState(1)
 
@@ -154,11 +198,19 @@ export default function ProductBuilder({
     } else {
       s.push('product')
     }
+    if (web) {
+      // Le site : sauces et extras sur un seul écran, puis « Faites-en un menu ? ».
+      if (groups.sauces.length || groups.extras.length) s.push('garnish')
+      if (upsell.length) s.push('menu')
+      // Sans formule à proposer, le dernier écran porte le bouton « Ajouter ».
+      if (s.length === 0) s.push('recap')
+      return s
+    }
     if (groups.sauces.length) s.push('sauce')
     if (groups.extras.length) s.push('extra')
     s.push('recap')
     return s
-  }, [category, groups])
+  }, [category, groups, web, upsell.length])
 
   // Picking a different item can shorten the flow under our feet.
   const safeIndex = Math.min(stepIndex, Math.max(0, steps.length - 1))
@@ -170,6 +222,24 @@ export default function ProductBuilder({
   }, [safeIndex])
   const quota = meatQuotaFor(size ?? undefined)
   const meatTotal = Object.values(meats).reduce((a, b) => a + b, 0)
+  const isLast = safeIndex === steps.length - 1
+
+  /**
+   * Le site avance seul : une taille choisie, des viandes au complet — le
+   * client voit son choix marqué un instant, puis l'écran suivant. Un retour
+   * en arrière reste possible par le rail ou la flèche.
+   */
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  useEffect(() => () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current)
+  }, [])
+  const autoAdvance = (from: number) => {
+    if (!web) return
+    if (advanceTimer.current) clearTimeout(advanceTimer.current)
+    advanceTimer.current = setTimeout(() => {
+      setStepIndex((i) => (i === from ? Math.min(from + 1, steps.length - 1) : i))
+    }, 280)
+  }
 
   const chosenMeats = useMemo(
     () => groups.viandes.flatMap((v) => Array.from({ length: meats[v._id] ?? 0 }, () => v)),
@@ -195,6 +265,7 @@ export default function ProductBuilder({
     setSauces([])
     setExtras([])
     setQuantity(1)
+    setMenuPick(null)
   }
 
   const leaveCategory = () => {
@@ -238,9 +309,12 @@ export default function ProductBuilder({
       }
       return next
     })
+    if (step === 'size') autoAdvance(safeIndex)
   }
 
-  const bumpMeat = (id: string, delta: number) =>
+  const bumpMeat = (id: string, delta: number) => {
+    // Les viandes viennent d'être complétées : l'écran suivant.
+    if (delta > 0 && meatTotal + delta === quota && step === 'viande') autoAdvance(safeIndex)
     setMeats((prev) => {
       const current = prev[id] ?? 0
       const next = current + delta
@@ -252,9 +326,13 @@ export default function ProductBuilder({
       else copy[id] = next
       return copy
     })
+  }
 
   /** With a single viande to give, tapping swaps the choice rather than counting. */
-  const pickSingleMeat = (id: string) => setMeats({ [id]: 1 })
+  const pickSingleMeat = (id: string) => {
+    setMeats({ [id]: 1 })
+    if (step === 'viande') autoAdvance(safeIndex)
+  }
 
   const toggleIn = (
     list: BuilderSupplement[],
@@ -270,9 +348,11 @@ export default function ProductBuilder({
   const canContinue =
     step === 'product' ? product !== null : step === 'viande' ? meatTotal === quota : true
 
+  const menuChoice = upsell.find((u) => u.label === menuPick) ?? null
   const confirm = () => {
     if (!active) return
     onAdd({ product: active, supplements: selected, quantity, label })
+    if (menuChoice && onAddExtras) onAddExtras(menuChoice, quantity)
     leaveCategory()
   }
 
@@ -350,7 +430,7 @@ export default function ProductBuilder({
                     <span>{cat.emoji}</span> {cat.name.fr}
                   </p>
                   <p className="text-[11px] sm:text-xs mt-1.5 font-bold text-white/60">
-                    {cat.products.length} choix · <span className="text-[#F5A800]">dès {categoryFrom(cat).toFixed(2)} DT</span>
+                    {cat.products.length} choix · <span className="text-[#F5A800]">dès {formatDT(categoryFrom(cat))}</span>
                   </p>
                 </div>
               </button>
@@ -369,7 +449,7 @@ export default function ProductBuilder({
           const from = categoryFrom(cat)
           const blurb = composable
             ? cat.base!.description.fr
-            : `${cat.products.length} choix — dès ${from.toFixed(2)} DT`
+            : `${cat.products.length} choix — dès ${formatDT(from)}`
           return (
             // The share control is a sibling, not a child: a button inside a
             // button is invalid and swallows the click.
@@ -411,7 +491,7 @@ export default function ProductBuilder({
                   </p>
                 )}
                 <p className={`text-[#F5A800] font-black ${compact ? 'text-xs mt-1' : 'text-sm mt-3'}`}>
-                  Dès {from.toFixed(2)} DT
+                  Dès {formatDT(from)}
                   {composable && !compact && (
                     <span className="text-white/40 font-semibold"> · M, XL ou XXL</span>
                   )}
@@ -571,15 +651,15 @@ export default function ProductBuilder({
                   </div>
                   <div className="p-2.5 pr-9">
                     <p className="text-xs font-bold text-foreground leading-tight">{p.name.fr}</p>
-                    <p className="text-[#F5A800] font-black text-xs mt-1">{p.price.toFixed(2)} DT</p>
+                    <p className="text-brand font-black text-xs mt-1">{formatDT(p.price)}</p>
                   </div>
                 </button>
 
                 <ShareButton
                   title={`${p.name.fr} — Mr. Burritos`}
-                  description={`${p.description.fr || category.name.fr} · ${p.price.toFixed(2)} DT`}
+                  description={`${p.description.fr || category.name.fr} · ${formatDT(p.price)}`}
                   image={p.image}
-                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full grid place-items-center text-muted-foreground hover:text-[#F5A800] hover:bg-muted"
+                  className="absolute bottom-2 right-2 w-7 h-7 rounded-full grid place-items-center text-muted-foreground hover:text-brand hover:bg-muted"
                 />
                 </div>
               )
@@ -601,14 +681,14 @@ export default function ProductBuilder({
                       : 'border-border hover:border-[#F5A800]/50 bg-card'
                   }`}
                 >
-                  <p className={`font-black text-2xl sm:text-3xl ${activeSize ? 'text-[#F5A800]' : 'text-foreground'}`}>
+                  <p className={`font-black text-2xl sm:text-3xl ${activeSize ? 'text-brand' : 'text-foreground'}`}>
                     {shortSize(s.name.fr)}
                   </p>
                   <p className="text-[11px] font-bold text-muted-foreground mt-1.5">
                     {meatLabel(s.meatCount ?? 1)}
                   </p>
                   <p className={`text-sm font-black mt-2 ${activeSize ? 'text-foreground' : 'text-muted-foreground'}`}>
-                    {configuredPrice(active?.price ?? 0, [s]).toFixed(2)} DT
+                    {formatDT(configuredPrice(active?.price ?? 0, [s]))}
                   </p>
                 </button>
               )
@@ -630,7 +710,8 @@ export default function ProductBuilder({
             </div>
             {quota > 1 && (
               <p className="text-xs text-muted-foreground mb-4">
-                Vous pouvez prendre deux fois la même — un {shortSize(size?.name.fr ?? '')} double escalope, par exemple.
+                Vous pouvez prendre deux fois la même — un {shortSize(size?.name.fr ?? '')} double{' '}
+                {groups.viandes[0]?.name.fr ?? 'viande'}, par exemple.
               </p>
             )}
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -667,24 +748,24 @@ export default function ProductBuilder({
                       )}
                     </button>
                     <div className="p-2.5 flex items-center justify-between gap-2">
-                      <p className="text-xs font-bold text-foreground leading-tight">{v.name.fr}</p>
+                      <p className="text-xs font-bold text-foreground leading-tight min-w-0">{v.name.fr}</p>
                       {quota > 1 && (
                         <div className="flex items-center gap-1 shrink-0">
                           <button
                             onClick={() => bumpMeat(v._id, -1)}
                             disabled={count === 0}
-                            className="w-6 h-6 rounded-md bg-muted hover:bg-muted/70 disabled:opacity-30 grid place-items-center transition-colors"
+                            className="w-11 h-11 rounded-xl bg-muted hover:bg-muted/70 disabled:opacity-30 grid place-items-center transition-colors"
                             aria-label={`Retirer ${v.name.fr}`}
                           >
-                            <Minus size={11} />
+                            <Minus size={16} />
                           </button>
                           <button
                             onClick={() => bumpMeat(v._id, 1)}
                             disabled={meatTotal >= quota}
-                            className="w-6 h-6 rounded-md bg-foreground text-background hover:bg-[#F5A800] hover:text-black disabled:opacity-30 grid place-items-center transition-colors"
+                            className="w-11 h-11 rounded-xl bg-foreground text-background hover:bg-[#F5A800] hover:text-black disabled:opacity-30 grid place-items-center transition-colors"
                             aria-label={`Ajouter ${v.name.fr}`}
                           >
-                            <Plus size={11} />
+                            <Plus size={16} />
                           </button>
                         </div>
                       )}
@@ -739,7 +820,7 @@ export default function ProductBuilder({
                     }`}
                   >
                     {on && <Check size={13} />} {s.name.fr}
-                    <span className={`font-black text-xs ${on ? 'text-black/60' : 'text-[#F5A800]'}`}>
+                    <span className={`font-black text-xs ${on ? 'text-black/60' : 'text-brand'}`}>
                       +{s.price} DT
                     </span>
                   </button>
@@ -749,20 +830,111 @@ export default function ProductBuilder({
           </div>
         )}
 
-        {step === 'recap' && active && (
+        {step === 'garnish' && (
+          <div className="space-y-6">
+            {groups.sauces.length > 0 && (
+              <div>
+                <p className="text-sm font-bold text-foreground">Vos sauces (offertes)</p>
+                <p className="text-xs text-muted-foreground mb-3">Prenez-en autant que vous voulez.</p>
+                <div className="flex flex-wrap gap-2">
+                  {groups.sauces.map((s) => {
+                    const on = sauces.some((x) => x._id === s._id)
+                    return (
+                      <button
+                        key={s._id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleIn(sauces, setSauces, s)}
+                        className={`min-h-11 flex items-center gap-1.5 px-4 rounded-full border-2 text-sm font-semibold transition-all ${
+                          on ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md' : 'border-border text-foreground/85 hover:border-[#F5A800]/60 bg-card'
+                        }`}
+                      >
+                        {on && <Check size={13} />} {s.name.fr}
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+            {groups.extras.length > 0 && (
+              <div>
+                <p className="text-sm font-bold text-foreground">Un petit extra ?</p>
+                <p className="text-xs text-muted-foreground mb-3">Facultatif — ajouté au prix.</p>
+                <div className="flex flex-wrap gap-2">
+                  {groups.extras.map((s) => {
+                    const on = extras.some((x) => x._id === s._id)
+                    return (
+                      <button
+                        key={s._id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleIn(extras, setExtras, s)}
+                        className={`min-h-11 flex items-center gap-1.5 px-4 rounded-full border-2 text-sm font-semibold transition-all ${
+                          on ? 'bg-[#F5A800] border-[#F5A800] text-black shadow-md' : 'border-border text-foreground/85 hover:border-[#F5A800]/60 bg-card'
+                        }`}
+                      >
+                        {on && <Check size={13} />} {s.name.fr}
+                        <span className={`font-black text-xs ${on ? 'text-black/70' : 'text-brand'}`}>{formatDT(s.price, { sign: true })}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {step === 'menu' && active && (
+          <div className="space-y-5">
+            <div>
+              <p className="text-sm font-bold text-foreground">Faites-en un menu ?</p>
+              <p className="text-xs text-muted-foreground">Ajouté à côté, au prix de la carte — pour chaque {active.name.fr.toLowerCase()}.</p>
+            </div>
+            <div className="grid gap-2" role="radiogroup" aria-label="Faites-en un menu">
+              {[...upsell.map((u) => ({ key: u.label, label: `+ ${u.label}`, price: u.price })), { key: '', label: 'Non merci', price: 0 }].map((o) => {
+                const on = (menuPick ?? '') === o.key
+                return (
+                  <button
+                    key={o.key || 'none'}
+                    type="button"
+                    role="radio"
+                    aria-checked={on}
+                    onClick={() => setMenuPick(o.key || null)}
+                    className={`min-h-12 flex items-center justify-between gap-3 rounded-2xl border-2 px-4 text-left text-sm font-bold transition-colors ${
+                      on ? 'border-[#F5A800] bg-[#F5A800]/10 text-foreground' : 'border-border bg-card text-foreground/85 hover:border-[#F5A800]/50'
+                    }`}
+                  >
+                    <span className="flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-full border-2 grid place-items-center ${on ? 'border-[#F5A800] bg-[#F5A800] text-black' : 'border-border'}`}>
+                        {on && <Check size={12} strokeWidth={3} />}
+                      </span>
+                      {o.label}
+                    </span>
+                    {o.price > 0 && <span className="font-black text-brand tabular-nums">{formatDT(o.price, { sign: true })}</span>}
+                  </button>
+                )
+              })}
+            </div>
+            <QuantityStepper quantity={quantity} setQuantity={setQuantity} />
+          </div>
+        )}
+
+        {step === 'recap' && web && active && <QuantityStepper quantity={quantity} setQuantity={setQuantity} />}
+
+        {step === 'recap' && !web && active && (
           <div className="space-y-4">
             <p className="text-sm font-bold text-foreground">Votre {active.name.fr}</p>
             <dl className="text-sm divide-y rounded-2xl border overflow-hidden">
               <div className="flex justify-between gap-4 px-4 py-3 bg-muted/60">
                 <dt className="text-muted-foreground font-semibold">Base</dt>
-                <dd className="font-bold text-foreground">{active.price.toFixed(2)} DT</dd>
+                <dd className="font-bold text-foreground">{formatDT(active.price)}</dd>
               </div>
               {size && (
                 <div className="flex justify-between gap-4 px-4 py-3">
                   <dt className="text-muted-foreground font-semibold">Taille</dt>
                   <dd className="font-bold text-foreground">
                     {shortSize(size.name.fr)}
-                    {size.price > 0 && <span className="text-[#F5A800]"> +{size.price} DT</span>}
+                    {size.price > 0 && <span className="text-brand"> +{size.price} DT</span>}
                   </dd>
                 </div>
               )}
@@ -788,7 +960,7 @@ export default function ProductBuilder({
                   <dt className="text-muted-foreground font-semibold">Extras</dt>
                   <dd className="font-bold text-foreground text-right">
                     {extras.map((s) => s.name.fr).join(', ')}
-                    <span className="text-[#F5A800]"> +{extras.reduce((t, s) => t + s.price, 0)} DT</span>
+                    <span className="text-brand"> +{extras.reduce((t, s) => t + s.price, 0)} DT</span>
                   </dd>
                 </div>
               )}
@@ -828,17 +1000,30 @@ export default function ProductBuilder({
         {safeIndex > 0 && (
           <button
             onClick={() => setStepIndex(safeIndex - 1)}
-            className="p-3 rounded-xl border bg-card hover:bg-muted transition-colors shrink-0"
+            className="w-11 h-11 grid place-items-center rounded-xl border bg-card hover:bg-muted transition-colors shrink-0"
             aria-label="Étape précédente"
           >
             <ArrowLeft size={16} />
           </button>
         )}
-        <div className="leading-none mr-auto">
-          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</p>
-          <p className="font-black text-[#F5A800] text-xl mt-1">{total.toFixed(2)} DT</p>
-        </div>
-        {step === 'recap' ? (
+        {web && isLast ? (
+          // Le site : un seul bouton jaune, le prix dessus — wrap, formule et quantité comprises.
+          <button
+            onClick={confirm}
+            className="flex-1 min-h-12 flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-5 py-3.5 rounded-xl transition-colors text-sm sm:text-base"
+          >
+            <ShoppingBag size={17} />
+            {closedUntil
+              ? `Ajouter au panier · envoi dès ${closedUntil}`
+              : `Ajouter · ${formatDT(total + (menuChoice?.price ?? 0) * quantity)}`}
+          </button>
+        ) : (
+          <div className="leading-none mr-auto">
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Total</p>
+            <p className="font-black text-brand text-xl mt-1 tabular-nums">{formatDT(total)}</p>
+          </div>
+        )}
+        {web && isLast ? null : step === 'recap' ? (
           <button
             onClick={confirm}
             className="flex items-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-7 py-3.5 rounded-xl transition-all text-sm hover:scale-[1.02] active:scale-[0.98]"
@@ -858,6 +1043,37 @@ export default function ProductBuilder({
                 : 'Continuer'}
           </button>
         )}
+      </div>
+    </div>
+  )
+}
+
+/** −1+ : au moins 44 px par bouton, le pouce ne rate pas. */
+function QuantityStepper({ quantity, setQuantity }: { quantity: number; setQuantity: (fn: (q: number) => number) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm font-bold text-muted-foreground">Quantité</span>
+      <div className="flex items-center gap-1 bg-muted/60 border rounded-xl p-1">
+        <button
+          type="button"
+          onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+          disabled={quantity <= 1}
+          className="w-11 h-11 grid place-items-center rounded-lg hover:bg-background disabled:opacity-30 transition-colors"
+          aria-label="Réduire la quantité"
+        >
+          <Minus size={16} />
+        </button>
+        <span className="w-8 text-center font-black text-foreground tabular-nums" aria-live="polite">
+          {quantity}
+        </span>
+        <button
+          type="button"
+          onClick={() => setQuantity((q) => Math.min(99, q + 1))}
+          className="w-11 h-11 grid place-items-center rounded-lg hover:bg-background transition-colors"
+          aria-label="Augmenter la quantité"
+        >
+          <Plus size={16} />
+        </button>
       </div>
     </div>
   )

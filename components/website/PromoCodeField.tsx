@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Check, Loader2, Ticket, X } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
 import { WEB_PROMO, normalizePromoCode, promoBadge, type PromoStatus } from '@/lib/promo'
+import { formatDT } from '@/lib/format'
 
 const until = (iso: string) =>
   new Intl.DateTimeFormat('fr-FR', { timeZone: 'Africa/Tunis', day: 'numeric', month: 'long' }).format(new Date(iso))
@@ -57,12 +58,12 @@ export default function PromoCodeField({ subtotal, status }: { subtotal: number;
             {t.description && <p className="font-semibold text-foreground">{t.description}</p>}
             <p className="text-muted-foreground">
               Valable jusqu’au {until(t.expiresAt)}
-              {t.minSubtotal > 0 && ` · dès ${t.minSubtotal.toFixed(2)} DT d’achat`}
+              {t.minSubtotal > 0 && ` · dès ${formatDT(t.minSubtotal)} d’achat`}
               {t.stackable ? ` · cumulable avec la promo en ligne` : ''}
             </p>
             {status === 'below-minimum' && (
               <p className="font-bold text-amber-700 dark:text-amber-400">
-                Ajoutez {(t.minSubtotal - subtotal).toFixed(2)} DT au panier pour en profiter.
+                Ajoutez {formatDT(t.minSubtotal - subtotal)} au panier pour en profiter.
               </p>
             )}
             {status === 'not-better' && (
@@ -83,7 +84,7 @@ export default function PromoCodeField({ subtotal, status }: { subtotal: number;
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-[#F5A800] transition-colors"
+        className="flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-brand transition-colors"
       >
         <Ticket size={14} /> Vous avez un code promo ?
       </button>

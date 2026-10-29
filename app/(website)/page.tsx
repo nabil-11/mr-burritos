@@ -1,16 +1,25 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
-import { MapPin, Phone, Clock, Star, Bike, Store, ChefHat, ListChecks, ArrowRight, BadgePercent } from 'lucide-react'
 import Image from 'next/image'
+import { MapPin, Phone, Star, BadgePercent, ListChecks, Radio, Navigation } from 'lucide-react'
 import HeroMedia from '@/components/website/HeroMedia'
+import HeroCta from '@/components/website/HeroCta'
 import WebsiteMenu from '@/components/website/WebsiteMenu'
-import OpenStatus from '@/components/website/OpenStatus'
-import LocationMap, { DirectionButton } from '@/components/website/LocationMap'
-import { DoodleArrow, DoodleHeart, DoodleSparkle, DoodleSquiggle, DoodleStar } from '@/components/website/Doodles'
+import { DoodleHeart } from '@/components/website/Doodles'
 import { getBuilderCategories } from '@/lib/builder'
-import { getHomeStats, getReviewSummary } from '@/lib/stats'
-import { OPENING_HOURS, PREP_MINUTES, TIMEZONE, hourGroups } from '@/lib/hours'
+import { getHomeStats, getReviewSummary, getTopSellers } from '@/lib/stats'
+import { OPENING_HOURS, PREP_MINUTES } from '@/lib/hours'
 import { WEB_PROMO } from '@/lib/promo'
-import { SITE, WHATSAPP_NUMBER } from '@/lib/site'
+import { SITE, SITE_ADDRESS_LINE, SITE_URL, WHATSAPP_NUMBER } from '@/lib/site'
+import {
+  FREE_DELIVERY_FROM,
+  REVIEWS_BLOCK_MIN,
+  REVIEWS_MIN_DISPLAY,
+  TOP_SELLERS,
+  roundedOrders,
+} from '@/lib/commerce'
+import { formatDT } from '@/lib/format'
+import { groupSupplements } from '@/lib/supplements'
 
 /**
  * Regenerate every 5 minutes. Prerendered once, this page would serve the order
@@ -19,18 +28,29 @@ import { SITE, WHATSAPP_NUMBER } from '@/lib/site'
  */
 export const revalidate = 300
 
-const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000').replace(/\/$/, '')
+/** L'adresse canonique de l'accueil : un seul exemplaire pour Google, quelle que soit l'URL d'arrivée. */
+export const metadata: Metadata = {
+  alternates: { canonical: '/' },
+}
 
-const fmtCount = (n: number) => n.toLocaleString('fr-FR')
+const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/** « −15 % », espace insécable comprise — la typographie française du site. */
+const PROMO = `−${Math.round(WEB_PROMO.rate * 100)} %`
+
+/** « 1 000 » avec une espace insécable ordinaire : l'espace fine de fr-FR disparaît dans certaines polices. */
+const fmtCount = (n: number) => n.toLocaleString('fr-FR').replace(/\u202f/g, '\u00a0')
+const fmtRating = (n: number) => n.toFixed(1).replace('.', ',')
 
 /**
  * What Google shows beside the name in a local search: hours, phone, address,
  * the kind of food. Built from the same constants the page displays, so the
- * search card cannot drift from the site.
+ * search card cannot drift from the site. La note n'y figure qu'à partir de
+ * REVIEWS_MIN_DISPLAY avis.
  */
 function restaurantJsonLd(rating: { average: number; count: number }) {
   const hhmm = (h: number) => (h >= 24 ? '23:59' : `${String(h).padStart(2, '0')}:00`)
+  const sameAs = Object.values(SITE.social).filter(Boolean)
   return {
     '@context': 'https://schema.org',
     '@type': 'Restaurant',
@@ -46,34 +66,31 @@ function restaurantJsonLd(rating: { average: number; count: number }) {
     hasMenu: `${SITE_URL}/#menu`,
     address: {
       '@type': 'PostalAddress',
-      streetAddress: SITE.location,
-      addressLocality: SITE.city,
+      streetAddress: SITE.address || SITE.location,
+      addressLocality: `${SITE.neighbourhood}, ${SITE.city}`,
       addressRegion: SITE.region,
+      ...(SITE.postalCode ? { postalCode: SITE.postalCode } : {}),
       addressCountry: SITE.country,
     },
     geo: { '@type': 'GeoCoordinates', latitude: SITE.lat, longitude: SITE.lng },
     openingHoursSpecification: OPENING_HOURS.flatMap((h, i) =>
       h ? [{ '@type': 'OpeningHoursSpecification', dayOfWeek: SCHEMA_DAYS[i], opens: hhmm(h.open), closes: hhmm(h.close) }] : []
     ),
-    ...(rating.count > 0
+    ...(sameAs.length ? { sameAs } : {}),
+    ...(rating.count >= REVIEWS_MIN_DISPLAY
       ? { aggregateRating: { '@type': 'AggregateRating', ratingValue: rating.average, reviewCount: rating.count, bestRating: 5 } }
       : {}),
   }
 }
 
-/** Today in Tunis, 0 = Sunday — the hours card highlights it. */
-function todayInTunis(): number {
-  const wd = new Intl.DateTimeFormat('en-GB', { timeZone: TIMEZONE, weekday: 'short' }).format(new Date())
-  return ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(wd)
-}
-
 function Stars({ value, size = 14 }: { value: number; size?: number }) {
   return (
-    <span className="inline-flex gap-0.5" aria-label={`${value} sur 5`}>
+    <span className="inline-flex gap-0.5" role="img" aria-label={`${fmtRating(value)} sur 5`}>
       {[1, 2, 3, 4, 5].map((s) => (
         <Star
           key={s}
           size={size}
+          aria-hidden
           className={s <= Math.round(value) ? 'fill-[#F5A800] text-[#F5A800]' : 'text-muted-foreground/30'}
         />
       ))}
@@ -81,52 +98,50 @@ function Stars({ value, size = 14 }: { value: number; size?: number }) {
   )
 }
 
-/** The shop's own artwork, at its natural size so nothing is cropped. */
-const POSTERS = [
-  {
-    src: '/hero-banner.jpg',
-    w: 1600,
-    h: 843,
-    alt: 'Mr. Burritos — burritos, tacos, burgers, nachos, bowls et frites',
-  },
-  {
-    src: '/hero-banner-2.png',
-    w: 1536,
-    h: 1024,
-    alt: 'Mr. Burritos — Good Food, Good Vibes : burritos et bowls aux ingrédients frais',
-  },
-]
-
-const STEPS = [
-  {
-    icon: ListChecks,
-    title: 'Composez',
-    text: 'Taille, viandes, sauces, extras : votre tacos se remplit sous vos yeux, prix compris.',
-  },
-  {
-    icon: BadgePercent,
-    title: `Commandez ${WEB_PROMO.badge}`,
-    text: 'Livraison dans l’Ariana ou à emporter. La remise en ligne est automatique, vous payez à la réception.',
-  },
-  {
-    icon: ChefHat,
-    title: 'Suivez en direct',
-    text: 'Envoyée, confirmée, en cuisine, prête : votre commande avance en temps réel sur votre téléphone.',
-  },
+/** Les trois promesses sous le hero — ce qui distingue la commande en ligne. */
+const PROMISES = [
+  { icon: ListChecks, text: 'Composez en 1 minute' },
+  { icon: BadgePercent, text: `${PROMO}, payez à la réception` },
+  { icon: Radio, text: 'Suivi en direct' },
 ]
 
 export default async function HomePage() {
-  const [categories, stats, reviews] = await Promise.all([
+  const [categories, stats, reviews, topIds] = await Promise.all([
     getBuilderCategories(),
-    getHomeStats(),
-    // Word of mouth is a bonus: the page renders without it.
+    // La preuve sociale est un bonus : la page s'affiche sans elle.
+    getHomeStats().catch(() => ({ prepared: 0, clients: 0, since: null })),
     getReviewSummary().catch(() => ({ average: 0, count: 0, latest: [] })),
+    getTopSellers().catch(() => [] as string[]),
   ])
 
-  const today = todayInTunis()
-  const hours = hourGroups()
+  const tacos = categories.find((c) => c.slug === 'tacos')
+  // « Tacos dès 9,35 DT en ligne » : la plus petite taille, remise en ligne déduite.
+  const tacosFrom = tacos?.base
+    ? Math.round(
+        (tacos.base.price + (groupSupplements(tacos.base.supplements).sizes[0]?.price ?? 0)) * (1 - WEB_PROMO.rate) * 100
+      ) / 100
+    : null
 
-  const hasTacos = categories.some((c) => c.slug === 'tacos')
+  // Les plus vendus qui sont encore à la carte, dans l'ordre des ventes.
+  const onMenu = new Set(categories.flatMap((c) => [...(c.base ? [c.base._id] : []), ...c.products.map((p) => p._id)]))
+  const topSellers = topIds.filter((id) => onMenu.has(id)).slice(0, TOP_SELLERS.count)
+
+  const showRating = reviews.count >= REVIEWS_MIN_DISPLAY
+  const commented = reviews.latest.filter((r) => r.comment.trim())
+  const showReviews = commented.length >= REVIEWS_BLOCK_MIN
+  const orders = roundedOrders(stats.prepared)
+
+  const subtitle = [
+    tacosFrom !== null ? `Tacos dès ${formatDT(tacosFrom)} en ligne` : null,
+    FREE_DELIVERY_FROM ? `Livraison offerte dès ${formatDT(FREE_DELIVERY_FROM).replace(',00', '')}` : null,
+    'Paiement à la livraison',
+  ].filter(Boolean)
+
+  const proof = [
+    `${PROMO} en ligne`,
+    orders ? `+${fmtCount(orders)} commandes servies` : null,
+    `Prêt en ~${PREP_MINUTES} min`,
+  ].filter(Boolean) as string[]
 
   return (
     <div className="overflow-x-clip">
@@ -138,74 +153,72 @@ export default async function HomePage() {
       {/* ── HERO ─────────────────────────────────────────────────────────
           One picture, one promise, one button. The food fills the frame and
           the words sit on its shadowed side, so they read in either theme.
-          On a phone the photo is on top and the text on the dark bottom. */}
-      <section className="px-3 sm:px-4 pt-[4.75rem] sm:pt-20 pb-12">
-        <div className="relative max-w-6xl mx-auto overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] bg-[#141414] min-h-[38rem] sm:min-h-[34rem] lg:min-h-[37rem] flex shadow-2xl shadow-black/20">
+          Sur un téléphone, il reste compact (~440 px) : les catégories du
+          menu sont visibles dès le premier écran. */}
+      <section className="px-3 sm:px-4 pt-[4.5rem] sm:pt-20 pb-6 sm:pb-8">
+        <div className="relative max-w-6xl mx-auto overflow-hidden rounded-[1.75rem] sm:rounded-[2.25rem] bg-[#141414] min-h-[27.5rem] sm:min-h-[32rem] lg:min-h-[35rem] flex shadow-2xl shadow-black/20">
           <div className="absolute inset-0 lg:left-[38%]">
             <HeroMedia />
           </div>
           {/* Shadow on the text side: the bottom on a phone, the left on a desktop. */}
-          <div className="absolute inset-0 bg-linear-to-t from-[#141414] via-[#141414]/75 to-[#141414]/5 lg:hidden" />
+          <div className="absolute inset-0 bg-linear-to-t from-[#141414] via-[#141414]/85 via-55% to-[#141414]/10 lg:hidden" />
           <div className="absolute inset-0 hidden lg:block bg-linear-to-r from-[#141414] from-38% via-[#141414]/60 via-52% to-transparent to-75%" />
 
-          <div className="relative z-10 mt-auto lg:my-auto w-full px-6 pb-7 pt-40 sm:px-10 sm:pb-10 lg:p-14 lg:max-w-[40rem] text-white">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="sm:hidden">
-                <OpenStatus onDark />
-              </span>
-              <span className="brush-tag brush-tag-yellow text-[10px] sm:text-[11px]">Tacos · Burritos · Burgers</span>
-            </div>
+          <div className="relative z-10 mt-auto lg:my-auto w-full px-5 pb-5 pt-20 sm:px-10 sm:pb-10 lg:p-14 lg:max-w-[40rem] text-white">
+            <p className="brush-tag brush-tag-yellow text-[10px] sm:text-[11px]">
+              Tacos · Burritos · Burgers — {SITE.neighbourhood}, {SITE.city}
+            </p>
 
             {/* Each line held whole: the marker face is wide, and "Composez-" /
                 "le." split at the hyphen on a phone. */}
-            <h1 className="font-display text-[2.35rem] leading-[1.02] sm:text-6xl lg:text-[4.25rem] mt-4">
+            <h1 className="font-display text-[2.2rem] leading-[1.02] sm:text-6xl lg:text-[4.25rem] mt-3 sm:mt-4">
               <span className="block whitespace-nowrap">Composez-le.</span>
               <span className="block whitespace-nowrap text-[#F5A800]">On le charge.</span>
             </h1>
 
-            <p className="mt-4 text-white/80 text-base sm:text-lg max-w-md leading-relaxed">
-              Taille M, XL ou XXL, jusqu&apos;à trois viandes, vos sauces. Livré dans l&apos;Ariana ou prêt en ~
-              {PREP_MINUTES} min.
+            <p className="mt-3 sm:mt-4 text-white/85 text-sm sm:text-lg max-w-md leading-snug sm:leading-relaxed">
+              {subtitle.join(' · ')}
             </p>
 
-            <div className="mt-6 flex flex-col sm:flex-row gap-3">
-              <a
-                href={hasTacos ? '#menu-tacos' : '#menu'}
-                className="group inline-flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-7 py-4 rounded-2xl text-base shadow-lg shadow-black/30 transition-colors"
-              >
-                Composer mon tacos
-                <ArrowRight size={18} className="group-hover:translate-x-0.5 transition-transform" />
-              </a>
+            <div className="mt-4 sm:mt-6 flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-5">
+              <HeroCta
+                href={tacos ? '#menu-tacos' : '#menu'}
+                openLabel={tacosFrom !== null ? `Composer mon tacos · dès ${formatDT(tacosFrom)}` : 'Composer mon tacos'}
+              />
               <a
                 href="#menu"
-                className="inline-flex items-center justify-center gap-2 bg-white/10 hover:bg-white/20 border border-white/25 backdrop-blur-md text-white font-black px-7 py-4 rounded-2xl text-base transition-colors"
+                className="min-h-11 inline-flex items-center justify-center text-sm font-bold text-white/85 hover:text-white underline-offset-4 hover:underline"
               >
-                Voir le menu
+                ou voir tout le menu ↓
               </a>
             </div>
 
-            {/* The offer, then proof counted from real orders and approved reviews — nothing shown empty. */}
-            <ul className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-bold text-white/85">
-              <li className="inline-flex items-center gap-1.5 rounded-full bg-red-600 text-white px-3 py-1.5 font-black shadow-lg shadow-red-900/30">
-                <BadgePercent size={15} /> {WEB_PROMO.badge} en ligne
-              </li>
-              {reviews.count > 0 && (
-                <li className="inline-flex items-center gap-1.5">
-                  <Star size={15} className="fill-[#F5A800] text-[#F5A800]" /> {reviews.average.toFixed(1)}
-                  <span className="font-medium text-white/60">({reviews.count} avis)</span>
-                </li>
+            {/* La preuve, sur une seule ligne et d'un seul style. */}
+            <p className="mt-3 sm:mt-5 text-xs sm:text-sm font-semibold text-white/75">
+              {proof.join(' · ')}
+              {showRating && (
+                <>
+                  {' · '}
+                  <Star size={13} className="inline -mt-0.5 fill-[#F5A800] text-[#F5A800]" aria-hidden /> {fmtRating(reviews.average)} (
+                  {reviews.count} avis)
+                </>
               )}
-              {stats.prepared > 0 && (
-                <li>
-                  {fmtCount(stats.prepared)} <span className="font-medium text-white/60">commandes servies</span>
-                </li>
-              )}
-              <li className="inline-flex items-center gap-1.5">
-                <Clock size={15} className="text-[#F5A800]" /> ~{PREP_MINUTES} min
-              </li>
-            </ul>
+            </p>
           </div>
         </div>
+
+        {/* Ce que la commande en ligne apporte, en trois mots. */}
+        <ul className="max-w-6xl mx-auto mt-3 grid grid-cols-3 gap-2 text-center">
+          {PROMISES.map((p) => (
+            <li
+              key={p.text}
+              className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2 rounded-2xl border border-border bg-card px-2 py-2.5 text-[11px] sm:text-sm font-bold text-foreground leading-tight"
+            >
+              <p.icon size={18} className="text-brand shrink-0" aria-hidden />
+              {p.text}
+            </li>
+          ))}
+        </ul>
       </section>
 
       {/* ── LE MENU ──────────────────────────────────────────────────────
@@ -213,128 +226,74 @@ export default async function HomePage() {
           the section being read and jump to any other. */}
       <section id="menu" className="px-4 pb-20 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-5">
-            <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A800]">Le menu</p>
-            <h2 className="font-display text-4xl sm:text-5xl text-foreground mt-1 leading-tight">
-              Composez, choisissez, savourez.
-            </h2>
-            <DoodleSquiggle className="w-40 h-3 text-[#FF6B00] mt-1" />
-            <p className="text-muted-foreground mt-3 max-w-xl">
-              Les tacos et les burritos se composent étape par étape ; le reste s&apos;ajoute d&apos;un geste.
-            </p>
-            <p className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-red-600/10 text-red-700 dark:text-red-300 px-3 py-1.5 text-xs font-black">
-              <BadgePercent size={14} /> {WEB_PROMO.badge} sur toute commande en ligne — déduit dans le panier
+          <div className="mb-3 flex flex-wrap items-end justify-between gap-x-4 gap-y-2">
+            <h2 className="font-display text-4xl sm:text-5xl text-foreground leading-tight">Le menu</h2>
+            <p className="inline-flex items-center gap-1.5 rounded-full bg-red-600 text-white px-3 py-1.5 text-xs font-black">
+              <BadgePercent size={14} aria-hidden /> {PROMO} sur toute commande en ligne, déduit au panier.
             </p>
           </div>
 
           {categories.length > 0 ? (
-            <WebsiteMenu categories={categories} />
+            <WebsiteMenu categories={categories} topSellers={topSellers} />
           ) : (
             <div className="bg-card rounded-3xl border border-border p-10 text-center">
               <p className="text-4xl mb-3">🌮</p>
-              <p className="font-bold text-foreground">Le menu n&apos;est pas encore configuré</p>
+              <p className="font-bold text-foreground">Le menu est momentanément indisponible</p>
               <p className="text-sm text-muted-foreground mt-2">
-                Lancez <code className="bg-muted px-1.5 py-0.5 rounded">npm run upgrade-menu</code>.
+                Appelez-nous au{' '}
+                <a href={`tel:${SITE.phone.replace(/\s/g, '')}`} className="font-bold text-brand underline underline-offset-4">
+                  {SITE.phone}
+                </a>{' '}
+                pour commander.
               </p>
             </div>
           )}
         </div>
       </section>
 
-      {/* ── COMMENT ÇA MARCHE ─────────────────────────────────────────── */}
-      <section className="px-4 pb-20">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="font-display text-3xl sm:text-4xl text-foreground text-center">Comment ça marche</h2>
-          <ol className="mt-8 grid md:grid-cols-3 gap-4 relative">
-            {STEPS.map((s, i) => (
-              <li key={s.title} className="relative rounded-3xl border border-border bg-card p-6">
-                <span className="font-display text-5xl text-[#F5A800]/90 leading-none">{i + 1}</span>
-                <s.icon size={26} className="absolute top-6 right-6 text-muted-foreground/60" />
-                <h3 className="font-black text-lg text-foreground mt-3">{s.title}</h3>
-                <p className="text-sm text-muted-foreground mt-1.5 leading-relaxed">{s.text}</p>
-                {i < STEPS.length - 1 && (
-                  <DoodleArrow className="hidden md:block absolute -right-7 top-1/2 -translate-y-1/2 w-10 h-7 text-[#FF6B00] z-10" />
-                )}
-              </li>
-            ))}
-          </ol>
-          <div className="mt-5 flex flex-wrap justify-center gap-2 text-xs font-bold text-muted-foreground">
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-              <Bike size={14} className="text-[#F5A800]" /> Livraison 2 à 7 DT selon la distance
-            </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-card px-3 py-1.5">
-              <Store size={14} className="text-[#F5A800]" /> À emporter, prête en ~{PREP_MINUTES} min
-            </span>
-          </div>
-        </div>
-      </section>
-
       {/* ── L'UNIVERS ─────────────────────────────────────────────────────
-          The shop's posters, whole: their lettering runs to the edges, so
-          they are shown at their own shape, side by side, never cropped. */}
+          L'affiche de la boutique, entière : son lettrage court jusqu'aux
+          bords, elle est donc montrée à sa forme, jamais recadrée. */}
       <section className="pb-20">
-        <div className="max-w-6xl mx-auto px-4 flex items-end justify-between gap-4 mb-5">
-          <div>
-            <p className="brush-tag text-[10px] sm:text-[11px]">Fresh · Loaded · Irresistible</p>
-            <h2 className="font-display text-3xl sm:text-4xl text-foreground mt-3">L&apos;univers Mr. Burritos</h2>
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex items-end justify-between gap-4 mb-5">
+            <h2 className="font-display text-3xl sm:text-4xl text-foreground">L&apos;univers Mr. Burritos</h2>
+            <DoodleHeart className="doodle w-8 h-8 text-[#FF6B00] shrink-0 mb-1" />
           </div>
-          <DoodleHeart className="doodle w-8 h-8 text-[#FF6B00] shrink-0 mb-1" />
-        </div>
-        <div className="max-w-6xl mx-auto px-4 flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide">
-          {POSTERS.map((p) => (
-            <div key={p.src} className="snap-start shrink-0 overflow-hidden rounded-3xl border border-border shadow-lg shadow-black/10">
-              <Image
-                src={p.src}
-                alt={p.alt}
-                width={p.w}
-                height={p.h}
-                sizes="(max-width: 640px) 85vw, 560px"
-                className="h-52 sm:h-80 w-auto max-w-none"
-              />
-            </div>
-          ))}
+          <div className="overflow-hidden rounded-3xl border border-border shadow-lg shadow-black/10">
+            <Image
+              src="/hero-banner.jpg"
+              alt="Mr. Burritos — burritos, tacos, burgers, nachos, bowls et frites"
+              width={1600}
+              height={843}
+              sizes="(max-width: 1152px) 100vw, 1152px"
+              className="w-full h-auto"
+            />
+          </div>
         </div>
       </section>
 
       {/* ── ILS EN PARLENT ────────────────────────────────────────────────
-          Approved reviews and real order counts only — nothing decorative. */}
-      {(reviews.count > 0 || stats.prepared > 0) && (
-        <section className="px-4 pb-20">
-          <div className="max-w-6xl mx-auto rounded-[2rem] border border-border bg-card p-6 sm:p-8">
-            <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-6">
-              <div>
-                <p className="text-[11px] font-black uppercase tracking-[0.2em] text-[#F5A800]">Ils en parlent</p>
-                {reviews.count > 0 ? (
-                  <p className="flex items-center gap-3 mt-2">
-                    <span className="font-display text-5xl text-foreground leading-none">{reviews.average.toFixed(1)}</span>
-                    <span>
-                      <Stars value={reviews.average} size={18} />
-                      <span className="block text-xs text-muted-foreground mt-1">{reviews.count} avis vérifiés</span>
+          Seulement avec assez d'avis commentés pour que ce soit parlant ;
+          sinon une ligne, qui invite le premier client à écrire le sien. */}
+      <section className="px-4 pb-20">
+        <div className="max-w-6xl mx-auto">
+          {showReviews ? (
+            <div className="rounded-[2rem] border border-border bg-card p-6 sm:p-8">
+              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-brand">Ils en parlent</p>
+              {showRating && (
+                <p className="flex items-center gap-3 mt-2">
+                  <span className="font-display text-5xl text-foreground leading-none">{fmtRating(reviews.average)}</span>
+                  <span>
+                    <Stars value={reviews.average} size={18} />
+                    <span className="block text-xs text-muted-foreground mt-1">
+                      {reviews.count} {reviews.count > 1 ? 'avis vérifiés' : 'avis vérifié'}
                     </span>
-                  </p>
-                ) : (
-                  <p className="font-display text-3xl text-foreground mt-2">Merci pour votre confiance</p>
-                )}
-              </div>
-              {stats.prepared > 0 && (
-                <dl className="flex gap-8">
-                  <div>
-                    <dd className="font-black text-3xl text-foreground tabular-nums leading-none">{fmtCount(stats.prepared)}</dd>
-                    <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-2">Commandes</dt>
-                  </div>
-                  {stats.clients > 0 && (
-                    <div>
-                      <dd className="font-black text-3xl text-foreground tabular-nums leading-none">{fmtCount(stats.clients)}</dd>
-                      <dt className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mt-2">Clients</dt>
-                    </div>
-                  )}
-                </dl>
+                  </span>
+                </p>
               )}
-            </div>
-
-            {reviews.latest.length > 0 && (
               <div className="grid sm:grid-cols-3 gap-3 mt-6">
-                {reviews.latest.map((r, i) => (
+                {commented.slice(0, 3).map((r, i) => (
                   <figure key={i} className="rounded-2xl bg-background/60 border border-border p-4">
                     <Stars value={r.rating} size={12} />
                     <blockquote className="text-sm text-foreground mt-2 leading-relaxed line-clamp-4">« {r.comment} »</blockquote>
@@ -342,88 +301,98 @@ export default async function HomePage() {
                   </figure>
                 ))}
               </div>
-            )}
-
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3">
-              {stats.since ? (
-                <p className="text-[11px] text-muted-foreground">Comptés depuis {stats.since}, à partir des vraies commandes.</p>
-              ) : (
-                <span />
-              )}
-              <Link href="/avis" className="text-sm font-black text-[#F5A800] hover:underline underline-offset-4">
-                Lire les avis & laisser le vôtre →
-              </Link>
+              <div className="mt-5 text-right">
+                <Link href="/avis" className="inline-flex min-h-11 items-center text-sm font-black text-brand hover:underline underline-offset-4">
+                  Lire les avis &amp; laisser le vôtre →
+                </Link>
+              </div>
             </div>
-          </div>
-        </section>
-      )}
+          ) : (
+            <Link
+              href="/avis"
+              className="flex min-h-11 items-center justify-center gap-2 rounded-2xl border border-dashed border-border px-4 py-3 text-sm font-bold text-foreground hover:border-[#F5A800] transition-colors"
+            >
+              <Star size={15} className="text-brand" aria-hidden /> Déjà goûté ? Laissez le premier avis →
+            </Link>
+          )}
+        </div>
+      </section>
 
-      {/* ── NOUS TROUVER ──────────────────────────────────────────────── */}
+      {/* ── NOUS TROUVER ──────────────────────────────────────────────────
+          Une carte statique plutôt qu'une carte interactive : pas de
+          bibliothèque ni de tuiles à charger, et les trois gestes qui
+          comptent — y aller, appeler, écrire. Les horaires sont dans le pied
+          de page. */}
       <section id="infos" className="px-4 pb-20 scroll-mt-16">
         <div className="max-w-6xl mx-auto">
           <h2 className="font-display text-3xl sm:text-4xl text-foreground mb-6">Nous trouver</h2>
-          <div className="grid md:grid-cols-2 gap-5 items-start">
-            <div className="rounded-3xl overflow-hidden border border-border">
-              <LocationMap lat={SITE.lat} lng={SITE.lng} popupText="Mr. Burritos — Ariana" />
-            </div>
+          <div className="isolate grid md:grid-cols-[1.2fr_1fr] rounded-3xl overflow-hidden border border-border bg-card">
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${SITE.lat},${SITE.lng}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Voir ${SITE.name} sur Google Maps`}
+              className="relative block min-h-48 md:min-h-64 bg-[#ece6da] dark:bg-[#23211d] overflow-hidden"
+            >
+              {/* Un plan dessiné : des rues, un parc, l'épingle. Aucun chargement. */}
+              <svg aria-hidden viewBox="0 0 400 240" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 w-full h-full">
+                <rect x="250" y="20" width="110" height="70" rx="10" className="fill-[#cfe3c4] dark:fill-[#2c3a28]" />
+                <g className="stroke-white dark:stroke-[#3a3832]" strokeLinecap="round" fill="none">
+                  <path d="M-10 150 L410 120" strokeWidth="16" />
+                  <path d="M120 -10 L160 250" strokeWidth="12" />
+                  <path d="M-10 60 L240 80" strokeWidth="8" />
+                  <path d="M280 250 L330 100 L410 90" strokeWidth="8" />
+                  <path d="M40 250 L70 160" strokeWidth="6" />
+                </g>
+              </svg>
+              <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-full flex flex-col items-center">
+                <span className="rounded-full bg-[#141414] text-white text-xs font-black px-3 py-1.5 shadow-lg whitespace-nowrap">
+                  🌮 {SITE.name}
+                </span>
+                <MapPin size={34} className="-mt-1 text-[#FF6B00] fill-[#FF6B00]/25 drop-shadow" aria-hidden />
+              </span>
+            </a>
 
-            <div className="rounded-3xl border border-border bg-card p-5 space-y-4">
+            <div className="p-5 sm:p-6 flex flex-col gap-4">
               <div className="flex items-start gap-3">
                 <span className="w-10 h-10 rounded-full bg-[#F5A800]/12 grid place-items-center shrink-0">
-                  <MapPin size={17} className="text-[#F5A800]" />
+                  <MapPin size={17} className="text-brand" aria-hidden />
                 </span>
                 <div>
-                  <p className="font-black text-foreground text-sm">{SITE.location}</p>
-                  <p className="text-muted-foreground text-xs">{SITE.city}, {SITE.region}</p>
+                  <p className="font-black text-foreground">{SITE_ADDRESS_LINE}</p>
+                  {SITE.landmark && SITE.landmark !== SITE_ADDRESS_LINE && (
+                    <p className="text-muted-foreground text-sm">{SITE.landmark}</p>
+                  )}
+                  <p className="text-muted-foreground text-xs mt-0.5">Plus code {SITE.location}</p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-3">
-                <span className="w-10 h-10 rounded-full bg-[#F5A800]/12 grid place-items-center shrink-0">
-                  <Clock size={17} className="text-[#F5A800]" />
-                </span>
-                <ul className="flex-1 space-y-1">
-                  {hours.map((g) => {
-                    const isToday = g.indexes.includes(today)
-                    return (
-                      <li
-                        key={g.days}
-                        className={`flex justify-between gap-3 text-sm rounded-lg px-2 py-1 -mx-2 ${
-                          isToday ? 'bg-[#F5A800]/12 font-bold text-foreground' : 'text-muted-foreground'
-                        }`}
-                      >
-                        <span>
-                          {g.days}
-                          {isToday && <span className="ml-1.5 text-[10px] font-black uppercase text-[#F5A800]">aujourd&apos;hui</span>}
-                        </span>
-                        <span className="tabular-nums text-foreground font-bold">{g.label}</span>
-                      </li>
-                    )
-                  })}
-                </ul>
-              </div>
-
-              <div className="grid grid-cols-2 gap-2 pt-1">
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${SITE.lat},${SITE.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="min-h-12 inline-flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-6 rounded-2xl transition-colors text-sm"
+              >
+                <Navigation size={17} aria-hidden /> Itinéraire sur Google Maps
+              </a>
+              <div className={`grid gap-2 ${WHATSAPP_NUMBER ? 'grid-cols-2' : 'grid-cols-1'}`}>
                 <a
                   href={`tel:${SITE.phone.replace(/\s/g, '')}`}
-                  className="flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-black text-foreground hover:border-[#F5A800] transition-colors"
+                  className="min-h-11 flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-foreground hover:border-[#F5A800] transition-colors"
                 >
-                  <Phone size={15} className="text-[#F5A800]" /> Appeler
+                  <Phone size={15} className="text-brand" aria-hidden /> Appeler
                 </a>
-                {WHATSAPP_NUMBER ? (
+                {WHATSAPP_NUMBER && (
                   <a
                     href={`https://wa.me/${WHATSAPP_NUMBER}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-black text-foreground hover:border-[#25D366] transition-colors"
+                    className="min-h-11 flex items-center justify-center gap-2 rounded-xl border border-border text-sm font-black text-foreground hover:border-[#25D366] transition-colors"
                   >
-                    <span className="w-2 h-2 rounded-full bg-[#25D366]" /> WhatsApp
+                    <span className="w-2 h-2 rounded-full bg-[#25D366]" aria-hidden /> WhatsApp
                   </a>
-                ) : (
-                  <span />
                 )}
               </div>
-              <DirectionButton lat={SITE.lat} lng={SITE.lng} />
             </div>
           </div>
         </div>
@@ -436,18 +405,15 @@ export default async function HomePage() {
           <div className="hidden md:block absolute right-10 top-1/2 -translate-y-1/2 rotate-6 w-72 lg:w-80 aspect-4/3 rounded-3xl overflow-hidden border-[6px] border-white shadow-2xl shadow-black/30">
             <Image src="/hero-tacos.jpg" alt="" fill sizes="320px" className="object-cover object-[58%_center]" />
           </div>
-          <DoodleStar className="doodle absolute top-5 right-8 w-9 h-9 text-black/25" />
-          <DoodleHeart className="doodle absolute bottom-6 right-24 w-7 h-7 text-black/20 [animation-delay:1.5s]" />
-          <DoodleSparkle className="absolute -bottom-3 left-1/2 w-16 h-16 text-white/25" />
           <p className="font-display text-4xl sm:text-5xl leading-tight">Une petite faim ?</p>
-          <p className="mt-2 text-base sm:text-lg font-bold text-black/75 max-w-lg">
-            Votre commande en deux minutes, {WEB_PROMO.badge} en ligne, et vous suivez sa préparation en direct.
+          <p className="mt-2 text-base sm:text-lg font-bold text-black/80 max-w-lg">
+            Votre commande en deux minutes, {PROMO} en ligne, et vous suivez sa préparation en direct.
           </p>
           <a
             href="#menu"
-            className="mt-6 inline-flex items-center gap-2 bg-black text-white hover:bg-[#1A1A1A] font-black px-7 py-4 rounded-2xl transition-colors"
+            className="mt-6 min-h-12 inline-flex items-center gap-2 bg-black text-white hover:bg-[#1A1A1A] font-black px-7 rounded-2xl transition-colors"
           >
-            Commander maintenant <ArrowRight size={18} />
+            Commander maintenant
           </a>
         </div>
       </section>

@@ -3,6 +3,7 @@ import { Permanent_Marker, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/components/ThemeProvider";
+import { SITE } from "@/lib/site";
 
 const jakarta = Plus_Jakarta_Sans({
   subsets: ["latin"],
@@ -22,9 +23,13 @@ const marker = Permanent_Marker({
   display: "swap",
 });
 
-const TITLE = "Mr. Burritos — Tacos · Burritos · Snacks";
-const DESCRIPTION =
-  "Restaurant Mr. Burritos — Tacos, Burritos & Snacks à Tunis. Composez votre tacos : taille M, XL ou XXL, vos viandes, vos sauces. Livraison ou à emporter.";
+/**
+ * Le titre et la description que Google montre : le quartier y figure, c'est
+ * ce que tapent les gens (« tacos Ennasr », « burritos Ariana »). Le quartier
+ * vient de lib/site, comme sur la page.
+ */
+const TITLE = `Mr. Burritos — Tacos, Burritos & Burgers à ${SITE.neighbourhood}, ${SITE.city} | Livraison`;
+const DESCRIPTION = `Tacos, burritos, burgers et bowls à ${SITE.neighbourhood} (${SITE.city}). Commandez en ligne : −15 %, paiement à la livraison, prêt en ~25 min. Livraison dans l'Ariana ou à emporter.`;
 
 /**
  * `metadataBase` is what turns the relative image path below into the absolute

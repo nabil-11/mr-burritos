@@ -1,6 +1,7 @@
 import { connectDB } from './mongodb'
 import { Order } from './models/Order'
 import { Review } from './models/Review'
+import { TOP_SELLERS } from './commerce'
 
 /**
  * Numbers shown on the home page. Every one is computed from real orders —
@@ -86,4 +87,25 @@ export async function getReviewSummary(): Promise<ReviewSummary> {
       comment: String(r.comment ?? ''),
     })),
   }
+}
+
+/**
+ * « Les plus commandés » : les produits les plus vendus sur la période
+ * (lib/commerce TOP_SELLERS), annulations exclues, chacun vendu au moins
+ * `minSold` fois — un plat commandé deux fois n'est pas un « top vente ».
+ * Compté en unités, toutes provenances confondues (site, caisse, borne).
+ */
+export async function getTopSellers(): Promise<string[]> {
+  await connectDB()
+  const since = new Date(Date.now() - TOP_SELLERS.days * 86_400_000)
+  const rows = await Order.aggregate<{ _id: unknown; sold: number }>([
+    { $match: { status: { $ne: 'cancelled' }, createdAt: { $gte: since } } },
+    { $unwind: '$items' },
+    { $group: { _id: '$items.product', sold: { $sum: '$items.quantity' } } },
+    { $match: { sold: { $gte: TOP_SELLERS.minSold } } },
+    { $sort: { sold: -1 } },
+    // Un peu plus que nécessaire : un produit retiré de la carte laisse sa place au suivant.
+    { $limit: TOP_SELLERS.count * 3 },
+  ])
+  return rows.map((r) => String(r._id))
 }

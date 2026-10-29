@@ -26,7 +26,7 @@ export default async function BlogPage() {
     <div className="min-h-screen bg-background pt-24 pb-16" dir="ltr">
       {/* Header */}
       <div className="max-w-5xl mx-auto px-4 sm:px-6 mb-12 text-center">
-        <span className="inline-block bg-[#F5A800]/10 text-[#F5A800] text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
+        <span className="inline-block bg-[#F5A800]/10 text-brand text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
           Blog
         </span>
         <h1 className="text-4xl font-black text-foreground">Actualités & Recettes</h1>
@@ -69,13 +69,13 @@ export default async function BlogPage() {
                     <p className="text-[10px] text-muted-foreground uppercase tracking-widest mb-2">
                       {fmtDate(p.publishedAt || p.createdAt)}
                     </p>
-                    <h2 className="font-black text-foreground text-base leading-snug group-hover:text-[#F5A800] transition-colors line-clamp-2">
+                    <h2 className="font-black text-foreground text-base leading-snug group-hover:text-brand transition-colors line-clamp-2">
                       {p.title.fr}
                     </h2>
                     {p.excerpt?.fr && (
                       <p className="text-muted-foreground text-xs mt-2 line-clamp-3 leading-relaxed">{p.excerpt.fr}</p>
                     )}
-                    <p className="mt-4 text-[#F5A800] text-xs font-bold flex items-center gap-1">
+                    <p className="mt-4 text-brand text-xs font-bold flex items-center gap-1">
                       Lire la suite <span className="group-hover:translate-x-1 transition-transform">→</span>
                     </p>
                   </div>

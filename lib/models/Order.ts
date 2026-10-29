@@ -98,6 +98,18 @@ const OrderSchema = new Schema(
       payoutRef: { type: String, default: '' },
     },
     deliveryFee: { type: Number, default: 0, min: 0, max: 10 },
+    // Le quartier choisi sur le site (lib/commerce), d'où vient le frais.
+    // « Autre quartier » : frais à confirmer par téléphone, 0 tant que le
+    // restaurant ne l'a pas fixé.
+    deliveryZone: { type: String, default: '' },
+    // Vrai quand `total` comprend déjà `deliveryFee` — toutes les commandes
+    // depuis que le site facture la livraison. Les anciennes commandes web
+    // portaient le frais à côté du total ; le suivi client doit savoir s'il
+    // l'ajoute ou non.
+    feeInTotal: { type: Boolean, default: false },
+    // D'où vient le client : « ?src=sac » sur un QR code, « insta »… Nettoyé
+    // côté serveur (lib/commerce normalizeRef). Vide pour la caisse et la borne.
+    ref: { type: String, default: '' },
     // Un montant rectifié après coup, depuis la recette. Le total devient
     // sous-total − remise + supplément + livraison + correction : la remise du
     // caissier reste ce qu'elle était, et le ticket réimprimé tombe juste.

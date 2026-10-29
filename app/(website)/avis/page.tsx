@@ -23,7 +23,7 @@ function Stars({ rating }: { rating: number }) {
   return (
     <div className="flex gap-0.5">
       {[1, 2, 3, 4, 5].map((s) => (
-        <span key={s} className={`text-lg ${s <= rating ? 'text-[#F5A800]' : 'text-muted-foreground/25'}`}>★</span>
+        <span key={s} className={`text-lg ${s <= rating ? 'text-brand' : 'text-muted-foreground/25'}`}>★</span>
       ))}
     </div>
   )
@@ -47,17 +47,17 @@ export default async function AvisPage({
 
       {/* Header */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 mb-12 text-center">
-        <span className="inline-block bg-[#F5A800]/10 text-[#F5A800] text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
+        <span className="inline-block bg-[#F5A800]/10 text-brand text-xs font-black px-3 py-1 rounded-full uppercase tracking-widest mb-3">
           Avis clients
         </span>
         <h1 className="text-4xl font-black text-foreground">Ce que vous en pensez</h1>
         {avg && (
           <div className="flex items-center justify-center gap-2 mt-4">
-            <span className="text-4xl font-black text-[#F5A800]">{avg}</span>
+            <span className="text-4xl font-black text-brand">{avg}</span>
             <div>
               <div className="flex gap-0.5">
                 {[1,2,3,4,5].map((s) => (
-                  <span key={s} className={`text-xl ${s <= Math.round(Number(avg)) ? 'text-[#F5A800]' : 'text-muted-foreground/25'}`}>★</span>
+                  <span key={s} className={`text-xl ${s <= Math.round(Number(avg)) ? 'text-brand' : 'text-muted-foreground/25'}`}>★</span>
                 ))}
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">{reviews.length} avis</p>
@@ -94,7 +94,7 @@ export default async function AvisPage({
                 <div key={String(rev._id)} className="bg-card rounded-2xl border border-border p-5">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-[#F5A800]/10 flex items-center justify-center text-[#F5A800] font-black text-sm shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-[#F5A800]/10 flex items-center justify-center text-brand font-black text-sm shrink-0">
                         {rev.customerName.charAt(0).toUpperCase()}
                       </div>
                       <div>

@@ -9,6 +9,7 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "upgrade-menu": "tsx scripts/upgrade-menu.ts",
+    "compare-prices": "tsx scripts/set-compare-prices.ts",
     "backfill-order-source": "tsx scripts/backfill-order-source.ts",
     "promo-card": "tsx scripts/generate-promo-card.ts",
     "flyers": "tsx scripts/generate-flyers.ts"

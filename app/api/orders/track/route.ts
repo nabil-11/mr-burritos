@@ -15,7 +15,7 @@ import { normalizeTnPhone, tnPhonePattern } from '@/lib/phone'
  * Anyone can type any number here, so the answer carries what a tracker needs
  * and nothing that identifies the person: no name, no phone, no address.
  */
-const PUBLIC_FIELDS = 'orderNumber status total deliveryFee type createdAt confirmedAt preparationDuration'
+const PUBLIC_FIELDS = 'orderNumber status total deliveryFee feeInTotal deliveryZone type createdAt confirmedAt preparationDuration'
 const MAX_IDS = 10
 
 export async function GET(req: NextRequest) {

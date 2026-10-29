@@ -1,5 +1,6 @@
 import { BadgePercent, Ticket } from 'lucide-react'
 import { WEB_PROMO, promoBadge, type PromoTerms, type WebDiscounts } from '@/lib/promo'
+import { formatDT } from '@/lib/format'
 
 /**
  * The reductions under a basket's subtotal: the online promo and the promo
@@ -12,19 +13,19 @@ export default function DiscountLines({ applied, terms }: { applied: WebDiscount
   return (
     <>
       {webAmount > 0 && (
-        <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+        <div className="flex justify-between font-semibold text-emerald-700 dark:text-emerald-400">
           <span className="flex items-center gap-1.5">
             <BadgePercent size={14} /> {WEB_PROMO.label} ({WEB_PROMO.badge})
           </span>
-          <span className="tabular-nums">− {webAmount.toFixed(2)} DT</span>
+          <span className="tabular-nums">− {formatDT(webAmount)}</span>
         </div>
       )}
       {applied.promo && terms && (
-        <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
+        <div className="flex justify-between font-semibold text-emerald-700 dark:text-emerald-400">
           <span className="flex items-center gap-1.5">
             <Ticket size={14} /> Code {applied.promo.code} ({promoBadge(terms)})
           </span>
-          <span className="tabular-nums">− {codeAmount.toFixed(2)} DT</span>
+          <span className="tabular-nums">− {formatDT(codeAmount)}</span>
         </div>
       )}
     </>

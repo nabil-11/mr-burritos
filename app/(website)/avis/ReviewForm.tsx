@@ -51,7 +51,7 @@ export default function ReviewForm({ initialName = '', initialOrder = '' }: { in
               key={s}
               type="button"
               onClick={() => setForm({ ...form, rating: s })}
-              className={`text-3xl transition-transform hover:scale-110 active:scale-95 ${s <= form.rating ? 'text-[#F5A800]' : 'text-muted-foreground/25 hover:text-[#F5A800]/50'}`}
+              className={`text-3xl transition-transform hover:scale-110 active:scale-95 ${s <= form.rating ? 'text-brand' : 'text-muted-foreground/25 hover:text-brand/50'}`}
             >
               ★
             </button>

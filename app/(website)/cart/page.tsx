@@ -14,14 +14,24 @@ import { useOpenState } from '@/hooks/useOpenState'
 import { PREP_MINUTES } from '@/lib/hours'
 import { normalizeTnPhone } from '@/lib/phone'
 import { WEB_PROMO, applyWebDiscounts } from '@/lib/promo'
-import { loadCustomer, rememberOrder, saveCustomer } from '@/lib/webMemory'
+import { loadCustomer, loadRef, rememberOrder, saveCustomer } from '@/lib/webMemory'
+import { DELIVERY_ZONES, FREE_DELIVERY_FROM, deliveryQuote } from '@/lib/commerce'
+import { formatDT } from '@/lib/format'
+import { SITE } from '@/lib/site'
+import CartSuggestions from '@/components/website/CartSuggestions'
+import FreeDeliveryBar from '@/components/website/FreeDeliveryBar'
 
 type OrderType = 'delivery' | 'pickup'
-type Field = 'name' | 'phone' | 'address'
+type Field = 'name' | 'phone' | 'zone' | 'address'
 
 const TYPES: { value: OrderType; label: string; hint: string; icon: typeof Bike }[] = [
-  { value: 'delivery', label: 'Livraison', hint: 'Frais 2 à 7 DT, confirmés par téléphone', icon: Bike },
-  { value: 'pickup', label: 'À emporter', hint: `Prête en ~${PREP_MINUTES} min · Ariana`, icon: Store },
+  {
+    value: 'delivery',
+    label: 'Livraison',
+    hint: `Frais selon le quartier${FREE_DELIVERY_FROM ? ` · offerte dès ${formatDT(FREE_DELIVERY_FROM)}` : ''}`,
+    icon: Bike,
+  },
+  { value: 'pickup', label: 'À emporter', hint: `Prête en ~${PREP_MINUTES} min · ${SITE.neighbourhood}, ${SITE.city}`, icon: Store },
 ]
 
 const inputCls = (bad: boolean) =>
@@ -43,7 +53,7 @@ export default function CartPage() {
   const promoPending = !!promo && !promo.terms && !promo.error
 
   const [type, setType] = useState<OrderType>('delivery')
-  const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' })
+  const [form, setForm] = useState({ name: '', phone: '', zone: '', address: '', notes: '' })
   const [coords, setCoords] = useState<{ latitude: number; longitude: number } | null>(null)
   const [errors, setErrors] = useState<Partial<Record<Field, string>>>({})
   const [locating, setLocating] = useState(false)
@@ -53,6 +63,7 @@ export default function CartPage() {
   const refs = {
     name: useRef<HTMLInputElement>(null),
     phone: useRef<HTMLInputElement>(null),
+    zone: useRef<HTMLSelectElement>(null),
     address: useRef<HTMLInputElement>(null),
   }
 
@@ -66,6 +77,7 @@ export default function CartPage() {
         ...f,
         name: f.name || saved.name,
         phone: f.phone || saved.phone,
+        zone: f.zone || (DELIVERY_ZONES.some((z) => z.id === saved.zone) ? (saved.zone ?? '') : ''),
         address: f.address || saved.address,
       }))
       setType(saved.type)
@@ -78,6 +90,13 @@ export default function CartPage() {
     if (errors[field as Field]) setErrors((e) => ({ ...e, [field]: undefined }))
   }
 
+  // Le frais de livraison : le quartier et la nourriture remisée, la même
+  // fonction que celle du serveur (lib/commerce). Le client ne l'envoie pas —
+  // il envoie le quartier, et la commande calcule.
+  const delivery = deliveryQuote(form.zone, payable)
+  const fee = type === 'delivery' ? delivery.fee : 0
+  const grandTotal = Math.round((payable + fee) * 100) / 100
+
   // The server says the same thing; saying it here spares a round trip.
   const isClosed = closedAt !== null || (open !== null && !open.open)
   const opensAt = closedAt ?? open?.at ?? ''
@@ -86,9 +105,10 @@ export default function CartPage() {
     const next: Partial<Record<Field, string>> = {}
     if (!form.name.trim()) next.name = 'Votre prénom, pour vous appeler au comptoir'
     if (!normalizeTnPhone(form.phone)) next.phone = '8 chiffres, ex. 99 123 456'
+    if (type === 'delivery' && !form.zone) next.zone = 'Choisissez votre quartier'
     if (type === 'delivery' && !form.address.trim()) next.address = 'Où devons-nous livrer ?'
     setErrors(next)
-    const first = (['name', 'phone', 'address'] as Field[]).find((f) => next[f])
+    const first = (['name', 'phone', 'zone', 'address'] as Field[]).find((f) => next[f])
     if (first) refs[first].current?.focus()
     return !first
   }
@@ -157,8 +177,10 @@ export default function CartPage() {
           // beaten by the online promo, would change nothing but could still
           // be refused for its limits.
           ...(applied.promo ? { promoCode: applied.promo.code } : {}),
-          total: payable,
+          total: grandTotal,
           type,
+          ...(type === 'delivery' ? { deliveryZone: form.zone } : {}),
+          ...(loadRef() ? { ref: loadRef() } : {}),
           source: 'website',
           notes: form.notes.trim(),
         }),
@@ -172,7 +194,7 @@ export default function CartPage() {
         throw new Error(data?.error || 'Une erreur est survenue, réessayez')
       }
 
-      saveCustomer({ name: form.name.trim(), phone, address: form.address.trim(), type })
+      saveCustomer({ name: form.name.trim(), phone, address: form.address.trim(), type, zone: form.zone })
       rememberOrder({ id: String(data._id), number: String(data.orderNumber), at: new Date().toISOString() })
       router.push(`/order/${data._id}?merci=1`)
       clearCart()
@@ -216,14 +238,14 @@ export default function CartPage() {
     ? 'Envoi…'
     : isClosed
       ? `Fermé · ouvre à ${opensAt}`
-      : `Commander · ${payable.toFixed(2)} DT`
+      : `Commander · ${formatDT(grandTotal)}`
 
   return (
     <div className="pt-24 pb-28 lg:pb-16">
       <div className="max-w-5xl mx-auto px-4">
         <Link
           href="/#menu"
-          className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-[#F5A800] transition-colors"
+          className="inline-flex items-center gap-1.5 text-sm font-bold text-muted-foreground hover:text-brand transition-colors"
         >
           <ArrowLeft size={15} /> Continuer mes achats
         </Link>
@@ -263,7 +285,7 @@ export default function CartPage() {
                           <Check size={12} strokeWidth={3} />
                         </span>
                       )}
-                      <t.icon size={22} className={on ? 'text-[#F5A800]' : 'text-muted-foreground'} />
+                      <t.icon size={22} className={on ? 'text-brand' : 'text-muted-foreground'} />
                       <p className="font-black text-foreground mt-2">{t.label}</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5 leading-snug">{t.hint}</p>
                     </button>
@@ -320,6 +342,41 @@ export default function CartPage() {
                   )}
                 </div>
               </div>
+
+              {type === 'delivery' && (
+                <div className="space-y-1.5">
+                  <label htmlFor="c-zone" className="text-xs font-bold text-muted-foreground">
+                    Votre quartier
+                  </label>
+                  <select
+                    id="c-zone"
+                    ref={refs.zone}
+                    value={form.zone}
+                    onChange={(e) => set('zone', e.target.value)}
+                    required
+                    aria-invalid={!!errors.zone}
+                    className={`${inputCls(!!errors.zone)} min-h-11 appearance-auto`}
+                  >
+                    <option value="" disabled>
+                      Choisissez votre quartier…
+                    </option>
+                    {DELIVERY_ZONES.map((z) => (
+                      <option key={z.id} value={z.id}>
+                        {z.confirmByPhone
+                          ? `${z.label} — frais confirmés par téléphone (jusqu'à ${formatDT(z.fee)})`
+                          : `${z.label} — ${formatDT(z.fee)}`}
+                      </option>
+                    ))}
+                  </select>
+                  {errors.zone ? (
+                    <p className="text-xs font-semibold text-red-600 dark:text-red-400">{errors.zone}</p>
+                  ) : delivery.confirmByPhone ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Frais confirmés par téléphone (jusqu&apos;à {formatDT(delivery.zone?.fee ?? 0)}).
+                    </p>
+                  ) : null}
+                </div>
+              )}
 
               {type === 'delivery' && (
                 <div className="space-y-1.5">
@@ -387,9 +444,9 @@ export default function CartPage() {
           <aside className="lg:col-span-2 lg:sticky lg:top-24 rounded-3xl border border-border bg-card p-5 space-y-4">
             <div className="flex items-center justify-between">
               <h2 className="font-black text-foreground flex items-center gap-2">
-                <ShoppingBag size={16} className="text-[#F5A800]" /> 3. Votre panier
+                <ShoppingBag size={16} className="text-brand" /> 3. Votre panier
               </h2>
-              <Link href="/#menu" className="text-xs font-bold text-muted-foreground hover:text-[#F5A800]">
+              <Link href="/#menu" className="text-xs font-bold text-muted-foreground hover:text-brand">
                 + Ajouter
               </Link>
             </div>
@@ -399,24 +456,38 @@ export default function CartPage() {
               ))}
             </div>
 
+            <CartSuggestions />
+
+            {type === 'delivery' && !delivery.confirmByPhone && <FreeDeliveryBar foodTotal={payable} />}
+
             <div className="space-y-2 text-sm border-t border-border pt-4">
               <div className="flex justify-between text-muted-foreground">
                 <span>Sous-total</span>
-                <span className="tabular-nums">{total.toFixed(2)} DT</span>
+                <span className="tabular-nums">{formatDT(total)}</span>
               </div>
               <DiscountLines applied={applied} terms={terms} />
               {type === 'delivery' && (
-                <div className="flex justify-between text-muted-foreground">
+                <div className="flex justify-between gap-3 text-muted-foreground">
                   <span>Livraison</span>
-                  <span>2 à 7 DT, confirmés par appel</span>
+                  <span className="text-right tabular-nums">
+                    {!delivery.zone
+                      ? 'selon votre quartier'
+                      : delivery.confirmByPhone
+                        ? `confirmée par téléphone (jusqu'à ${formatDT(delivery.zone.fee)})`
+                        : delivery.free
+                          ? 'Offerte ✓'
+                          : formatDT(delivery.fee)}
+                  </span>
                 </div>
               )}
-              <div className="flex justify-between items-baseline border-t border-border pt-3">
-                <span className="font-black text-foreground">{type === 'delivery' ? 'Total hors livraison' : 'Total'}</span>
-                <span className="font-black text-2xl text-[#F5A800] tabular-nums">{payable.toFixed(2)} DT</span>
+              <div className="flex justify-between items-baseline gap-3 border-t border-border pt-3">
+                <span className="font-black text-foreground">
+                  {type === 'delivery' ? 'Total à payer à la livraison' : 'Total à payer au retrait'}
+                </span>
+                <span className="font-black text-2xl text-brand tabular-nums whitespace-nowrap">{formatDT(grandTotal)}</span>
               </div>
-              <p className="text-center text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                Vous économisez {discount.amount.toFixed(2)} DT en commandant en ligne
+              <p className="text-center text-[11px] font-bold text-emerald-700 dark:text-emerald-400">
+                Vous économisez {formatDT(discount.amount + (delivery.free && type === 'delivery' ? (delivery.zone?.fee ?? 0) : 0))} en commandant en ligne
               </p>
             </div>
 

@@ -7,6 +7,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { normalizeTnPhone } from '@/lib/phone'
 import { STATUS_SHORT, TrackedOrder, isFinal, payableTotal, readyAt, shopClock } from '@/lib/orderProgress'
 import { loadCustomer, loadOrders } from '@/lib/webMemory'
+import { formatDT } from '@/lib/format'
 
 const BADGE: Record<string, string> = {
   pending: 'bg-amber-500/15 text-amber-700 dark:text-amber-300',
@@ -42,7 +43,7 @@ function OrderRow({ order, onOpen }: { order: TrackedOrder; onOpen: () => void }
           {STATUS_SHORT[order.status] ?? 'En attente'}
           {eta ? ` · ${shopClock(eta)}` : ''}
         </span>
-        <span className="text-xs font-black text-foreground tabular-nums">{payableTotal(order).toFixed(2)} DT</span>
+        <span className="text-xs font-black text-foreground tabular-nums">{formatDT(payableTotal(order))}</span>
       </span>
       <ChevronRight size={16} className="text-muted-foreground shrink-0" />
     </Link>
@@ -114,7 +115,7 @@ export default function TrackOrderDrawer({ open, onClose }: { open: boolean; onC
       >
         <SheetHeader className="px-5 py-4 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-foreground">
-            <PackageSearch size={18} className="text-[#F5A800]" /> Suivre ma commande
+            <PackageSearch size={18} className="text-brand" /> Suivre ma commande
           </SheetTitle>
         </SheetHeader>
 

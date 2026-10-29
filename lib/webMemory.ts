@@ -8,6 +8,8 @@
  * private window, and none of that may break ordering.
  */
 
+import { ATTRIBUTION_DAYS, normalizeRef } from './commerce'
+
 const CUSTOMER_KEY = 'mb.customer'
 const ORDERS_KEY = 'mb.orders'
 const MAX_ORDERS = 10
@@ -17,6 +19,8 @@ export interface RememberedCustomer {
   phone: string
   address: string
   type: 'delivery' | 'pickup'
+  /** Le quartier de livraison (lib/commerce DELIVERY_ZONES), vide s'il n'a jamais été choisi. */
+  zone?: string
 }
 
 export interface RememberedOrder {
@@ -52,6 +56,7 @@ export function loadCustomer(): RememberedCustomer | null {
     phone: str(c.phone, 30),
     address: str(c.address, 300),
     type: c.type === 'pickup' ? 'pickup' : 'delivery',
+    zone: str(c.zone, 40),
   }
 }
 
@@ -66,4 +71,23 @@ export function loadOrders(): RememberedOrder[] {
 
 export function rememberOrder(order: RememberedOrder) {
   write(ORDERS_KEY, [order, ...loadOrders().filter((o) => o.id !== order.id)].slice(0, MAX_ORDERS))
+}
+
+/**
+ * La provenance d'une visite : « /?src=sac » sur le QR code du sac, « ?src=insta »
+ * dans la bio… Gardée ATTRIBUTION_DAYS jours, puis oubliée ; une nouvelle
+ * provenance remplace l'ancienne. Envoyée avec la commande, nettoyée par le serveur.
+ */
+const REF_KEY = 'mb.ref'
+
+export function captureRef(search: string) {
+  const ref = normalizeRef(new URLSearchParams(search).get('src'))
+  if (ref) write(REF_KEY, { ref, at: Date.now() })
+}
+
+export function loadRef(): string {
+  const saved = read<{ ref?: unknown; at?: unknown }>(REF_KEY)
+  const at = Number(saved?.at)
+  if (!saved || !Number.isFinite(at) || Date.now() - at > ATTRIBUTION_DAYS * 86_400_000) return ''
+  return normalizeRef(saved.ref)
 }

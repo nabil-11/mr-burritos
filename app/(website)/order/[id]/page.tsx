@@ -54,7 +54,7 @@ export default async function OrderPage({ params, searchParams }: Props) {
         <p className="text-sm text-muted-foreground max-w-xs">
           Le lien est peut-être incomplet. Retrouvez vos commandes avec « Suivre » en haut de la page.
         </p>
-        <Link href="/" className="text-[#F5A800] font-bold underline underline-offset-4">
+        <Link href="/" className="text-brand font-bold underline underline-offset-4">
           Retour à l&apos;accueil
         </Link>
       </div>
@@ -73,6 +73,8 @@ export default async function OrderPage({ params, searchParams }: Props) {
     total: Number(o.total ?? 0),
     subtotal: Number(o.subtotal ?? 0),
     deliveryFee: Number(o.deliveryFee ?? 0),
+    feeInTotal: o.feeInTotal === true,
+    deliveryZone: String(o.deliveryZone ?? ''),
     createdAt: new Date(o.createdAt as Date).toISOString(),
     confirmedAt: o.confirmedAt ? new Date(o.confirmedAt as Date).toISOString() : null,
     preparationDuration: Number(o.preparationDuration ?? 0) || null,

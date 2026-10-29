@@ -17,6 +17,8 @@ import {
   stepIndex,
 } from '@/lib/orderProgress'
 import { SITE, whatsappLink } from '@/lib/site'
+import { DELIVERY_ZONES, GOOGLE_REVIEW_URL } from '@/lib/commerce'
+import { formatDT } from '@/lib/format'
 import { rememberOrder } from '@/lib/webMemory'
 
 export interface OrderView extends TrackedOrder {
@@ -136,14 +138,17 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
   const cancelled = order.status === 'cancelled'
   const delivery = order.type === 'delivery'
   const toPay = payableTotal(order)
+  const reviewHref = `/avis?commande=${encodeURIComponent(order.orderNumber)}${
+    order.customer.firstName ? `&nom=${encodeURIComponent(order.customer.firstName)}` : ''
+  }`
 
   const waText =
     `🌯 Commande ${order.orderNumber}\n` +
     `${delivery ? '🛵 Livraison' : '🏪 À emporter'} — ${order.customer.firstName}\n` +
     (delivery && order.customer.address ? `📍 ${order.customer.address}\n` : '') +
-    `\n${order.items.map((i) => `- ${i.quantity}× ${i.name}${i.details ? ` (${i.details})` : ''} = ${i.lineTotal.toFixed(2)} DT`).join('\n')}` +
+    `\n${order.items.map((i) => `- ${i.quantity}× ${i.name}${i.details ? ` (${i.details})` : ''} = ${formatDT(i.lineTotal)}`).join('\n')}` +
     (order.notes ? `\n\n📝 ${order.notes}` : '') +
-    `\n\nTotal : ${order.total.toFixed(2)} DT${order.discount.amount ? ` (réduction −${order.discount.amount.toFixed(2)} DT incluse)` : ''}` +
+    `\n\nTotal : ${formatDT(toPay)}${order.discount.amount ? ` (réduction −${formatDT(order.discount.amount)} incluse)` : ''}` +
     (SITE_URL ? `\nSuivi : ${SITE_URL}/order/${order._id}` : '')
   const wa = whatsappLink(waText)
 
@@ -191,7 +196,7 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
 
           {eta && minutes !== null && (
             <div className="mt-4 inline-flex items-center gap-2 rounded-full bg-background/70 border border-border px-4 py-2">
-              <Clock size={15} className="text-[#F5A800]" />
+              <Clock size={15} className="text-brand" />
               <span className="text-sm font-black text-foreground tabular-nums">
                 {minutes > 0 ? `~${minutes} min` : 'D’un instant à l’autre'}
               </span>
@@ -272,7 +277,7 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
               wa && order.status !== 'pending' ? '' : 'col-span-2'
             }`}
           >
-            <Phone size={16} className="text-[#F5A800]" /> Appeler le restaurant
+            <Phone size={16} className="text-brand" /> Appeler le restaurant
           </a>
         </div>
 
@@ -301,7 +306,7 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
                   </span>
                   {i.details && <span className="block text-xs text-muted-foreground mt-0.5">{i.details}</span>}
                 </span>
-                <span className="text-sm font-black text-foreground tabular-nums">{i.lineTotal.toFixed(2)} DT</span>
+                <span className="text-sm font-black text-foreground tabular-nums">{formatDT(i.lineTotal)}</span>
               </li>
             ))}
           </ul>
@@ -311,28 +316,32 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
               <>
                 <div className="flex justify-between text-muted-foreground">
                   <span>Sous-total</span>
-                  <span className="tabular-nums">{order.subtotal.toFixed(2)} DT</span>
+                  <span className="tabular-nums">{formatDT(order.subtotal)}</span>
                 </div>
                 <div className="flex justify-between font-semibold text-emerald-600 dark:text-emerald-400">
                   <span>
                     {order.discount.label || 'Remise'}
                     {order.discount.rate ? ` (−${Math.round(order.discount.rate * 100)}%)` : ''}
                   </span>
-                  <span className="tabular-nums">− {order.discount.amount.toFixed(2)} DT</span>
+                  <span className="tabular-nums">− {formatDT(order.discount.amount)}</span>
                 </div>
               </>
             )}
             {delivery && (
               <div className="flex justify-between text-muted-foreground">
                 <span>Livraison</span>
-                <span className="tabular-nums">
-                  {order.deliveryFee > 0 ? `${order.deliveryFee.toFixed(2)} DT` : 'confirmée par appel'}
+                <span className="tabular-nums text-right">
+                  {order.deliveryFee > 0
+                    ? formatDT(order.deliveryFee)
+                    : order.feeInTotal && order.deliveryZone && !DELIVERY_ZONES.find((z) => z.label === order.deliveryZone)?.confirmByPhone
+                      ? 'Offerte ✓'
+                      : 'confirmée par appel'}
                 </span>
               </div>
             )}
             <div className="flex justify-between items-baseline pt-2">
               <span className="font-black text-foreground">À payer</span>
-              <span className="font-black text-xl text-[#F5A800] tabular-nums">{toPay.toFixed(2)} DT</span>
+              <span className="font-black text-xl text-brand tabular-nums">{formatDT(toPay)}</span>
             </div>
             <p className="text-[11px] text-muted-foreground text-right">
               à la {delivery ? 'livraison' : 'récupération'}
@@ -343,18 +352,43 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
             <div className="mt-4 pt-4 border-t border-border space-y-1.5 text-xs text-muted-foreground">
               {delivery && order.customer.address && (
                 <p className="flex items-start gap-2">
-                  <MapPin size={13} className="shrink-0 mt-0.5 text-[#F5A800]" /> {order.customer.address}
+                  <MapPin size={13} className="shrink-0 mt-0.5 text-brand" /> {order.customer.address}
                 </p>
               )}
               {order.customer.phoneHint && (
                 <p className="flex items-center gap-2">
-                  <Phone size={13} className="shrink-0 text-[#F5A800]" /> {order.customer.phoneHint}
+                  <Phone size={13} className="shrink-0 text-brand" /> {order.customer.phoneHint}
                 </p>
               )}
               {order.notes && <p>📝 {order.notes}</p>}
             </div>
           )}
         </section>
+
+        {/* ── L'avis, au moment où le repas est là ─────────────────────── */}
+        {(order.status === 'delivered' || order.status === 'ready') && (
+          <section className="rounded-3xl border border-[#F5A800]/40 bg-[#F5A800]/8 p-5 text-center">
+            <p className="font-black text-foreground">Bon appétit ! Votre avis nous aide énormément.</p>
+            <div className={`mt-4 grid gap-3 ${GOOGLE_REVIEW_URL ? 'sm:grid-cols-2' : ''}`}>
+              <Link
+                href={reviewHref}
+                className="min-h-11 flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black py-3 rounded-2xl transition-colors text-sm"
+              >
+                <Star size={16} /> Noter ma commande
+              </Link>
+              {GOOGLE_REVIEW_URL && (
+                <a
+                  href={GOOGLE_REVIEW_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="min-h-11 flex items-center justify-center gap-2 border border-border bg-card hover:border-[#F5A800] text-foreground font-black py-3 rounded-2xl transition-colors text-sm"
+                >
+                  Laisser un avis Google
+                </a>
+              )}
+            </div>
+          </section>
+        )}
 
         {/* ── After ───────────────────────────────────────────────────── */}
         <div className="grid sm:grid-cols-2 gap-3">
@@ -364,23 +398,12 @@ export default function OrderLive({ initial, justPlaced }: { initial: OrderView;
           >
             <RotateCcw size={16} /> Commander la même chose
           </button>
-          {order.status === 'delivered' ? (
-            <Link
-              href={`/avis?commande=${encodeURIComponent(order.orderNumber)}${
-                order.customer.firstName ? `&nom=${encodeURIComponent(order.customer.firstName)}` : ''
-              }`}
-              className="flex items-center justify-center gap-2 border border-border bg-card hover:border-[#F5A800] text-foreground font-black py-3.5 rounded-2xl transition-colors text-sm"
-            >
-              <Star size={16} className="text-[#F5A800]" /> Donner mon avis
-            </Link>
-          ) : (
-            <Link
-              href="/"
-              className="flex items-center justify-center border border-border bg-card hover:border-[#F5A800] text-foreground font-bold py-3.5 rounded-2xl transition-colors text-sm"
-            >
-              Retour à l&apos;accueil
-            </Link>
-          )}
+          <Link
+            href="/"
+            className="flex items-center justify-center border border-border bg-card hover:border-[#F5A800] text-foreground font-bold py-3.5 rounded-2xl transition-colors text-sm"
+          >
+            Retour à l&apos;accueil
+          </Link>
         </div>
       </div>
     </div>

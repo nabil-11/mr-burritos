@@ -6,6 +6,7 @@ import { configuredPrice, groupSupplements } from '@/lib/supplements'
 import type { BuilderCategory, BuilderPick, BuilderProduct, BuilderSupplement } from './ProductBuilder'
 import Photo from './Photo'
 import ShareButton from './ShareButton'
+import { formatDT } from '@/lib/format'
 
 /** "mini burrito  bowl  " → "Mini burrito bowl": names are typed by hand in the backoffice. */
 export const dishName = (p: BuilderProduct) => {
@@ -38,7 +39,7 @@ function Chips({
             type="button"
             aria-pressed={on}
             onClick={() => onToggle(s)}
-            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full border-2 text-sm font-semibold transition-colors ${
+            className={`min-h-11 flex items-center gap-1.5 px-3.5 rounded-full border-2 text-sm font-semibold transition-colors ${
               on
                 ? 'bg-[#F5A800] border-[#F5A800] text-black'
                 : 'border-border text-foreground/85 hover:border-[#F5A800]/60 bg-background'
@@ -46,7 +47,7 @@ function Chips({
           >
             {on && <Check size={13} />} {s.name.fr.trim()}
             {s.price > 0 && (
-              <span className={`font-black text-xs ${on ? 'text-black/60' : 'text-[#F5A800]'}`}>+{s.price} DT</span>
+              <span className={`font-black text-xs ${on ? 'text-black/70' : 'text-brand'}`}>{formatDT(s.price, { sign: true })}</span>
             )}
           </button>
         )
@@ -65,11 +66,14 @@ export default function DishSheet({
   category,
   onAdd,
   onClose,
+  closedUntil = null,
 }: {
   product: BuilderProduct
   category: BuilderCategory
   onAdd: (pick: BuilderPick) => void
   onClose: () => void
+  /** Restaurant fermé : l'heure d'ouverture, pour dire quand la commande partira. */
+  closedUntil?: string | null
 }) {
   const groups = useMemo(() => groupSupplements(product.supplements), [product])
   const [sauces, setSauces] = useState<BuilderSupplement[]>([])
@@ -105,7 +109,7 @@ export default function DishSheet({
           type="button"
           onClick={onClose}
           aria-label="Fermer"
-          className="absolute top-3 right-3 z-10 w-9 h-9 rounded-full grid place-items-center bg-black/55 text-white backdrop-blur-md hover:bg-black/75 transition-colors"
+          className="absolute top-3 right-3 z-10 w-11 h-11 rounded-full grid place-items-center bg-black/55 text-white backdrop-blur-md hover:bg-black/75 transition-colors"
         >
           <X size={18} />
         </button>
@@ -122,20 +126,31 @@ export default function DishSheet({
 
           <div className="p-5 sm:p-7 space-y-6">
             <div>
-              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-[#F5A800]">
+              <p className="text-[11px] font-black uppercase tracking-[0.18em] text-brand">
                 {category.emoji} {category.name.fr}
               </p>
               <div className="flex items-start justify-between gap-3 mt-1.5 sm:pr-10">
                 <h3 className="font-display text-3xl sm:text-4xl leading-[1.05]">{name}</h3>
                 <ShareButton
                   title={`${name} — Mr. Burritos`}
-                  description={`${product.description.fr || category.name.fr} · ${product.price.toFixed(2)} DT`}
+                  description={`${product.description.fr || category.name.fr} · ${formatDT(product.price)}`}
                   image={product.image}
                   url={`/#menu-${category.slug}`}
-                  className="shrink-0 mt-1 w-9 h-9 rounded-full grid place-items-center border border-border text-muted-foreground hover:text-[#F5A800] hover:border-[#F5A800]/50 transition-colors"
+                  className="shrink-0 w-11 h-11 rounded-full grid place-items-center border border-border text-muted-foreground hover:text-brand hover:border-[#F5A800]/50 transition-colors"
                 />
               </div>
-              <p className="mt-2 text-xl font-black text-[#F5A800] tabular-nums">{product.price.toFixed(2)} DT</p>
+              <p className="mt-2 text-xl font-black text-brand tabular-nums">
+                {formatDT(product.price)}
+                {product.compareAtPrice && product.compareAtPrice > product.price ? (
+                  <>
+                    {' '}
+                    <s className="text-sm font-bold text-muted-foreground">{formatDT(product.compareAtPrice)}</s>
+                    <span className="ml-2 text-xs font-black text-emerald-700 dark:text-emerald-400">
+                      Économisez {formatDT(product.compareAtPrice - product.price)}
+                    </span>
+                  </>
+                ) : null}
+              </p>
               {product.description.fr && (
                 <p className="mt-3 text-sm text-muted-foreground leading-relaxed">{product.description.fr}</p>
               )}
@@ -171,19 +186,19 @@ export default function DishSheet({
               type="button"
               onClick={() => setQuantity((q) => Math.max(1, q - 1))}
               disabled={quantity <= 1}
-              className="p-2 rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
+              className="w-11 h-11 grid place-items-center rounded-lg hover:bg-muted disabled:opacity-30 transition-colors"
               aria-label="Réduire la quantité"
             >
-              <Minus size={14} />
+              <Minus size={16} />
             </button>
             <span className="w-7 text-center font-black tabular-nums">{quantity}</span>
             <button
               type="button"
               onClick={() => setQuantity((q) => Math.min(99, q + 1))}
-              className="p-2 rounded-lg hover:bg-muted transition-colors"
+              className="w-11 h-11 grid place-items-center rounded-lg hover:bg-muted transition-colors"
               aria-label="Augmenter la quantité"
             >
-              <Plus size={14} />
+              <Plus size={16} />
             </button>
           </div>
           <button
@@ -191,8 +206,12 @@ export default function DishSheet({
             onClick={confirm}
             className="flex-1 flex items-center justify-center gap-2 bg-[#F5A800] hover:bg-[#FF6B00] text-black font-black px-5 py-3.5 rounded-xl transition-colors text-sm active:scale-[0.98]"
           >
-            <ShoppingBag size={16} /> Ajouter
-            <span className="tabular-nums">· {total.toFixed(2)} DT</span>
+            <ShoppingBag size={16} />
+            {closedUntil ? (
+              <span>Ajouter au panier · envoi dès {closedUntil}</span>
+            ) : (
+              <span className="tabular-nums">Ajouter · {formatDT(total)}</span>
+            )}
           </button>
         </div>
       </div>

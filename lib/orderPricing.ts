@@ -4,6 +4,7 @@ import { Product } from './models/Product'
 import { Supplement } from './models/Supplement'
 import { normalizeOrderSource, type OrderSource } from './orderSource'
 import { normalizeTnPhone } from './phone'
+import { deliveryQuote, normalizeName, normalizeRef } from './commerce'
 import { applyWebDiscounts, normalizePromoCode, type PromoTerms } from './promo'
 import { checkPromoCode, type PromoCheck } from './promoCodes'
 
@@ -81,6 +82,11 @@ export interface PricedOrder {
     status: 'pending' | 'confirmed' | 'preparing' | 'delivered'
     deliveryCompany: { companyId: unknown; name: string; commission: number; paid: boolean }
     deliveryFee: number
+    deliveryZone: string
+    /** `total` comprend `deliveryFee` — voir lib/models/Order. */
+    feeInTotal: true
+    /** Provenance du client (« sac », « insta »…), site uniquement. */
+    ref: string
     reference: string
     notes: string
     preparationDuration: number
@@ -317,7 +323,29 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
     const on = num(s.amount) ?? 0
     if (on > 0) surcharge = { label: text(s.label, 60) || 'Supplement', amount: round2(Math.min(on, MAX_AMOUNT)) }
   }
-  const deliveryFee = counter ? round2(clamp(num(body.deliveryFee) ?? 0, 0, MAX_DELIVERY_FEE)) : 0
+  // La livraison. La caisse tape son frais ; le site, lui, ne l'envoie jamais :
+  // il est déduit ici du quartier choisi et de la nourriture une fois remisée
+  // (lib/commerce), la même fonction que celle qui l'affiche au panier. Un
+  // « Autre quartier », ou un ancien panier qui n'envoie pas de quartier, part
+  // à 0 : le restaurant rappelle et le fixe en confirmant la commande.
+  let deliveryFee = 0
+  let deliveryZone = ''
+  if (counter) {
+    deliveryFee = round2(clamp(num(body.deliveryFee) ?? 0, 0, MAX_DELIVERY_FEE))
+  } else if (source === 'website' && type === 'delivery') {
+    const quote = deliveryQuote(body.deliveryZone, round2(subtotal - discount.amount))
+    deliveryZone = quote.zone?.label ?? ''
+    deliveryFee = round2(clamp(quote.fee, 0, MAX_DELIVERY_FEE))
+    // Le quartier en tête de l'adresse : la caisse, le back-office et l'appli
+    // livreur lisent l'adresse, aucun n'a besoin d'un écran de plus pour le voir.
+    // « Autre quartier » le dit aussi : c'est au restaurant d'appeler pour le frais.
+    if (quote.zone) {
+      const tag = quote.confirmByPhone ? `${quote.zone.label} (frais à confirmer)` : quote.zone.label
+      if (!normalizeName(customer.address).includes(normalizeName(quote.zone.label))) {
+        customer.address = `${tag} — ${customer.address}`.slice(0, 300)
+      }
+    }
+  }
   const total = round2(subtotal - discount.amount + surcharge.amount + deliveryFee)
 
   // ── Status ───────────────────────────────────────────────────────────────
@@ -363,6 +391,9 @@ export async function priceOrder(body: Record<string, unknown>): Promise<PricedO
       status,
       deliveryCompany,
       deliveryFee,
+      deliveryZone,
+      feeInTotal: true,
+      ref: source === 'website' ? normalizeRef(body.ref) : '',
       reference: counter ? text(body.reference, 60) : '',
       notes: text(body.notes, 500),
       preparationDuration: clamp(Math.round(num(body.preparationDuration) ?? 30), 1, 180),

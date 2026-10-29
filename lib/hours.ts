@@ -26,6 +26,8 @@ export interface OpenState {
   open: boolean
   /** "23:00" when open, "11:00" when closed. */
   at: string
+  /** Ouvert : minutes avant la fermeture, pour le bandeau « on ferme bientôt ». */
+  minutesLeft?: number
 }
 
 const hhmm = (h: number) => `${String(h % 24).padStart(2, '0')}:00`
@@ -57,7 +59,7 @@ export function openStateAt(now: Date): OpenState {
   const isOpen = nowMin >= today.open * 60 && nowMin < today.close * 60
 
   return isOpen
-    ? { open: true, at: hhmm(today.close) }
+    ? { open: true, at: hhmm(today.close), minutesLeft: today.close * 60 - nowMin }
     : { open: false, at: hhmm(today.open) }
 }
 

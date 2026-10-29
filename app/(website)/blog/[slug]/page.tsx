@@ -57,7 +57,7 @@ export default async function BlogPostPage({ params }: Props) {
       <div className="max-w-3xl mx-auto px-4 sm:px-6">
 
         {/* Back link */}
-        <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-[#F5A800] font-semibold mt-8 hover:underline">
+        <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm text-brand font-semibold mt-8 hover:underline">
           ← Retour au blog
         </Link>
 
@@ -65,7 +65,7 @@ export default async function BlogPostPage({ params }: Props) {
         {p.tags?.length > 0 && (
           <div className="flex flex-wrap gap-2 mt-4">
             {p.tags.map((tag) => (
-              <span key={tag} className="bg-[#F5A800]/10 text-[#F5A800] text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">
+              <span key={tag} className="bg-[#F5A800]/10 text-brand text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">
                 {tag}
               </span>
             ))}

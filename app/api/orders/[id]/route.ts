@@ -45,7 +45,19 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
       updateData.confirmedAt = new Date()
       if (preparationDuration) updateData.preparationDuration = preparationDuration
       if (typeof deliveryFee === 'number') {
-        updateData.deliveryFee = Math.max(0, Math.min(10, deliveryFee))
+        const fee = Math.round(Math.max(0, Math.min(10, deliveryFee)) * 100) / 100
+        updateData.deliveryFee = fee
+        // Une commande dont le total comprend la livraison (lib/models/Order
+        // feeInTotal) garde un total juste : l'ancien frais en sort, le
+        // nouveau y entre — sinon la recette compterait faux.
+        const current = (await Order.findById(id).select('total deliveryFee feeInTotal').lean()) as {
+          total?: number
+          deliveryFee?: number
+          feeInTotal?: boolean
+        } | null
+        if (current?.feeInTotal) {
+          updateData.total = Math.round(((current.total ?? 0) - (current.deliveryFee ?? 0) + fee) * 100) / 100
+        }
       }
     }
 

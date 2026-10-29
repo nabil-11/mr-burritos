@@ -15,6 +15,7 @@ const toProduct = (d: Doc): BuilderProduct => ({
   description: (d.description ?? { fr: '' }) as { fr: string },
   price: d.price as number,
   image: String(d.image ?? ''),
+  compareAtPrice: typeof d.compareAtPrice === 'number' && d.compareAtPrice > 0 ? d.compareAtPrice : null,
   supplements: (d.supplements ?? []) as BuilderProduct['supplements'],
 })
 

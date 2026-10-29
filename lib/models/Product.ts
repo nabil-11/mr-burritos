@@ -11,6 +11,10 @@ const ProductSchema = new Schema(
       fr: { type: String, default: '' },
     },
     price: { type: Number, required: true, min: 0 },
+    // Prix barré facultatif (« au lieu de ») : le site affiche « 16,50 DT
+    // ~~19,50 DT~~ · Économisez 3,00 DT » quand il dépasse le prix. Vide ou
+    // inférieur au prix : rien ne s'affiche. N'entre dans aucun calcul.
+    compareAtPrice: { type: Number, default: null, min: 0 },
     image: { type: String, default: '' },
     category: { type: Schema.Types.ObjectId, ref: 'Category', required: true },
     supplements: [{ type: Schema.Types.ObjectId, ref: 'Supplement' }],

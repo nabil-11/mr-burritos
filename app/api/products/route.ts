@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { revalidatePath } from 'next/cache'
 import { connectDB } from '@/lib/mongodb'
 import { Product } from '@/lib/models/index'
 import { requireAuth } from '@/lib/auth'
@@ -19,6 +20,7 @@ export async function POST(req: NextRequest) {
     await connectDB()
     const body = await req.json()
     const product = await Product.create(body)
+    revalidatePath('/')
     return NextResponse.json(product, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Erreur serveur'

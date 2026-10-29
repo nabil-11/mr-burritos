@@ -1,13 +1,18 @@
 'use client'
 
 import Link from 'next/link'
+import { useEffect, useState } from 'react'
 import { ShoppingBag, ArrowRight } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useCart } from '@/contexts/CartContext'
 import { useCartQuote } from '@/hooks/useCartQuote'
 import { WEB_PROMO, applyWebDiscounts } from '@/lib/promo'
+import { formatDT } from '@/lib/format'
+import { loadCustomer } from '@/lib/webMemory'
 import CartLine from './CartLine'
+import CartSuggestions from './CartSuggestions'
 import DiscountLines from './DiscountLines'
+import FreeDeliveryBar from './FreeDeliveryBar'
 
 /**
  * The basket, one tap from anywhere. Opened by the navbar, the mobile cart bar
@@ -19,13 +24,21 @@ export default function CartDrawer() {
   const applied = applyWebDiscounts(total, promo?.terms)
   const payable = applied.total
   const close = () => setDrawerOpen(false)
+  // La jauge de livraison offerte ne parle qu'à qui se fait livrer : un client
+  // qui a pris « à emporter » la dernière fois ne la voit pas.
+  const [pickup, setPickup] = useState(false)
+  useEffect(() => {
+    if (!drawerOpen) return
+    const id = setTimeout(() => setPickup(loadCustomer()?.type === 'pickup'), 0)
+    return () => clearTimeout(id)
+  }, [drawerOpen])
 
   return (
     <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
       <SheetContent side="right" className="data-[side=right]:w-full data-[side=right]:sm:max-w-md flex flex-col gap-0 p-0 bg-background">
         <SheetHeader className="px-5 py-4 border-b border-border">
           <SheetTitle className="flex items-center gap-2 text-foreground">
-            <ShoppingBag size={18} className="text-[#F5A800]" /> Mon panier
+            <ShoppingBag size={18} className="text-brand" /> Mon panier
             {itemCount > 0 && (
               <span className="ml-1 rounded-full bg-[#F5A800] text-black text-[11px] font-black px-2 py-0.5 tabular-nums">
                 {itemCount}
@@ -58,24 +71,28 @@ export default function CartDrawer() {
               <Link
                 href="/#menu"
                 onClick={close}
-                className="block text-center text-sm font-bold text-muted-foreground hover:text-[#F5A800] py-2 transition-colors"
+                className="block text-center text-sm font-bold text-muted-foreground hover:text-brand py-2 transition-colors"
               >
                 + Ajouter autre chose
               </Link>
+              <CartSuggestions active={drawerOpen} />
             </div>
 
             <div className="border-t border-border px-5 pt-4 pb-5 space-y-2 bg-card">
               <div className="flex justify-between text-sm text-muted-foreground">
                 <span>Sous-total</span>
-                <span className="tabular-nums">{total.toFixed(2)} DT</span>
+                <span className="tabular-nums">{formatDT(total)}</span>
               </div>
               <div className="space-y-2 text-sm">
                 <DiscountLines applied={applied} terms={promo?.terms ?? null} />
               </div>
               <div className="flex justify-between items-baseline pt-1">
-                <span className="font-black text-foreground">Total</span>
-                <span className="font-black text-xl text-[#F5A800] tabular-nums">{payable.toFixed(2)} DT</span>
+                <span className="font-black text-foreground">
+                  Total <span className="text-xs font-semibold text-muted-foreground">hors livraison</span>
+                </span>
+                <span className="font-black text-xl text-brand tabular-nums">{formatDT(payable)}</span>
               </div>
+              {!pickup && <FreeDeliveryBar foodTotal={payable} />}
               {blocking && (
                 <p className="text-xs font-bold text-red-600 dark:text-red-400">
                   Retirez les articles indisponibles pour commander.

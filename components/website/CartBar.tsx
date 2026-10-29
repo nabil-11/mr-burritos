@@ -1,23 +1,32 @@
 'use client'
 
+import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ShoppingBag, ChevronRight } from 'lucide-react'
 import { useCart } from '@/contexts/CartContext'
+import { useOpenState } from '@/hooks/useOpenState'
 import { applyWebDiscounts } from '@/lib/promo'
+import { formatDT } from '@/lib/format'
 
 /**
  * On a phone the navbar's cart button sits at the top while the thumb is at
  * the bottom, and a composed tacos lands in a cart nobody sees. Once something
  * is in the basket, this bar keeps it in reach — count, promo total, one tap
- * to open. Hidden where it would repeat the page itself (the checkout, an
- * order being tracked) and from `sm` up, where the navbar is close enough.
+ * to the checkout itself (the drawer would only be one more step). Hidden
+ * where it would repeat the page itself (the checkout, an order being
+ * tracked) and from `sm` up, where the navbar is close enough.
+ *
+ * Restaurant fermé : la barre le dit (« Ouvre à 11:00 ») — le panier reste,
+ * il partira à l'ouverture.
  */
 export default function CartBar() {
-  const { itemCount, total, hydrated, drawerOpen, setDrawerOpen, promo } = useCart()
+  const { itemCount, total, hydrated, drawerOpen, promo } = useCart()
+  const open = useOpenState()
   const pathname = usePathname()
   const hidden = !hydrated || itemCount === 0 || pathname === '/cart' || pathname.startsWith('/order/')
   if (hidden) return null
   const { total: payable } = applyWebDiscounts(total, promo?.terms)
+  const closed = open !== null && !open.open
 
   return (
     <>
@@ -28,9 +37,11 @@ export default function CartBar() {
           drawerOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'
         }`}
       >
-        <button
-          onClick={() => setDrawerOpen(true)}
-          className="w-full flex items-center gap-3 bg-[#F5A800] active:bg-[#FF6B00] text-black rounded-2xl pl-3 pr-4 py-3 shadow-xl shadow-black/25"
+        <Link
+          href="/cart"
+          className={`w-full flex items-center gap-3 rounded-2xl pl-3 pr-4 py-3 shadow-xl shadow-black/25 ${
+            closed ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-900' : 'bg-[#F5A800] active:bg-[#FF6B00] text-black'
+          }`}
         >
           <span className="relative grid place-items-center w-9 h-9 rounded-xl bg-black/15">
             <ShoppingBag size={17} />
@@ -38,10 +49,10 @@ export default function CartBar() {
               {itemCount}
             </span>
           </span>
-          <span className="font-black text-sm">Voir le panier</span>
-          <span className="ml-auto font-black tabular-nums">{payable.toFixed(2)} DT</span>
+          <span className="font-black text-sm">{closed ? `Ouvre à ${open?.at} · voir mon panier` : 'Voir le panier'}</span>
+          <span className="ml-auto font-black tabular-nums whitespace-nowrap">{formatDT(payable)}</span>
           <ChevronRight size={18} className="-mr-1" />
-        </button>
+        </Link>
       </div>
     </>
   )

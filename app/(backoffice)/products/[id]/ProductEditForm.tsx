@@ -21,6 +21,7 @@ interface ProductData {
   name: { fr: string; ar: string }
   description: { fr: string; ar: string }
   price: number
+  compareAtPrice?: number | null
   image: string
   category: string
   supplements: string[]
@@ -43,6 +44,7 @@ export default function ProductEditForm({
     descFr: product?.description.fr ?? '',
     descAr: product?.description.ar ?? '',
     price: product?.price?.toString() ?? '0',
+    compareAtPrice: product?.compareAtPrice ? String(product.compareAtPrice) : '',
     image: product?.image ?? '',
     category: product?.category ?? '',
     supplements: product?.supplements ?? [],
@@ -64,6 +66,8 @@ export default function ProductEditForm({
       name: { fr: form.nameFr, ar: form.nameAr },
       description: { fr: form.descFr, ar: form.descAr },
       price: Number(form.price),
+      // Vide : pas de prix barré. Le site ne l'affiche que s'il dépasse le prix.
+      compareAtPrice: form.compareAtPrice.trim() ? Number(form.compareAtPrice.replace(',', '.')) : null,
       image: form.image,
       category: form.category,
       supplements: form.supplements,
@@ -101,6 +105,20 @@ export default function ProductEditForm({
           <div className="space-y-1">
             <Label>Prix (DT)</Label>
             <Input type="number" step="0.1" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required />
+            <Label className="pt-2">
+              Prix barré (DT) <span className="font-normal text-muted-foreground">— facultatif</span>
+            </Label>
+            <Input
+              type="number"
+              step="0.1"
+              min="0"
+              placeholder="ex. 19.50"
+              value={form.compareAtPrice}
+              onChange={(e) => setForm({ ...form, compareAtPrice: e.target.value })}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Affiché barré sur le site, avec « Économisez … », s&apos;il dépasse le prix. Laisser vide sinon.
+            </p>
           </div>
           <div className="space-y-1">
             <Label>Catégorie</Label>

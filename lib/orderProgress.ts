@@ -19,6 +19,10 @@ export interface TrackedOrder {
   status: OrderStatus | string
   total: number
   deliveryFee?: number
+  /** Le total comprend déjà le frais de livraison (commandes récentes). */
+  feeInTotal?: boolean
+  /** Le quartier choisi, quand le site l'a demandé. */
+  deliveryZone?: string
   type: 'delivery' | 'pickup' | string
   createdAt: string
   confirmedAt?: string | null
@@ -31,8 +35,11 @@ const SHOP_TZ = 'Africa/Tunis'
  * What the customer actually hands over: the food, plus the delivery fee once
  * the shop has set it. The tracker and the order page must not disagree.
  */
-export const payableTotal = (order: Pick<TrackedOrder, 'total' | 'deliveryFee' | 'type'>) =>
-  Math.round((Number(order.total ?? 0) + (order.type === 'delivery' ? Number(order.deliveryFee ?? 0) : 0)) * 100) / 100
+export const payableTotal = (order: Pick<TrackedOrder, 'total' | 'deliveryFee' | 'type' | 'feeInTotal'>) =>
+  // Depuis que le site facture la livraison, le total la comprend déjà.
+  order.feeInTotal
+    ? Math.round(Number(order.total ?? 0) * 100) / 100
+    : Math.round((Number(order.total ?? 0) + (order.type === 'delivery' ? Number(order.deliveryFee ?? 0) : 0)) * 100) / 100
 
 /** Nothing changes on an order once it is here, so the tracker stops asking. */
 export const isFinal = (status: string) => status === 'delivered' || status === 'cancelled'

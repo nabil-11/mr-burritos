@@ -41,6 +41,8 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* Le jaune de la marque en TEXTE : ambre foncé sur fond clair (contraste AA), jaune vif sur fond sombre. */
+  --color-brand: var(--brand-text);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -55,6 +57,8 @@
   --brand-yellow: #F5A800;
   --brand-dark: #1A1A1A;
   --brand-orange: #FF6B00;
+  /* amber-700 : le #F5A800 sur blanc ne fait que 2:1, illisible pour un prix. */
+  --brand-text: #b45309;
 
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -92,6 +96,7 @@
 }
 
 .dark {
+  --brand-text: #F5A800;
   --background: oklch(0.145 0 0);
   --foreground: oklch(0.985 0 0);
   --card: oklch(0.205 0 0);
@@ -130,6 +135,7 @@
    website reads the tokens below instead of the dark ones. */
 .theme-light {
   color-scheme: light;
+  --brand-text: #b45309;
   color: var(--foreground);
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);

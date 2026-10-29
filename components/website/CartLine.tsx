@@ -4,6 +4,7 @@ import Image from 'next/image'
 import { Minus, Plus, Trash2, AlertTriangle } from 'lucide-react'
 import { CartItem, MAX_LINE_QTY, lineUnitPrice, useCart } from '@/contexts/CartContext'
 import { describeSupplements } from '@/lib/cartText'
+import { formatDT } from '@/lib/format'
 
 export default function CartLine({
   item,
@@ -37,7 +38,7 @@ export default function CartLine({
         <div className="flex items-start justify-between gap-2">
           <p className="font-bold text-sm text-foreground leading-tight">{item.name.fr}</p>
           <p className="font-black text-sm text-foreground tabular-nums whitespace-nowrap">
-            {lineTotal.toFixed(2)} DT
+            {formatDT(lineTotal)}
           </p>
         </div>
         {details && <p className="text-xs text-muted-foreground mt-0.5 leading-snug">{details}</p>}
@@ -59,7 +60,7 @@ export default function CartLine({
             <div className="flex items-center rounded-full border border-border bg-background">
               <button
                 onClick={() => updateQty(item.id, item.quantity - 1)}
-                className="w-8 h-8 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                className="w-11 h-11 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 aria-label={item.quantity > 1 ? `Retirer un ${item.name.fr}` : `Supprimer ${item.name.fr}`}
               >
                 {item.quantity > 1 ? <Minus size={13} /> : <Trash2 size={13} />}
@@ -70,7 +71,7 @@ export default function CartLine({
               <button
                 onClick={() => updateQty(item.id, item.quantity + 1)}
                 disabled={item.quantity >= MAX_LINE_QTY}
-                className="w-8 h-8 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
+                className="w-11 h-11 grid place-items-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted disabled:opacity-30 transition-colors"
                 aria-label={`Ajouter un ${item.name.fr}`}
               >
                 <Plus size={13} />
@@ -78,7 +79,7 @@ export default function CartLine({
             </div>
             {item.quantity > 1 && (
               <span className="text-[11px] text-muted-foreground tabular-nums">
-                {lineUnitPrice(item).toFixed(2)} DT / pièce
+                {formatDT(lineUnitPrice(item))} / pièce
               </span>
             )}
           </div>
