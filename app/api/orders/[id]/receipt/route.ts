@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import { ORDER_SOURCE_SHORT, isOrderSource } from '@/lib/orderSource'
+import { collapseOrderSupplements, supplementPortionsLabel } from '@/lib/supplements'
 import { renderWebPromoCard } from '@/lib/receiptPromoCard'
 import { commissionOf, companyOf, isPaid, moneyPocket, netOf, type PlatformOrderLike } from '@/lib/platformSettlement'
 
@@ -250,9 +251,9 @@ export async function GET(req: NextRequest, { params }: Ctx) {
     const unit = Number(item.unitPrice ?? 0)
     const suppTotal = (item.supplements ?? []).reduce((a, x) => a + Number(x.price ?? 0), 0)
     const lineTotal = (unit + suppTotal) * qty
-    const suppList = (item.supplements ?? [])
-      .filter(s => s.name?.fr || s.name?.ar)
-      .map(s => `+ ${esc(s.name?.fr ?? s.name?.ar)}${Number(s.price) > 0 ? ` (${Number(s.price).toFixed(2)})` : ''}`)
+    // Repeated portions (2x Oeuf) print as one row; totals above stay on the raw list.
+    const suppList = collapseOrderSupplements(item.supplements)
+      .map(g => `+ ${esc(supplementPortionsLabel(g))}${g.total > 0 ? ` (${g.total.toFixed(2)})` : ''}`)
       .join('<br>')
     // Supplements get their own full-width rows rather than living inside the
     // narrow name column: on a 48mm roll that column is ~16 characters, so

@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/mongodb'
 import { Order } from '@/lib/models/Order'
 import PrintTrigger from './PrintTrigger'
+import { collapseOrderSupplements, supplementPortionsLabel } from '@/lib/supplements'
 import { orderSourceIcon, orderSourceLabel } from '@/lib/orderSource'
 
 type Props = { params: Promise<{ id: string }> }
@@ -107,6 +108,7 @@ export default async function PrintOrderPage({ params }: Props) {
                 const supps = item.supplements as { name: { fr: string }; price: number }[]
                 const suppTotal = supps?.reduce((s, x) => s + x.price, 0) ?? 0
                 const lineTotal = (unit + suppTotal) * qty
+                const suppLabels = collapseOrderSupplements(supps).map(supplementPortionsLabel)
 
                 return (
                   <div key={i}>
@@ -114,9 +116,9 @@ export default async function PrintOrderPage({ params }: Props) {
                       <span className="flex-1 truncate">{qty}× {nameFr}</span>
                       <span className="ml-2 shrink-0">{lineTotal.toFixed(2)} DT</span>
                     </div>
-                    {supps?.length > 0 && (
+                    {suppLabels.length > 0 && (
                       <div className="text-[10px] text-gray-400 pl-4">
-                        + {supps.map((s) => s.name.fr).join(', ')}
+                        + {suppLabels.join(', ')}
                       </div>
                     )}
                     {!!String(item.notes) && (

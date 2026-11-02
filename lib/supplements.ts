@@ -55,6 +55,53 @@ export function meatQuotaFor<T extends SupplementLike>(size: T | undefined): num
   return size?.meatCount ?? 1
 }
 
+/** A supplement as stored on an order item (names may be fr-only or ar-only). */
+export interface OrderSupplementLike {
+  name?: { fr?: string; ar?: string }
+  price?: number
+}
+
+export interface SupplementPortions {
+  name: string
+  /** Price of one portion. */
+  price: number
+  count: number
+  /** Price of the whole group (price x count). */
+  total: number
+}
+
+/**
+ * Collapse the repeated portions of one order item for a printed ticket: the
+ * till posts a double or triple extra once per portion, and three identical
+ * rows are easy to misread in a rush. Same name and same price group together,
+ * in first-appearance order; the same name at another price stays separate.
+ * Display only: pricing keeps summing the raw list. Unnamed entries are
+ * skipped, as the kitchen ticket always did.
+ */
+export function collapseOrderSupplements(list: OrderSupplementLike[] | undefined): SupplementPortions[] {
+  const groups = new Map<string, SupplementPortions>()
+  for (const s of list ?? []) {
+    const name = s?.name?.fr || s?.name?.ar
+    if (!name) continue
+    const n = Number(s.price)
+    const price = Number.isFinite(n) ? n : 0
+    const key = `${price}\u0000${name}`
+    const g = groups.get(key)
+    if (g) {
+      g.count += 1
+      g.total += price
+    } else {
+      groups.set(key, { name, price, count: 1, total: price })
+    }
+  }
+  return [...groups.values()]
+}
+
+/** "Oeuf" for one portion, "2x Oeuf" for several (plain ASCII x, like x${qty}). */
+export function supplementPortionsLabel(g: SupplementPortions): string {
+  return g.count > 1 ? `${g.count}x ${g.name}` : g.name
+}
+
 /** Running total for a product configured in the builder. */
 export function configuredPrice<T extends SupplementLike>(basePrice: number, selected: T[]): number {
   return basePrice + selected.reduce((sum, s) => sum + s.price, 0)
