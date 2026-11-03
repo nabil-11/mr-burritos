@@ -12,6 +12,7 @@
     "compare-prices": "tsx scripts/set-compare-prices.ts",
     "backfill-order-source": "tsx scripts/backfill-order-source.ts",
     "check:alerts": "tsx scripts/check-alerts.ts",
+    "check:team": "tsx scripts/check-team.ts",
     "promo-card": "tsx scripts/generate-promo-card.ts",
     "flyers": "tsx scripts/generate-flyers.ts"
   },

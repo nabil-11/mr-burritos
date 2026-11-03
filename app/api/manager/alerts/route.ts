@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { connectDB } from '@/lib/mongodb'
-import { User } from '@/lib/models/User'
 import { Order } from '@/lib/models/Order'
 import { Recette } from '@/lib/models/Recette'
-import { getTokenFromRequest } from '@/lib/auth'
+import { failJson as fail, requireManager } from '@/lib/managerAuth'
 import { addDays, dayOf, startOfDay } from '@/lib/reportTime'
 import { cashDifference, recetteTotals } from '@/lib/recette'
 import {
@@ -33,10 +31,6 @@ export const dynamic = 'force-dynamic'
 
 const TZ = 'Africa/Tunis'
 const LOOKBACK_DAYS = 7
-const ALLOWED_ROLES = ['admin', 'manager']
-
-const fail = (status: number, code: string, error: string) =>
-  NextResponse.json({ error, code }, { status, headers: { 'Cache-Control': 'no-store' } })
 
 const ISO = /^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}(:\d{2}(\.\d{1,9})?)?(Z|[+-]\d{2}:?\d{2})?)?$/
 
@@ -49,17 +43,9 @@ function parseSince(raw: string | null): Date | null | 'invalid' {
 
 export async function GET(req: NextRequest) {
   try {
-    // Who is asking — token first, then the account itself, as /api/auth/me does:
-    // a closed account stops seeing alerts now, not when the token expires.
-    const payload = getTokenFromRequest(req)
-    if (!payload) return fail(401, 'unauthorized', 'Session expirée')
-
-    await connectDB()
-    const user = await User.findOne({ _id: payload.userId, isActive: true })
-      .select('role')
-      .lean<{ role?: string } | null>()
-    if (!user) return fail(401, 'unauthorized', 'Compte introuvable')
-    if (!ALLOWED_ROLES.includes(String(user.role))) return fail(403, 'forbidden', 'Accès réservé aux managers')
+    // Who is asking: lib/managerAuth (token, then the account re-read, role from the DB).
+    const who = await requireManager(req)
+    if (who instanceof Response) return who
 
     const since = parseSince(req.nextUrl.searchParams.get('since'))
     if (since === 'invalid') return fail(400, 'bad_request', 'Paramètre since invalide : date ISO attendue')
