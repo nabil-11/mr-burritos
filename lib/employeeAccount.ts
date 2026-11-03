@@ -224,6 +224,22 @@ export async function overview(month: string, opts: { activeOnly?: boolean } = {
   })
 }
 
+export interface EmployeeLines {
+  employee: EmployeeView
+  /** Toutes les lignes, annulées comprises, les plus récentes d'abord. */
+  lines: AccountLine[]
+}
+
+/** Tous les employés avec toutes leurs lignes — lues par le même chargement que le compte. */
+export async function linesOfAll(): Promise<EmployeeLines[]> {
+  await connectDB()
+  const [docs, lines] = await Promise.all([
+    Employee.find({}).sort({ isActive: -1, name: 1 }).lean() as Promise<EmployeeLean[]>,
+    loadLines(),
+  ])
+  return docs.map((doc) => ({ employee: viewOf(doc), lines: lines.get(String(doc._id)) ?? [] }))
+}
+
 /** Vrai dès qu'une ligne, même annulée, le concerne : il ne peut plus être supprimé. */
 export async function hasHistory(employeeId: string): Promise<boolean> {
   if (!mongoose.isValidObjectId(employeeId)) return false
