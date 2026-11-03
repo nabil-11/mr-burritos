@@ -422,12 +422,12 @@ export async function recetteTotals(recette: {
   closedAt?: Date | string | null
   totals?: RecetteTotals | null
   mouvements?: MovementLike[] | null
-}): Promise<RecetteTotals> {
+}, opts: { persist?: boolean } = {}): Promise<RecetteTotals> {
   if (recette.status === 'closed' && recette.totals) {
     const frozen = recette.totals as RecetteTotals & { toObject?: () => RecetteTotals }
     const plain = typeof frozen.toObject === 'function' ? frozen.toObject() : frozen
     if (typeof plain.platformCash === 'number') return normalizeTotals(plain)
-    return normalizeTotals(await withPlatformCash(recette, plain))
+    return normalizeTotals(await withPlatformCash(recette, plain, opts.persist !== false))
   }
   return computeTotals(
     (await recetteOrders(recette._id)) as OrderLike[],
@@ -446,15 +446,19 @@ export async function recetteTotals(recette: {
  */
 async function withPlatformCash(
   recette: { _id: unknown; closedAt?: Date | string | null; mouvements?: MovementLike[] | null },
-  frozen: RecetteTotals
+  frozen: RecetteTotals,
+  persist = true
 ): Promise<RecetteTotals> {
   const orders = (await recetteOrders(recette._id)) as OrderLike[]
   const platformCash = refrozenTotals(recette, orders).platformCash
   const cashExpected = round2((Number(frozen.cashExpected) || 0) + platformCash)
-  await Recette.updateOne(
-    { _id: recette._id, status: 'closed', 'totals.platformCash': { $exists: false } },
-    { $set: { 'totals.platformCash': platformCash, 'totals.cashExpected': cashExpected } }
-  ).catch(() => {})
+  // `persist: false` for read-only callers (manager alerts): same figures, no write.
+  if (persist) {
+    await Recette.updateOne(
+      { _id: recette._id, status: 'closed', 'totals.platformCash': { $exists: false } },
+      { $set: { 'totals.platformCash': platformCash, 'totals.cashExpected': cashExpected } }
+    ).catch(() => {})
+  }
   return { ...frozen, platformCash, cashExpected }
 }
 

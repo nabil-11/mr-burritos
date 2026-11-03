@@ -41,6 +41,11 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
 
     const updateData: Record<string, unknown> = { status }
 
+    // When the order reached this ending — read by the manager alerts.
+    if (status === 'ready') updateData.readyAt = new Date()
+    if (status === 'delivered') updateData.deliveredAt = new Date()
+    if (status === 'cancelled') updateData.cancelledAt = new Date()
+
     if (status === 'confirmed') {
       updateData.confirmedAt = new Date()
       if (preparationDuration) updateData.preparationDuration = preparationDuration

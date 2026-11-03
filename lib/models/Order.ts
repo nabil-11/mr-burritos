@@ -122,6 +122,16 @@ const OrderSchema = new Schema(
     reference: { type: String, default: '' },
     notes: { type: String, default: '' },
     confirmedAt: { type: Date },
+    // When each ending happened, stamped by whichever door moved the order
+    // there (status route, cancel route, recette correction, lazy sweeps).
+    // Absent on anything that ended before these existed: readers fall back to
+    // `updatedAt`, which is only an approximation.
+    readyAt: { type: Date },
+    deliveredAt: { type: Date },
+    cancelledAt: { type: Date },
+    // True when the overdue sweep closed this order as « livrée » on its own,
+    // rather than a person tapping it — what the manager alerts surface.
+    autoSettled: { type: Boolean, default: false },
     preparationDuration: { type: Number, default: 30 },
     // Set when the caisse takes an order in hand: it accepted the order and
     // started the preparation clock, so the same countdown that runs on-site

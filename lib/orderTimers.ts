@@ -1,6 +1,7 @@
 import { connectDB } from './mongodb'
 import { Order } from './models/Order'
 import type { OrderSource } from './orderSource'
+import { DEFAULT_PREP_MINUTES, readyDeadline } from './prepDeadline'
 
 /**
  * Preparation countdown for orders taken on the premises.
@@ -21,8 +22,7 @@ export const AUTO_READY_SOURCES: OrderSource[] = ['counter']
 /** Only orders leaving over the counter run a timer. */
 export const AUTO_READY_TYPE = 'pickup'
 
-/** Fallback when an order carries no explicit preparation time. */
-export const DEFAULT_PREP_MINUTES = 30
+export { DEFAULT_PREP_MINUTES }
 
 /** Statuses a countdown can still be running on. */
 const RUNNING = ['confirmed', 'preparing']
@@ -33,19 +33,7 @@ const RUNNING = ['confirmed', 'preparing']
  */
 export const LATE_GRACE_MS = 60 * 60 * 1000 // 1 hour
 
-/**
- * When the food is due. Counter orders are created already confirmed, and
- * `confirmedAt` is only written by the status route, so fall back to the
- * creation time — for these orders the two are the same instant anyway.
- */
-export function readyDeadline(
-  startedAt: Date | string | null | undefined,
-  preparationDuration: number | null | undefined
-): Date | null {
-  if (!startedAt) return null
-  const minutes = preparationDuration || DEFAULT_PREP_MINUTES
-  return new Date(new Date(startedAt).getTime() + minutes * 60_000)
-}
+export { readyDeadline }
 
 /**
  * The two ways an order ends up on a clock: it was taken on the premises, or
@@ -81,6 +69,7 @@ export function hasCountdown(
  */
 export async function autoReadyOnSiteOrders(): Promise<void> {
   await connectDB()
+  const now = new Date()
   await Order.updateMany(
     {
       $or: [
@@ -96,11 +85,11 @@ export async function autoReadyOnSiteOrders(): Promise<void> {
               { $multiply: [{ $ifNull: ['$preparationDuration', DEFAULT_PREP_MINUTES] }, 60_000] },
             ],
           },
-          new Date(),
+          now,
         ],
       },
     },
-    { $set: { status: 'ready' } }
+    { $set: { status: 'ready', readyAt: now } }
   )
 }
 
@@ -122,6 +111,7 @@ export async function autoReadyOnSiteOrders(): Promise<void> {
  */
 export async function autoSettleOverdueOrders(): Promise<void> {
   await connectDB()
+  const now = new Date()
   await Order.updateMany(
     {
       status: { $in: RUNNING },
@@ -135,10 +125,11 @@ export async function autoSettleOverdueOrders(): Promise<void> {
               LATE_GRACE_MS,
             ],
           },
-          new Date(),
+          now,
         ],
       },
     },
-    { $set: { status: 'delivered' } }
+    // `autoSettled` marks the close as the timeout's, not a person's.
+    { $set: { status: 'delivered', deliveredAt: now, autoSettled: true } }
   )
 }

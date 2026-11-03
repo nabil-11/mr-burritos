@@ -1,14 +1,9 @@
 # Handoff
 
-Goal: upgrade the till's UX, in `C:\Users\bdhna\Desktop\DEV\mr-burritos-order-desktop`. Sprint 1 is finished, QA ready, nothing committed.
-Done: one-screen composer, meat count sets size, editable cart lines, Reprendre la derniere, counted extras, Sans fromage, kitchen ticket grouping, light contrast, top bar, Versements rename. See `.bdh-stack/tasks.md`.
-Next step: ask the owner about the three pending decisions below. Then take the board's first open task, the Plateforme save emptying a pickup cart (`clearOrder()` in `src/App.tsx`).
-Pending owner decisions:
-- Commit both repos on `main`? The till's 8-file `platformCash` work is in the same working tree.
-- Deploy the server first, then build the till installer with `npm run dist`. Version is still 1.8.1.
-- Accent policy for on-screen strings: fix, or keep ASCII.
-Pending owner action: rotate the Firebase service account key. It was printed into a session on 2026-11-01 by mistake. It was never committed.
-Decisions: no combos until repeat frequency is measured on real orders. Sauces stay toggles. No maximum per extra. Kiosk keeps its wizard.
-Read first: `src/lib/composer.ts`, `src/components/ProductBuilder.tsx` in the till; `lib/supplements.ts:58-101` in the server repo.
-Do not redo: size-chip Enter is fine; an earlier "adds nothing" came from an invalid composition.
-Test rules: local Mongo and `next build` + `next start -p 3099` only. Never use port 3000, it is on production. Set the till's `apiBaseUrl` to 3099 before first load. `next build` left a test build in `.next/`.
+Goal: mr-burritos-manager, a read-only mobile app for owner/managers to audit orders, get alerts on late orders and problems, and see orders and recettes. App: `C:\Users\bdhna\Desktop\DEV\mr-burritos-manager` (Ionic Vue 9 md mode, Capacitor 8.6). Server: this repo.
+Done: sprint 2 on `.bdh-stack/tasks.md`. Server route `GET /api/manager/alerts` (admin|manager, writes nothing), order stamps `readyAt/deliveredAt/cancelledAt/autoSettled`, `npm run check:alerts`. App: Login, Alertes, Commandes, Recettes, Réglages; local notifications only while the app is open. QA and security passed after fixes. Nothing committed in either repo, server not deployed.
+Next step: sprint 3, background push. Needs from the owner first: `google-services.json` for app id `tn.mrburritos.manager`, the rotated Firebase service account key, and where the scheduled check runs (Vercel Cron if the plan allows per-minute, otherwise an external cron calling a secret-protected route). Then: manager-only token registration from the verified JWT, a check route that pushes new alert ids once (dedupe store), Android APK build (set `ANDROID_HOME` to `%LOCALAPPDATA%/Android/Sdk`).
+Decisions: Ionic `mode:'md'` + Material 3 tokens, no Vuetify (MUI is React-only). Defaults the owner may change: pending 10 min, late = deadline + 10 min, cash gap above 1 DT (`lib/managerAlerts.ts` constants); `info` alerts not in the badge; server-URL field only in dev builds; money printed like `lib/format.ts:12` (2 decimals).
+Read first: `lib/managerAlerts.ts`, `app/api/manager/alerts/route.ts`, app `src/notify/alerts.ts`, `src/notify/notifier.ts`, `src/api/client.ts`.
+Do not redo: do not send `since` from the app (it hid alerts older than 24 h). `register-token` has no auth today (`app/api/notifications/register-token/route.ts`); do not reuse it as is for managers. SSE `/api/orders/stream` is unreliable on Vercel.
+Test rules: local mongod 27099 + `next build` / `next start -p 3099`, app on Vite 5180. Never port 3000 or 5173, never Atlas, never print `.env`. Seed script: scratchpad of session 1dbdee97 (`seed-and-check-b.cjs`), may be gone; rewrite if so.

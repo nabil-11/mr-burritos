@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowLeft, Download, Monitor, Store, Bike } from 'lucide-react'
+import { ArrowLeft, Download, Monitor, Smartphone, Store, Bike } from 'lucide-react'
 import { staffApps } from '@/lib/downloads'
 import LoginForm from './LoginForm'
 
@@ -10,7 +10,15 @@ export const metadata: Metadata = {
   robots: { index: false, follow: false },
 }
 
-const ICONS = { store: Store, bike: Bike, monitor: Monitor }
+const ICONS = { store: Store, bike: Bike, monitor: Monitor, smartphone: Smartphone }
+
+/**
+ * Forcé statique : le scan de public/downloads se fait au build, quand le
+ * dossier existe. Sur Vercel, public/ est servi par le CDN et n'est pas
+ * garanti dans le système de fichiers de la fonction : un rendu à la demande
+ * ferait disparaître les liens.
+ */
+export const dynamic = 'force-static'
 
 /**
  * The staff's way in: sign in to the back office, or fetch the till. The
@@ -39,11 +47,11 @@ export default function LoginPage() {
           {apps.map((a) => {
             const Icon = ICONS[a.icon]
             return (
+              <div key={a.href}>
               <a
-                key={a.href}
                 href={a.href}
                 download
-                className="flex items-center gap-3 p-3 rounded-2xl border border-white/10 bg-white/5 hover:border-[#F5A800]/50 transition-colors group"
+                className="flex items-center gap-3 p-3 min-h-11 rounded-2xl border border-white/10 bg-white/5 hover:border-[#F5A800]/50 transition-colors group"
               >
                 <span className="w-9 h-9 rounded-xl bg-[#F5A800]/15 grid place-items-center shrink-0">
                   <Icon size={16} className="text-[#F5A800]" />
@@ -54,6 +62,8 @@ export default function LoginPage() {
                 </span>
                 <Download size={14} className="ml-auto text-white/40 group-hover:text-[#F5A800] transition-colors shrink-0" />
               </a>
+              {a.hint && <p className="px-3 pt-1.5 text-white/50 text-[10px]">{a.hint}</p>}
+              </div>
             )
           })}
         </div>

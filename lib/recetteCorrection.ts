@@ -292,7 +292,7 @@ async function cancelOrder(recetteId: string, body: Record<string, unknown>): Pr
   const order = await orderOf(recetteId, body.orderId)
   if (order.status === 'cancelled') throw new RecetteError('Commande déjà annulée', 409)
   guardPayout(order)
-  await touchOrder(order._id, { status: 'cancelled' })
+  await touchOrder(order._id, { status: 'cancelled', cancelledAt: new Date() })
   return {
     target: String(order.orderNumber ?? ''),
     changes: [`Statut : ${STATUS_FR[String(order.status)] ?? order.status} → Annulée (${money(Number(order.total) || 0)} retirés)`],
@@ -302,7 +302,7 @@ async function cancelOrder(recetteId: string, body: Record<string, unknown>): Pr
 async function restoreOrder(recetteId: string, body: Record<string, unknown>): Promise<Applied> {
   const order = await orderOf(recetteId, body.orderId)
   if (order.status !== 'cancelled') throw new RecetteError("Cette commande n'est pas annulée", 409)
-  await touchOrder(order._id, { status: 'delivered' })
+  await touchOrder(order._id, { status: 'delivered' }, { cancelledAt: '' })
   return {
     target: String(order.orderNumber ?? ''),
     changes: [`Statut : Annulée → Livrée (${money(Number(order.total) || 0)} réintégrés)`],
@@ -331,6 +331,7 @@ async function addOrder(recette: RecetteLean, body: Record<string, unknown>, rea
     type,
     source: 'counter',
     status: 'delivered',
+    deliveredAt: at,
     deliveryCompany: company
       ? { ...NO_COMPANY, companyId: company._id, name: company.name ?? '', commission: Number(company.commission) || 0 }
       : NO_COMPANY,

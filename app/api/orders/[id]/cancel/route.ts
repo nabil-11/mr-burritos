@@ -36,6 +36,7 @@ export async function POST(_req: NextRequest, { params }: Ctx) {
     }
 
     order.status = 'cancelled'
+    order.cancelledAt = new Date()
     await order.save()
 
     // Same in-process notification the status route sends, so an open

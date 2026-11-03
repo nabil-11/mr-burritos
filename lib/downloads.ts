@@ -34,7 +34,9 @@ export interface StaffApp {
   /** « Windows · v1.3.0 · 101 Mo » — la plateforme, la version, puis le poids. */
   note: string
   /** Quelle icône lucide la page dessine. */
-  icon: 'store' | 'bike' | 'monitor'
+  icon: 'store' | 'bike' | 'monitor' | 'smartphone'
+  /** Une consigne d'installation sous la ligne, quand le fichier en demande une. */
+  hint?: string
 }
 
 /** Le dossier servi publiquement où les installateurs sont déposés. */
@@ -46,7 +48,8 @@ function sizeOf(absolute: string): string | null {
     const bytes = fs.statSync(absolute).size
     if (!bytes) return null
     const mo = bytes / 1024 / 1024
-    return `${mo >= 100 ? Math.round(mo) : mo.toFixed(1)} Mo`
+    // Virgule décimale, comme partout dans l'interface en français.
+    return `${mo >= 100 ? Math.round(mo) : mo.toFixed(1).replace('.', ',')} Mo`
   } catch {
     // Absent du serveur, ou un hébergement qui ne donne pas accès au disque.
     return null
@@ -81,10 +84,12 @@ export interface Installer {
  * qu'un dossier peut contenir l'ancienne version le temps d'une bascule, et
  * que personne ne veut proposer la 1.2 au lendemain de la sortie de la 1.3.
  */
-export function latestInstaller(): Installer | null {
+export function latestInstaller(
+  accepts: (file: string) => boolean = (f) => f.toLowerCase().endsWith('.exe'),
+): Installer | null {
   try {
     const dir = path.join(process.cwd(), 'public', DOWNLOADS_DIR)
-    const files = fs.readdirSync(dir).filter((f) => f.toLowerCase().endsWith('.exe'))
+    const files = fs.readdirSync(dir).filter(accepts)
     if (!files.length) return null
 
     const best = files
@@ -112,6 +117,14 @@ export function latestInstaller(): Installer | null {
 }
 
 /**
+ * L'APK de l'app Manager : « mr-burritos-manager-1.0.0.apk », et rien d'autre.
+ * Le motif est strict à dessein : l'ancien « mr-burritos-manager.apk » (sans
+ * version) est une autre application, com.mr_burritos.manager, qu'il ne faut
+ * ni proposer ni confondre avec la nouvelle.
+ */
+const MANAGER_APK = /^mr-burritos-manager-\d+\.\d+\.\d+\.apk$/i
+
+/**
  * Ce qui est réellement téléchargeable maintenant, dans l'ordre d'affichage.
  * Une entrée dont le fichier manque n'est pas listée.
  */
@@ -131,6 +144,24 @@ export function staffApps(): StaffApp[] {
       label: 'App Desktop',
       note: details ? `Windows · ${details}` : 'Windows',
       icon: 'monitor',
+    })
+  }
+
+  // Même logique que la caisse : une adresse externe prend le dessus, sinon on
+  // cherche le fichier le plus récent et on n'affiche rien s'il manque.
+  const managerUrl = process.env.NEXT_PUBLIC_MANAGER_APK_URL?.trim()
+  const apk = managerUrl ? null : latestInstaller((f) => MANAGER_APK.test(f))
+  if (managerUrl || apk) {
+    const details = apk
+      ? [apk.version && `v${apk.version}`, apk.size].filter(Boolean).join(' · ')
+      : ''
+    apps.push({
+      href: managerUrl || `/${DOWNLOADS_DIR}/${encodeURIComponent(apk!.file)}`,
+      label: 'App Manager',
+      note: details ? `Android · ${details}` : 'Android',
+      icon: 'smartphone',
+      // Android bloque les APK hors Play Store tant qu'on ne l'a pas autorisé.
+      hint: 'Android : autorisez l’installation depuis votre navigateur',
     })
   }
 
