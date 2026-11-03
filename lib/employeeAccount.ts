@@ -97,7 +97,14 @@ async function loadLines(employeeId?: string): Promise<Map<string, AccountLine[]
 
   const [cash, entries] = await Promise.all([
     Recette.aggregate([
-      { $match: { 'mouvements.employee.id': oid ?? { $ne: null } } },
+      // `{ 'mouvements.employee.id': { $ne: null } }` would drop a whole recette as
+      // soon as one of its mouvements has no employee (a gas bill, say): on an array,
+      // $ne means « no element is null ». $elemMatch asks about one element.
+      {
+        $match: oid
+          ? { 'mouvements.employee.id': oid }
+          : { mouvements: { $elemMatch: { 'employee.id': { $ne: null } } } },
+      },
       { $unwind: '$mouvements' },
       { $match: { 'mouvements.employee.id': oid ?? { $ne: null } } },
       {

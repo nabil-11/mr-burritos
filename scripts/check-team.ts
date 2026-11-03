@@ -11,6 +11,7 @@ import assert from 'node:assert/strict'
 import type { EmployeeOverview, EmployeeView } from '../lib/employeeAccount'
 import { type AccountLine, type AccountSetup, buildStatement, rowFor } from '../lib/payroll'
 import { detailOf, lifetimeOf, resolveMonth, teamOf } from '../lib/managerTeam'
+import { advanceHistoryOf, advancesInRange, resolveRange } from '../lib/managerAdvances'
 
 const THIS = '2026-11'
 const SECRETS = ['0600112233', 'CIN-998877', '12 rue du Secret', 'note privee', 'oid-recette-SECRET']
@@ -234,5 +235,82 @@ for (const [i, a] of accounts.entries()) {
   assertNoPii(detailOf(a, '2026-10', THIS), `detail#${i}/oct`)
 }
 ok('detail: no PII at any depth, no recette id')
+
+// ── Advance history ──────────────────────────────────────────────────────────
+const advLines = [
+  line({ kind: 'avance', amount: 200, at: '2026-11-02T09:00:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0042', note: 'loyer' }),
+  line({ kind: 'avance', amount: 50, at: '2026-11-02T09:30:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0042', cancelled: true }),
+  line({ kind: 'avance', amount: 120.5, at: '2026-10-15T09:00:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0031' }),
+  line({ kind: 'avance', amount: 80.25, at: '2026-10-31T23:30:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0035' }), // 00:30 on 1 Nov in Tunis
+  line({ kind: 'salaire', amount: 700, at: '2026-10-02T09:00:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0030' }),
+  line({ kind: 'prime', amount: 30, at: '2026-11-01T08:00:00.000Z' }),
+  line({ kind: 'paiement', amount: 100, at: '2026-11-03T07:00:00.000Z', method: 'virement' }),
+]
+const advAccount = account(zoe, advLines)
+const h = advanceHistoryOf(advAccount)
+assert.deepEqual(Object.keys(h).sort(), ['employee', 'lines', 'months', 'totals'])
+assert.deepEqual(Object.keys(h.employee).sort(), ['id', 'isActive', 'name', 'poste'])
+assert.deepEqual(Object.keys(h.lines[0]).sort(), ['amount', 'at', 'by', 'cancelled', 'id', 'note', 'recetteNumber'])
+assert.equal(h.lines.length, 4, 'advances only: no salaire, prime or paiement')
+assert.deepEqual(h.lines.map((l) => l.at), [...h.lines.map((l) => l.at)].sort().reverse(), 'newest first')
+assert.equal(h.lines.filter((l) => l.cancelled).length, 1, 'the cancelled advance is listed')
+assert.deepEqual(h.totals, { count: 3, amount: 400.75 }, 'cancelled excluded from totals')
+assert.deepEqual(h.months, [{ month: '2026-11', count: 1, amount: 200 }, { month: '2026-10', count: 2, amount: 200.75 }])
+assert.equal(h.months.reduce((s, m) => s + m.amount, 0), h.totals.amount, 'months add up to the total')
+// Same as the account's own advance lines.
+assert.equal(h.totals.amount, r2(advAccount.rows.reduce((s, r) => s + r.avances, 0)), 'equals the sum of the statement avances')
+assert.equal(h.lines.find((l) => l.amount === 200)!.recetteNumber, 'R-0042')
+assert.deepEqual(advanceHistoryOf(account(ines, [])).lines, [])
+assert.deepEqual(advanceHistoryOf(account(ines, [])).totals, { count: 0, amount: 0 })
+assertNoPii(h, 'advances')
+ok('advance history: advances only, newest first, cancelled listed but out of totals/months')
+
+const TODAY = '2026-11-03'
+const all = [
+  { employee: zoe, lines: advLines },
+  { employee: abel, lines: abelLines },
+  { employee: ines, lines: [] as AccountLine[] },
+  { employee: gone, lines: [line({ kind: 'avance', amount: 150, at: '2026-10-03T09:00:00.000Z', source: 'caisse', recetteId: SECRETS[4], recetteNumber: 'R-0029' })] },
+]
+const nov = advancesInRange(all, { from: '2026-11-01', to: '2026-11-30' })
+assert.deepEqual(Object.keys(nov).sort(), ['byEmployee', 'from', 'lines', 'to', 'totals'])
+assert.deepEqual(Object.keys(nov.lines[0]).sort(), ['amount', 'at', 'by', 'cancelled', 'employeeId', 'employeeName', 'id', 'note', 'recetteNumber'])
+assert.deepEqual(Object.keys(nov.byEmployee[0]).sort(), ['amount', 'count', 'id', 'name'])
+assert.deepEqual(nov.byEmployee.map((p) => [p.name, p.count, p.amount]), [['Abel', 1, 3000], ['zoé', 2, 280.25]], 'sorted by amount desc; Tunis day puts the 23:30Z advance on 1 Nov')
+assert.deepEqual(nov.totals, { count: 3, amount: 3280.25 })
+assert.equal(nov.lines.length, 4, 'cancelled listed in range')
+assert.deepEqual(nov.lines.map((l) => l.at), [...nov.lines.map((l) => l.at)].sort().reverse(), 'newest first')
+assert.equal(nov.lines.filter((l) => l.cancelled).length, 1)
+const advOct = advancesInRange(all, { from: '2026-10-01', to: '2026-10-31' })
+assert.deepEqual(advOct.byEmployee.map((p) => [p.name, p.amount]), [['Aaron', 150], ['zoé', 120.5]], 'the 23:30Z advance is not in October')
+const one = advancesInRange(all, { from: '2026-11-01', to: '2026-11-01' })
+assert.deepEqual(one.lines.map((l) => l.amount).sort((a, b) => a - b), [80.25, 3000])
+assert.deepEqual(advancesInRange(all, { from: '2020-01-01', to: '2020-01-31' }).totals, { count: 0, amount: 0 })
+assert.deepEqual(advancesInRange(all, { from: '2020-01-01', to: '2020-01-31' }).byEmployee, [])
+assert.equal(
+  advancesInRange(all, { from: '2026-01-01', to: '2026-12-31' }).totals.amount,
+  r2(all.reduce((s, x) => s + advanceHistoryOf({ employee: x.employee, lines: x.lines }).totals.amount, 0)),
+  'range totals = sum of each employee history'
+)
+assertNoPii(nov, 'advances/range')
+assertNoPii(advOct, 'advances/range/oct')
+ok('advances range: Tunis days, byEmployee by amount desc, cancelled listed but out of totals, no PII')
+
+assert.deepEqual(resolveRange(null, null, TODAY), { from: '2026-11-01', to: '2026-11-30' })
+assert.deepEqual(resolveRange(undefined, undefined, '2026-02-10'), { from: '2026-02-01', to: '2026-02-28' })
+assert.deepEqual(resolveRange(null, null, '2026-12-31'), { from: '2026-12-01', to: '2026-12-31' })
+assert.deepEqual(resolveRange('2026-10-05', null, TODAY), { from: '2026-10-05', to: '2026-10-31' })
+assert.deepEqual(resolveRange(null, '2026-10-20', TODAY), { from: '2026-10-01', to: '2026-10-20' })
+assert.deepEqual(resolveRange('2026-10-05', '2026-10-05', TODAY), { from: '2026-10-05', to: '2026-10-05' })
+assert.ok(resolveRange('2025-11-03', '2026-11-04', TODAY), '366 days apart is accepted')
+assert.equal(resolveRange('2025-11-03', '2026-11-05', TODAY), null, '367 days apart is rejected')
+assert.equal(resolveRange('2020-01-01', '2026-11-03', TODAY), null)
+assert.equal(resolveRange('2026-10-10', '2026-10-09', TODAY), null, 'from after to')
+for (const bad of ['', '2026-10', '2026-13-01', '2026-02-30', '2026-00-10', '26-10-01', '2026-10-1', 'today', '2026-10-01T00:00', ' 2026-10-01'])
+  {
+    assert.equal(resolveRange(bad, null, TODAY), null, `from "${bad}" must be rejected`)
+    assert.equal(resolveRange(null, bad, TODAY), null, `to "${bad}" must be rejected`)
+  }
+ok('range: defaults, 366-day limit, from <= to, calendar validity')
 
 console.log('\ncheck:team passed')

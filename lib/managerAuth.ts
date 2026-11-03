@@ -1,3 +1,4 @@
+import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
 import { connectDB } from '@/lib/mongodb'
 import { User } from '@/lib/models/User'
@@ -28,6 +29,10 @@ export interface ManagerUser {
 export async function requireManager(req: NextRequest): Promise<ManagerUser | Response> {
   const payload = getTokenFromRequest(req)
   if (!payload) return failJson(401, 'unauthorized', 'Session expirée')
+
+  // Un filtre `undefined` est ignoré par mongoose : sans id valide, on tomberait
+  // sur le premier compte actif.
+  if (!mongoose.isValidObjectId(payload.userId)) return failJson(401, 'unauthorized', 'Session expirée')
 
   await connectDB()
   const user = await User.findOne({ _id: payload.userId, isActive: true })
