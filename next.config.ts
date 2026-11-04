@@ -8,10 +8,12 @@ const nextConfig: NextConfig = {
     ],
   },
   async headers() {
-    // The manager app's live-update pointers (public/updates/, written by the
-    // app's `npm run live:publish` and `npm run apk`). They must never be served
-    // from a cache, or an app keeps seeing the previous release. The bundle zips
-    // are named by build number and never change, so they keep default caching.
+    // Live-update pointers in public/updates/: the manager app's (written by the
+    // app's `npm run live:publish` and `npm run apk`) and the till's screen
+    // bundles in updates/caisse/ (the till's `npm run live:publish`). They must
+    // never be served from a cache, or an app keeps seeing the previous release.
+    // The bundle zips are named by build number and never change, so they keep
+    // default caching.
     return [
       {
         source: '/updates/manifest.json',
@@ -19,6 +21,10 @@ const nextConfig: NextConfig = {
       },
       {
         source: '/updates/apk.json',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
+      {
+        source: '/updates/caisse/manifest.json',
         headers: [{ key: 'Cache-Control', value: 'no-store' }],
       },
     ]

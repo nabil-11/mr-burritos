@@ -31,6 +31,10 @@
     "S7": {
       "id": "1500790000001142",
       "name": "Sprint 7 — Pointage (daily attendance) in the manager app, first liv…"
+    },
+    "S8": {
+      "id": "1500790000001161",
+      "name": "Sprint 8 — Screen updates for the till (live bundles, 1.10.0)"
     }
   },
   "tasks": {
@@ -567,19 +571,19 @@
       "id": "1amyqkdb0tw",
       "url": "https://app.clickup.com/t/1amyqkdb0tw",
       "list": "S7",
-      "fingerprint": "{\"name\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\",\"description\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\\n\\nOwner: qa\\nEvidence: first pass NOT READY: ~130 API assertions pass; app bugs `summaryLine` \\\"00a0\\\" (`src/lib/attendance.ts:152`), Comptes overlap (`ComptesTab.vue:149-156`), client/server pairing mismatch on night shifts, triple \\\"created\\\" history on concurrent first validation; fixes in F7; re-check pending\\nBlocked by: F7\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in review\"}"
+      "fingerprint": "{\"name\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\",\"description\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\\n\\nOwner: qa\\nEvidence: first pass ~130 API assertions, 4 bugs fixed in F7; re-check: parity 0/20000, concurrency, pinned history, night case, Comptes at 360/390; confirm-sheet bug fixed in F8 and re-run against 3099; reminder 910002 untested (no device)\\nBlocked by: F7, F8\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
     },
     "S7:S1": {
       "id": "1amyqkdb0tx",
       "url": "https://app.clickup.com/t/1amyqkdb0tx",
       "list": "S7",
-      "fingerprint": "{\"name\":\"S1 Health data, PII, history integrity, write path, web-only diff\",\"description\":\"S1 Health data, PII, history integrity, write path, web-only diff\\n\\nOwner: security\\nEvidence: no blockers; 2 low (history cap can flush the creation entry, stale read before bulkWrite) in F7; re-check pending\\nBlocked by: F7\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:S1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in review\"}"
+      "fingerprint": "{\"name\":\"S1 Health data, PII, history integrity, write path, web-only diff\",\"description\":\"S1 Health data, PII, history integrity, write path, web-only diff\\n\\nOwner: security\\nEvidence: no blockers; 2 low fixed in F7 and re-checked (pinned `created`, optimistic writes, bounded retries, marker only after all rows); same-millisecond residual on the backlog; GET /api/configuration open on the backlog\\nBlocked by: F7\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:S1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
     },
     "S7:R1": {
       "id": "1amyqkdb0ty",
       "url": "https://app.clickup.com/t/1amyqkdb0ty",
       "list": "S7",
-      "fingerprint": "{\"name\":\"R1 Commit both repos, push the server, npm run live:publish, commit and push the bundle\",\"description\":\"R1 Commit both repos, push the server, `npm run live:publish`, commit and push the bundle\\n\\nOwner: release\\nEvidence: —\\nBlocked by: Q1, S1, owner's go\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+      "fingerprint": "{\"name\":\"R1 Commit the app, npm run live:publish (bundle b1, minNative 4) for phones on 1.3.0, then APK 1.4.0 / versionCode 5 with b1 baked in, co…\",\"description\":\"R1 Commit the app, `npm run live:publish` (bundle b1, minNative 4) for phones on 1.3.0, then APK 1.4.0 / versionCode 5 with b1 baked in, commit the app, commit and push the server (owner said \\\"build new apk and push it\\\", 2026-11-04)\\n\\nOwner: release\\nEvidence: `public/updates/bundle-b1.zip` 0.51 MB (from app 12fb4c4, not dirty), `public/downloads/mr-burritos-manager-1.4.0.apk` 10.4 MB, same cert and permissions; app 12fb4c4 + bfd3dfe local; server 8a9cc9b pushed (`f4f2c44..8a9cc9b`)\\nBlocked by: F8\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
     },
     "BL:clock-in-on-the-till-or-by-pin": {
       "id": "1amyqkdb0tz",
@@ -603,13 +607,79 @@
       "id": "1amyqkdb125",
       "url": "https://app.clickup.com/t/1amyqkdb125",
       "list": "S7",
-      "fingerprint": "{\"name\":\"F7 Fixes: circular night-shift pairing on the server (same as the client), optimistic row writes + 409 conflict, pinned created entry + h…\",\"description\":\"F7 Fixes: circular night-shift pairing on the server (same as the client), optimistic row writes + 409 `conflict`, pinned `created` entry + `historyDropped` in A2; app: non-breaking spaces, Comptes wrap, justification always set, no \\\"+1 j\\\" for from=to, history header, `conflict` message, `check-attendance-client.mjs`\\n\\nOwner: backend, designer\\nEvidence: —\\nBlocked by: Q1, S1 first pass\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:F7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+      "fingerprint": "{\"name\":\"F7 Fixes: circular night-shift pairing on the server (same as the client), optimistic row writes + 409 conflict, pinned created entry + h…\",\"description\":\"F7 Fixes: circular night-shift pairing on the server (same as the client), optimistic row writes + 409 `conflict`, pinned `created` entry + `historyDropped` in A2; app: non-breaking spaces, Comptes wrap, justification always set, no \\\"+1 j\\\" for from=to, history header, `conflict` message, `check-attendance-client.mjs`\\n\\nOwner: backend, designer\\nEvidence: `lib/attendance.ts:143-157`, `lib/attendanceData.ts:121-190`, `lib/models/Attendance.ts:62`; app `src/lib/attendance.ts:129,161`, `ComptesTab.vue:205`, `PointageRowSheet.vue:46,104,190`; parity 0/20000; QA and security re-checks pass\\nBlocked by: Q1, S1 first pass\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:F7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
     },
     "BL:get-api-configuration-has-no-auth-and-returns": {
       "id": "1amyqkdb126",
       "url": "https://app.clickup.com/t/1amyqkdb126",
       "list": "BL",
       "fingerprint": "{\"name\":\"GET /api/configuration has no auth and returns every Configuration document (now including both deadline settings); find its public calle…\",\"description\":\"`GET /api/configuration` has no auth and returns every Configuration document (now including both deadline settings); find its public callers, then restrict or whitelist keys\\n\\nOwner: backend\\nEvidence: `app/api/configuration/route.ts:10` (sprint 7 security review)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:get-api-configuration-has-no-auth-and-returns). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "S7:F8": {
+      "id": "1amyqkdb189",
+      "url": "https://app.clickup.com/t/1amyqkdb189",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"F8 Confirm sheet stays open after 409 conflict / window_closed / missing_rows; figures shown for from=to\",\"description\":\"F8 Confirm sheet stays open after 409 `conflict` / `window_closed` / `missing_rows`; figures shown for from=to\\n\\nOwner: designer\\nEvidence: `PointageTab.vue:303-340` (`settling`), `PointageRowSheet.vue:164-165`; QA re-run on 3099\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:F8). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S7:Q2": {
+      "id": "1amyqkdb18a",
+      "url": "https://app.clickup.com/t/1amyqkdb18a",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"Q2 On a real phone: 1.3.0 receives bundle b1 (\\\"Mise à jour prête\\\" → \\\"Redémarrer\\\"), Pointage validates a day, reminders 910001/910002 fire…\",\"description\":\"Q2 On a real phone: 1.3.0 receives bundle b1 (\\\"Mise à jour prête\\\" → \\\"Redémarrer\\\"), Pointage validates a day, reminders 910001/910002 fire with the app closed; 1.2.0 phones install 1.4.0 from `/login` over the old app\\n\\nOwner: qa\\nEvidence: no emulator on this machine\\nBlocked by: owner's phone\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:Q2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"pending\"}"
+    },
+    "BL:attendance-optimistic-check-uses-updatedat-three-writes-in": {
+      "id": "1amyqkdb18b",
+      "url": "https://app.clickup.com/t/1amyqkdb18b",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Attendance optimistic check uses updatedAt; three writes in the same server millisecond could still record a stale before. Use a numeric …\",\"description\":\"Attendance optimistic check uses `updatedAt`; three writes in the same server millisecond could still record a stale `before`. Use a numeric version (`$inc`)\\n\\nOwner: backend\\nEvidence: `lib/attendanceData.ts:158` (sprint 7 security re-check)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:attendance-optimistic-check-uses-updatedat-three-writes-in). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "S8:T1": {
+      "id": "1amyqkdb1q4",
+      "url": "https://app.clickup.com/t/1amyqkdb1q4",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"T1 electron/livePolicy.cjs (pure rules), electron/unzip.cjs, electron/liveBundle.cjs, updater merged state (bundle in update:state, insta…\",\"description\":\"T1 `electron/livePolicy.cjs` (pure rules), `electron/unzip.cjs`, `electron/liveBundle.cjs`, updater merged state (`bundle` in `update:state`, install = installer first, else screen), `main.cjs` loads through it; test-only env `CAISSE_LIVE_TEST_ORIGIN` / `CAISSE_TEST_USER_DATA` ignored when packaged\\n\\nOwner: main session\\nEvidence: `electron/liveBundle.cjs`, `electron/updater.cjs:196-203`, `electron/main.cjs:15-29`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:T1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:T2": {
+      "id": "1amyqkdb1q5",
+      "url": "https://app.clickup.com/t/1amyqkdb1q5",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"T2 Screen side: waitingUpdate, canCheck, versionLabel (\\\"1.10.0 · b4\\\"), toast, veil \\\"se recharge\\\", Paramètres line and button\",\"description\":\"T2 Screen side: `waitingUpdate`, `canCheck`, `versionLabel` (\\\"1.10.0 · b4\\\"), toast, veil \\\"se recharge\\\", Paramètres line and button\\n\\nOwner: main session\\nEvidence: `src/lib/update.ts`, `src/lib/useUpdate.ts`, `src/App.tsx`, `src/components/SettingsPanel.tsx`; `tsc -b` passes\\nBlocked by: T1\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:T2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:T3": {
+      "id": "1amyqkdb1q6",
+      "url": "https://app.clickup.com/t/1amyqkdb1q6",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"T3 scripts/live-publish.mjs (port of the manager script: clean tree, --out only in temp, keeps 2 zips), scripts/live-lib.mjs, dist.mjs st…\",\"description\":\"T3 `scripts/live-publish.mjs` (port of the manager script: clean tree, `--out` only in temp, keeps 2 zips), `scripts/live-lib.mjs`, `dist.mjs` stamps `dist/live-build.json` and records the shell, `live-update.json`, README, no-store header for `/updates/caisse/manifest.json` here\\n\\nOwner: main session\\nEvidence: dry run b1 0.30 MB; `next.config.ts:26-29`\\nBlocked by: T1\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:T3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:Q1": {
+      "id": "1amyqkdb1q7",
+      "url": "https://app.clickup.com/t/1amyqkdb1q7",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"Q1 check-logic 195 OK (85 new: manifest, boot pick, trial, rollback, names, minShell, zip round trip); real Electron run from the checkou…\",\"description\":\"Q1 `check-logic` 195 OK (85 new: manifest, boot pick, trial, rollback, names, minShell, zip round trip); real Electron run from the checkout against a local server: download, swap on the idle login screen, broken b2 rolled back to b1 after 60 s and never re-downloaded, tampered zip refused, `minShell` 1.11.0 ignored, restart on b1, waiting b4 started at launch and confirmed, toast shown, session storage shared across `file://` folders\\n\\nOwner: main session\\nEvidence: scratchpad `ud/update.log`, `shot-b1.png`, `shot-b4.png`\\nBlocked by: T1–T3\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:Q2": {
+      "id": "1amyqkdb1q8",
+      "url": "https://app.clickup.com/t/1amyqkdb1q8",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"Q2 Logged-in pass on local mongod 27099 + next start 3099: Paramètres shows \\\"nouvel ecran b8 pret\\\" + \\\"Installer maintenant\\\", gear dot; wi…\",\"description\":\"Q2 Logged-in pass on local mongod 27099 + `next start` 3099: Paramètres shows \\\"nouvel ecran b8 pret\\\" + \\\"Installer maintenant\\\", gear dot; with a cart the button is disabled (\\\"Terminez la commande en cours\\\") and 11 min idle with the cart did not reload; cart emptied → 60 s countdown → b8, still logged in, toast \\\"1.10.0 · b8\\\". Packaged `--dir` build: screen from `resources/app.asar/dist`, stamp b7 read, prod manifest 404 quiet; the real till profile on this PC untouched (`--user-data-dir`, which replaced the `CAISSE_TEST_USER_DATA` hook)\\n\\nOwner: main session\\nEvidence: scratchpad `li-2.png`…`li-5.png`, `ud2/update.log`, `ud-pack/update.log`; note: a `--dir` build has no `app-update.yml`, so its installer check errors (NSIS builds have it); a countdown runs slower while the window is behind others (timer throttling)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:Q2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:R1": {
+      "id": "1amyqkdb1q9",
+      "url": "https://app.clickup.com/t/1amyqkdb1q9",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"R1 Commit the till, npm run dist 1.10.0 (records the shell), commit and push this repo (owner said \\\"go\\\", 2026-11-04)\",\"description\":\"R1 Commit the till, `npm run dist` 1.10.0 (records the shell), commit and push this repo (owner said \\\"go\\\", 2026-11-04)\\n\\nOwner: main session\\nEvidence: till 45a5264 + 2c68599 local (not pushed); `release/Mr. Burritos Caisse Setup 1.10.0.exe` 106.4 MB, sha256 0aa8e6cd…, asar holds `electron/liveBundle.cjs` and `dist/live-build.json` b0, `app-update.yml` → `https://mr-burritos.vercel.app/downloads`; `live-update.json` shells 1.10.0, `minShell` resolves to 1.10.0; `release/latest.yml` deliberately not copied to `public/downloads` (no installer host)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S8:R2": {
+      "id": "1amyqkdb1xj",
+      "url": "https://app.clickup.com/t/1amyqkdb1xj",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"R2 Install 1.10.0 by hand on every till (USB or download), check Paramètres shows \\\"version 1.10.0\\\"\",\"description\":\"R2 Install 1.10.0 by hand on every till (USB or download), check Paramètres shows \\\"version 1.10.0\\\"\\n\\nOwner: owner\\nEvidence: —\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:R2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "S8:R3": {
+      "id": "1amyqkdb1xk",
+      "url": "https://app.clickup.com/t/1amyqkdb1xk",
+      "list": "S8",
+      "fingerprint": "{\"name\":\"R3 First real screen release: commit a till change, npm run live:publish, commit live-update.json, commit and push this repo; a till on 1…\",\"description\":\"R3 First real screen release: commit a till change, `npm run live:publish`, commit `live-update.json`, commit and push this repo; a till on 1.10.0 shows \\\"· b1\\\" within 10 min\\n\\nOwner: release\\nEvidence: —\\nBlocked by: R2\\n\\nSource: .bdh-stack/tasks.md, Sprint 8 (key S8:R3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
     }
   },
   "status": {
@@ -617,9 +687,7 @@
     "S5:S1": "in progress",
     "S5:Q3": "pending",
     "S6:L9": "pending",
-    "S7:Q1": "in review",
-    "S7:S1": "in review",
-    "S7:F7": "in progress"
+    "S7:Q2": "pending"
   },
   "teamId": "9009008152",
   "spaceId": "1500790000000564"
