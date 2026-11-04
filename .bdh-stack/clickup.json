@@ -23,6 +23,14 @@
     "BL": {
       "id": "1500790000001137",
       "name": "Backlog"
+    },
+    "S6": {
+      "id": "1500790000001138",
+      "name": "Sprint 6 — Live updates for the manager app (1.3.0)"
+    },
+    "S7": {
+      "id": "1500790000001142",
+      "name": "Sprint 7 — Pointage (daily attendance) in the manager app, first liv…"
     }
   },
   "tasks": {
@@ -66,7 +74,7 @@
       "id": "1amyqkdb0k5",
       "url": "https://app.clickup.com/t/1amyqkdb0k5",
       "list": "S5",
-      "fingerprint": "{\"name\":\"R1 1.2.0 / versionCode 3, npm run apk, copy to public/downloads/\",\"description\":\"R1 1.2.0 / versionCode 3, `npm run apk`, copy to `public/downloads/`\\n\\nOwner: release\\nEvidence: —\\nBlocked by: Q1, S1, owner's go to ship\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+      "fingerprint": "{\"name\":\"R1 1.2.0 / versionCode 3, npm run apk, copy to public/downloads/, commit and push (owner asked)\",\"description\":\"R1 1.2.0 / versionCode 3, `npm run apk`, copy to `public/downloads/`, commit and push (owner asked)\\n\\nOwner: release\\nEvidence: `public/downloads/mr-burritos-manager-1.2.0.apk` 9.15 MB, same cert, not debuggable, no mocks in bundle, picked by `staffApps()`; server `d85eaea` pushed (`9b06ff6..d85eaea`); app `9006dc0` local\\nBlocked by: Q1, S1\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
     },
     "S2:B1": {
       "id": "1amyqkdb0k6",
@@ -282,7 +290,8 @@
       "id": "1amyqkdb0m9",
       "url": "https://app.clickup.com/t/1amyqkdb0m9",
       "list": "BL",
-      "fingerprint": "{\"name\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\",\"description\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\\n\\nOwner: backend\\nEvidence: no attendance model in `lib/models/`\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:real-worked-hours-pointage-staff-clock-in-out). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+      "fingerprint": "{\"name\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\",\"description\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\\n\\nOwner: backend\\nEvidence: no attendance model in `lib/models/`\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:real-worked-hours-pointage-staff-clock-in-out). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}",
+      "gone": true
     },
     "BL:signing-key-c-users-bdhna-mr-burritos-keys": {
       "id": "1amyqkdb0ma",
@@ -481,12 +490,111 @@
       "url": "https://app.clickup.com/t/1amyqkdb0na",
       "list": "BL",
       "fingerprint": "{\"name\":\"Accent policy for on-screen strings\",\"description\":\"Accent policy for on-screen strings\\n\\nOwner: designer\\nEvidence: `src/lib/reportDoc.ts:19`; server data has accents, UI strings do not\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:accent-policy-for-on-screen-strings). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "S5:Q3": {
+      "id": "1amyqkdb0py",
+      "url": "https://app.clickup.com/t/1amyqkdb0py",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"Q3 Install 1.2.0 on a real phone: login, a dépense, the close sheet, and the Thursday 18:00 planning reminder firing with the app closed\",\"description\":\"Q3 Install 1.2.0 on a real phone: login, a dépense, the close sheet, and the Thursday 18:00 planning reminder firing with the app closed\\n\\nOwner: qa\\nEvidence: no emulator image on this machine\\nBlocked by: owner's phone\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:Q3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"pending\"}"
+    },
+    "S6:L1": {
+      "id": "1amyqkdb0qe",
+      "url": "https://app.clickup.com/t/1amyqkdb0qe",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L1 Plugin + capacitor config, live-update.json, scripts/live-update.mjs (port of apex), __BUNDLE_BUILD__ define, build-apk.mjs writes apk…\",\"description\":\"L1 Plugin + capacitor config, `live-update.json`, `scripts/live-update.mjs` (port of apex), `__BUNDLE_BUILD__` define, `build-apk.mjs` writes `apk.json` and bakes the build, README, no-store headers for `/updates/*.json` on the server\\n\\nOwner: release\\nEvidence: app `package.json:13,21`, `capacitor.config.ts:11-21`, `vite.config.ts:32`, `live-update.json`; server `next.config.ts:10-21`; dry publish: zip root ok, checksum matches, forced failure restores build 0\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S6:L2": {
+      "id": "1amyqkdb0qf",
+      "url": "https://app.clickup.com/t/1amyqkdb0qf",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L2 src/live/liveUpdate.ts, notifyAppReady after mount, ready banner + \\\"Redémarrer\\\", APK banner, Réglages version line and \\\"Rechercher une…\",\"description\":\"L2 `src/live/liveUpdate.ts`, `notifyAppReady` after mount, ready banner + \\\"Redémarrer\\\", APK banner, Réglages version line and \\\"Rechercher une mise à jour\\\"\\n\\nOwner: designer\\nEvidence: `src/live/decide.ts:19,30`, `src/live/liveUpdate.ts:13,24,35,76,99`, `src/components/LiveUpdateBanner.vue`, `src/main.ts:30-33`, `ReglagesPage.vue`; `@capacitor/browser` 8.0.5 added; build + vue-tsc pass\\nBlocked by: L1\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S6:L3": {
+      "id": "1amyqkdb0qg",
+      "url": "https://app.clickup.com/t/1amyqkdb0qg",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L3 Publish a dry bundle into a scratch copy, check the zip layout, checksum, manifest, origin pinning and the decision logic; the app bui…\",\"description\":\"L3 Publish a dry bundle into a scratch copy, check the zip layout, checksum, manifest, origin pinning and the decision logic; the app build in web mode does nothing\\n\\nOwner: qa\\nEvidence: first pass: 28 decide checks, zip/checksum/retention, no-store headers live on 3099, 1 bug (doubled safe-area gap) fixed in L6; re-check running\\nBlocked by: L6\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+    },
+    "S6:L4": {
+      "id": "1amyqkdb0qh",
+      "url": "https://app.clickup.com/t/1amyqkdb0qh",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L4 Review the code-delivery channel: origin pinning, checksum, rollback, what an attacker needs\",\"description\":\"L4 Review the code-delivery channel: origin pinning, checksum, rollback, what an attacker needs\\n\\nOwner: security\\nEvidence: first pass no blockers; 2 medium (`*.vercel.app` name, publishing a dirty tree), 4 low; fixed in L6/L7 or backlog; re-check running\\nBlocked by: L6, L7\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+    },
+    "S6:L5": {
+      "id": "1amyqkdb0qj",
+      "url": "https://app.clickup.com/t/1amyqkdb0qj",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L5 1.3.0 / versionCode 4, npm run apk, commit both repos, push the server (owner said go 2026-11-04)\",\"description\":\"L5 1.3.0 / versionCode 4, `npm run apk`, commit both repos, push the server (owner said go 2026-11-04)\\n\\nOwner: release\\nEvidence: —\\nBlocked by: L3, L4 re-checks\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L5). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+    },
+    "S6:L6": {
+      "id": "1amyqkdb0tg",
+      "url": "https://app.clickup.com/t/1amyqkdb0tg",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L6 Fixes: safe-area gap while a banner shows, failed bundle never re-downloaded (live.failedBuild), APK hint wording\",\"description\":\"L6 Fixes: safe-area gap while a banner shows, failed bundle never re-downloaded (`live.failedBuild`), APK hint wording\\n\\nOwner: designer\\nEvidence: `src/App.vue:10,20`, `src/live/liveUpdate.ts:30-46,74,124`, `src/live/decide.ts:20-25`, `LiveUpdateBanner.vue:33`; `scripts/check-live.mjs` 33 OK\\nBlocked by: L3, L4\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L6). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S6:L7": {
+      "id": "1amyqkdb0th",
+      "url": "https://app.clickup.com/t/1amyqkdb0th",
+      "list": "S6",
+      "fingerprint": "{\"name\":\"L7 Fixes: live:publish refuses a dirty tree and writes commit into the manifest; README \\\"Ne jamais\\\" rules (keep the Vercel project name, …\",\"description\":\"L7 Fixes: `live:publish` refuses a dirty tree and writes `commit` into the manifest; README \\\"Ne jamais\\\" rules (keep the Vercel project name, no dirty publish, fix = higher build)\\n\\nOwner: release\\nEvidence: `scripts/live-update.mjs:66-89,197`, `README.md:57-70`\\nBlocked by: L4\\n\\nSource: .bdh-stack/tasks.md, Sprint 6 (key S6:L7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "BL:live-update-bundle-signing-capgo-public-key-in": {
+      "id": "1amyqkdb0tj",
+      "url": "https://app.clickup.com/t/1amyqkdb0tj",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Live-update bundle signing (Capgo public key in the app, private key offline, new APK + minNative), needed if the mr-burritos.vercel.app …\",\"description\":\"Live-update bundle signing (Capgo public key in the app, private key offline, new APK + `minNative`), needed if the `mr-burritos.vercel.app` name could be lost or outsiders get commit access\\n\\nOwner: security\\nEvidence: `src/live/liveUpdate.ts:6`, L4 review\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:live-update-bundle-signing-capgo-public-key-in). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:content-security-policy-meta-in-the-manager-app": {
+      "id": "1amyqkdb0tk",
+      "url": "https://app.clickup.com/t/1amyqkdb0tk",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Content-Security-Policy meta in the manager app's index.html\",\"description\":\"Content-Security-Policy meta in the manager app's `index.html`\\n\\nOwner: designer\\nEvidence: `index.html:4` (L4 review)\\nBlocked by: a device to test on\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:content-security-policy-meta-in-the-manager-app). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "S7:B1–B4": {
+      "id": "1amyqkdb0tu",
+      "url": "https://app.clickup.com/t/1amyqkdb0tu",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"B1–B4 Models, pure lib/attendance.ts + lib/attendanceDeadline.ts, resolveDayCells extraction, npm run check:attendance, routes A1–A4 + li…\",\"description\":\"B1–B4 Models, pure `lib/attendance.ts` + `lib/attendanceDeadline.ts`, `resolveDayCells` extraction, `npm run check:attendance`, routes A1–A4 + `lib/managerAttendance.ts` mapper, alert A5 + `check:alerts` cases, configuration key validation\\n\\nOwner: backend\\nEvidence: —\\nBlocked by: S6:L5 (clean tree)\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:B1–B4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "S7:D1–D4": {
+      "id": "1amyqkdb0tv",
+      "url": "https://app.clickup.com/t/1amyqkdb0tv",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"D1–D4 Types and mocks, Pointage segment, hours in Comptes/detail/Rapports, reminder 910002, alert tap, close-screen link\",\"description\":\"D1–D4 Types and mocks, Pointage segment, hours in Comptes/detail/Rapports, reminder 910002, alert tap, close-screen link\\n\\nOwner: designer\\nEvidence: —\\nBlocked by: S6:L5 (clean tree)\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:D1–D4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "S7:Q1": {
+      "id": "1amyqkdb0tw",
+      "url": "https://app.clickup.com/t/1amyqkdb0tw",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\",\"description\":\"Q1 Live pass on 27099/3099 + app on 5182: routes, roles, window, midnight shift, replay, concurrency, alerts, regression of planning/reports\\n\\nOwner: qa\\nEvidence: —\\nBlocked by: B1–B4, D1–D4\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "S7:S1": {
+      "id": "1amyqkdb0tx",
+      "url": "https://app.clickup.com/t/1amyqkdb0tx",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"S1 Health data, PII, history integrity, write path, web-only diff\",\"description\":\"S1 Health data, PII, history integrity, write path, web-only diff\\n\\nOwner: security\\nEvidence: —\\nBlocked by: B1–B4, D1–D4\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:S1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "S7:R1": {
+      "id": "1amyqkdb0ty",
+      "url": "https://app.clickup.com/t/1amyqkdb0ty",
+      "list": "S7",
+      "fingerprint": "{\"name\":\"R1 Commit both repos, push the server, npm run live:publish, commit and push the bundle\",\"description\":\"R1 Commit both repos, push the server, `npm run live:publish`, commit and push the bundle\\n\\nOwner: release\\nEvidence: —\\nBlocked by: Q1, S1, owner's go\\n\\nSource: .bdh-stack/tasks.md, Sprint 7 (key S7:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"current sprint\"}"
+    },
+    "BL:clock-in-on-the-till-or-by-pin": {
+      "id": "1amyqkdb0tz",
+      "url": "https://app.clickup.com/t/1amyqkdb0tz",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Clock-in on the till or by PIN, if manager-validated Pointage (sprint 7) turns out to be rubber-stamped\",\"description\":\"Clock-in on the till or by PIN, if manager-validated Pointage (sprint 7) turns out to be rubber-stamped\\n\\nOwner: backend\\nEvidence: sprint 7 commercial view\\nBlocked by: owner decision after a month of Pointage data\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:clock-in-on-the-till-or-by-pin). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
     }
   },
   "status": {
     "S5:Q1": "in progress",
     "S5:S1": "in progress",
-    "S5:R1": "in progress"
+    "S5:Q3": "pending",
+    "S6:L3": "in progress",
+    "S6:L4": "in progress",
+    "S6:L5": "in progress"
   },
   "teamId": "9009008152",
   "spaceId": "1500790000000564"

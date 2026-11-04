@@ -179,4 +179,15 @@ for (const section of sections) {
   }
 }
 
-console.log(`${DRY ? 'dry run: ' : ''}lists +${counts.lists}, tasks +${counts.created}, ~${counts.updated}, =${counts.unchanged}`)
+// A line that left the board (reworded or removed) closes its old task once.
+const seen = new Set(sections.flatMap((s) => s.items.map((i) => i.key)))
+for (const [key, known] of Object.entries(state.tasks)) {
+  if (seen.has(key) || known.gone) continue
+  if (DRY) { console.log(`x [closed] ${key}  (no longer on the board)`); continue }
+  await cu('PUT', `/task/${known.id}`, { status: 'closed' })
+  known.gone = true
+  counts.closed = (counts.closed ?? 0) + 1
+  save()
+}
+
+console.log(`${DRY ? 'dry run: ' : ''}lists +${counts.lists}, tasks +${counts.created}, ~${counts.updated}, =${counts.unchanged}, closed ${counts.closed ?? 0}`)
