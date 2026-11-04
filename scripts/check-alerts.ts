@@ -17,6 +17,7 @@ import {
   formatDuration,
   type Alert,
   type AlertOrder,
+  type AlertAttendanceDay,
   type AlertPlanningWeek,
   type AlertRecette,
 } from '../lib/managerAlerts'
@@ -414,5 +415,66 @@ section('todayStart facultatif')
   assert.ok(!/\d{2}:\d{2}/.test(fired[0].id), 'pas d’horodatage dans l’id')
 }
 section('planning.not_validated : après l’échéance, pas avant, pas une fois validée, pas une fois la semaine commencée')
+
+// ── Pointage non validé ─────────────────────────────────────────────────────
+{
+  // Le 3 nov. : échéance le 4 nov. à 12:00 Tunis = 11:00 UTC.
+  const day = (over: Partial<AlertAttendanceDay> = {}): AlertAttendanceDay => ({
+    date: '2026-11-03',
+    plannedCount: 6,
+    validated: false,
+    deadlineAt: '2026-11-04T11:00:00.000Z',
+    deadlineAfterDays: 1,
+    deadlineTime: '12:00',
+    ...over,
+  })
+  const at = (iso: string, attendance: AlertAttendanceDay[] | null, orders: AlertOrder[] = []) =>
+    computeAlerts({ orders, recettes: [], attendance, now: new Date(iso), todayStart: TODAY })
+
+  // Avant l'échéance : rien. À 12:00 pile : encore rien. Une milliseconde après : l'alerte.
+  assert.deepEqual(at('2026-11-04T10:59:59.999Z', [day()]), [], 'avant l’échéance')
+  assert.deepEqual(at('2026-11-04T11:00:00.000Z', [day()]), [], 'à 12:00 pile, il est encore temps')
+  const fired = at('2026-11-04T11:00:00.001Z', [day()])
+  assert.equal(fired.length, 1)
+  assert.equal(fired[0].kind, 'attendance.not_validated')
+  assert.equal(fired[0].severity, 'warning')
+  assert.equal(fired[0].id, 'attendance.not_validated:2026-11-03')
+  assert.equal(fired[0].at, '2026-11-04T11:00:00.000Z', 'l’alerte date de l’échéance')
+  assert.equal(fired[0].message, 'Pointage du 3 nov. non validé (échéance le lendemain 12:00)')
+  assert.deepEqual(fired[0].meta, { date: '2026-11-03', deadlineAt: '2026-11-04T11:00:00.000Z' })
+  assert.ok(!/\d{2}:\d{2}/.test(fired[0].id), 'pas d’horodatage dans l’id')
+
+  // Un état, pas un événement du jour : encore là le lendemain (avant-hier).
+  assert.equal(at('2026-11-05T09:00:00.000Z', [day()]).length, 1, 'avant-hier : toujours là')
+  // Au troisième jour, l'alerte s'éteint (D-3) ; le jour même n'est pas surveillé.
+  assert.deepEqual(at('2026-11-06T09:00:00.000Z', [day()]), [], 'D-3 : plus surveillé')
+  assert.deepEqual(at('2026-11-03T20:00:00.000Z', [day({ deadlineAt: '2026-11-03T10:00:00.000Z', deadlineAfterDays: 0 })]), [], 'aujourd’hui : le pointage se prend encore')
+  // La date de Tunis, pas celle de l'UTC : 23:30 UTC le 4 nov. est déjà le 5 à Tunis.
+  assert.equal(at('2026-11-04T23:30:00.000Z', [day()]).length, 1, 'le 5 nov. à Tunis, le 3 est D-2')
+  assert.deepEqual(at('2026-11-05T23:30:00.000Z', [day()]), [], 'le 6 nov. à Tunis, le 3 est D-3')
+
+  // Validé, ou personne de planifié : rien.
+  assert.deepEqual(at('2026-11-04T12:00:00.000Z', [day({ validated: true })]), [], 'validé')
+  assert.deepEqual(at('2026-11-04T12:00:00.000Z', [day({ plannedCount: 0 })]), [], 'personne n’était planifié')
+  assert.equal(at('2026-11-04T12:00:00.000Z', [day({ plannedCount: 1 })]).length, 1)
+  assert.deepEqual(at('2026-11-04T12:00:00.000Z', [day({ deadlineAt: null })]), [], 'échéance illisible : on ne devine pas')
+  assert.deepEqual(at('2026-11-04T12:00:00.000Z', null), [])
+  assert.deepEqual(at('2026-11-04T12:00:00.000Z', []), [])
+
+  // Deux jours, chacun son id ; un autre réglage dit son échéance dans le message.
+  const two = at('2026-11-05T12:00:00.000Z', [day(), day({ date: '2026-11-04', deadlineAt: '2026-11-05T11:00:00.000Z' })])
+  assert.deepEqual(two.map((a) => a.id).sort(), ['attendance.not_validated:2026-11-03', 'attendance.not_validated:2026-11-04'])
+  const same = at('2026-11-04T09:00:00.000Z', [day({ date: '2026-11-03', deadlineAt: '2026-11-03T20:00:00.000Z', deadlineAfterDays: 0, deadlineTime: '21:00' })])
+  assert.equal(same[0].message, 'Pointage du 3 nov. non validé (échéance le jour même 21:00)')
+
+  // Le texte ne nomme personne.
+  for (const a of two) assert.ok(!/@|employé|Alice|Bob/i.test(a.message + a.title), 'aucun employé nommé')
+  assert.deepEqual(Object.keys(fired[0].meta).sort(), ['date', 'deadlineAt'])
+
+  // Mélangé aux autres : la sévérité range.
+  const mixed = at('2026-11-04T12:00:00.000Z', [day()], [order({ status: 'pending', createdAt: new Date('2026-11-04T11:00:00.000Z') })])
+  assert.deepEqual(mixed.map((a) => a.kind).sort(), ['attendance.not_validated', 'order.pending_stale'])
+}
+section('attendance.not_validated : après l’échéance (pile : non), D-2..D-1 seulement, pas validé, personne de planifié, texte sans employé')
 
 console.log('\nTout est bon.')

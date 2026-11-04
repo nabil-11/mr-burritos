@@ -13,12 +13,14 @@ import {
   mondayOf,
   monthPairs,
   nextMonth,
+  resolveCell,
   weekPairs,
   type Planning,
+  type PlanningCell,
   type PlanningException,
   type WeekSlot,
 } from './planning'
-import { DEFAULT_TIME_ZONE, addDays, dayOf, isDay } from './reportTime'
+import { DEFAULT_TIME_ZONE, addDays, dayOf, isDay, startOfDay } from './reportTime'
 
 /** Un planning se lit à la semaine ou au mois ; au-delà, ce n'est plus un planning. */
 const MAX_DAYS = 62
@@ -39,13 +41,38 @@ export function planningRange(from?: string | null, to?: string | null) {
   return { from: start, to: end, today }
 }
 
-/** Le planning d'une période : les employés actifs, leur semaine type et les exceptions. */
-export async function loadPlanning(from?: string | null, to?: string | null, canEdit = false): Promise<Planning> {
-  const range = planningRange(from, to)
+/** Un employé tel que le planning le lit, avec son départ s'il est parti. */
+export interface PlanningEmployeeRow {
+  _id: string
+  name: string
+  poste: string
+  schedule: WeekSlot[]
+  isActive: boolean
+  leftAt: Date | null
+}
+
+/**
+ * Ce que lisent le planning et le pointage : les employés (par nom) et les
+ * exceptions de la période, sous la clé `${employeeId}:${date}`.
+ *
+ * Sans `employeeIds` : les employés actifs, et avec `includeLeft` ceux qui sont
+ * partis le jour `from` ou après (`leftAt` >= début du jour). Avec
+ * `employeeIds` : ces employés-là et eux seuls, actifs ou non — c'est l'appelant
+ * qui sait pourquoi il les veut.
+ */
+export async function readPlanningInputs(
+  range: { from: string; to: string },
+  opts: { employeeIds?: string[]; includeLeft?: boolean } = {}
+): Promise<{ employees: PlanningEmployeeRow[]; exceptions: Map<string, PlanningException> }> {
   await connectDB()
+  const filter = opts.employeeIds
+    ? { _id: { $in: opts.employeeIds } }
+    : opts.includeLeft
+      ? { $or: [{ isActive: true }, { leftAt: { $gte: startOfDay(range.from, DEFAULT_TIME_ZONE) } }] }
+      : { isActive: true }
   const [employees, exceptions] = await Promise.all([
-    Employee.find({ isActive: true }).sort({ name: 1 }).select('name poste schedule').lean() as Promise<
-      { _id: unknown; name: string; poste?: string; schedule?: WeekSlot[] }[]
+    Employee.find(filter).sort({ name: 1 }).select('name poste schedule isActive leftAt').lean() as Promise<
+      { _id: unknown; name: string; poste?: string; schedule?: WeekSlot[]; isActive?: boolean; leftAt?: Date | null }[]
     >,
     PlanningDay.find({ date: { $gte: range.from, $lte: range.to } }).select('employee date kind shifts note').lean() as Promise<
       ({ employee: unknown; date: string } & PlanningException)[]
@@ -53,11 +80,59 @@ export async function loadPlanning(from?: string | null, to?: string | null, can
   ])
   const byKey = new Map<string, PlanningException>()
   for (const x of exceptions) byKey.set(`${String(x.employee)}:${x.date}`, { kind: x.kind, shifts: x.shifts, note: x.note })
+  return {
+    employees: employees.map((e) => ({
+      _id: String(e._id),
+      name: e.name,
+      poste: e.poste ?? '',
+      schedule: e.schedule ?? [],
+      isActive: e.isActive !== false,
+      leftAt: e.leftAt ?? null,
+    })),
+    exceptions: byKey,
+  }
+}
+
+/** Le planning d'une période : les employés actifs, leur semaine type et les exceptions. */
+export async function loadPlanning(from?: string | null, to?: string | null, canEdit = false): Promise<Planning> {
+  const range = planningRange(from, to)
+  const { employees, exceptions } = await readPlanningInputs(range)
   return buildPlanning(
-    employees.map((e) => ({ _id: String(e._id), name: e.name, poste: e.poste, schedule: e.schedule })),
-    byKey,
+    employees.map((e) => ({ _id: e._id, name: e.name, poste: e.poste, schedule: e.schedule })),
+    exceptions,
     { ...range, canEdit }
   )
+}
+
+/** Un employé et ce qu'il fait un jour donné. */
+export interface DayCell {
+  employeeId: string
+  name: string
+  poste: string
+  active: boolean
+  /** Le jour (Tunis) où il est parti, ou null. */
+  leftDay: string | null
+  cell: PlanningCell
+}
+
+/**
+ * Ce que chaque employé fait un jour précis (exception d'abord, semaine type
+ * sinon — `resolveCell`), par nom. Voir `readPlanningInputs` pour qui est
+ * inclus.
+ */
+export async function resolveDayCells(
+  date: string,
+  opts: { employeeIds?: string[]; includeLeft: boolean }
+): Promise<DayCell[]> {
+  const { employees, exceptions } = await readPlanningInputs({ from: date, to: date }, opts)
+  return employees.map((e) => ({
+    employeeId: e._id,
+    name: e.name,
+    poste: e.poste,
+    active: e.isActive,
+    leftDay: e.leftAt ? dayOf(e.leftAt, DEFAULT_TIME_ZONE) : null,
+    cell: resolveCell(e.schedule, exceptions.get(`${e._id}:${date}`), date),
+  }))
 }
 
 export type CopyRequest =

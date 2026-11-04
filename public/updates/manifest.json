@@ -1,0 +1,10 @@
+{
+  "build": 1,
+  "url": "https://mr-burritos.vercel.app/updates/bundle-b1.zip",
+  "checksum": "063e58f84170ab42f192448c6ea1ee53f3393005a36aeba5776f0259aa66b54a",
+  "minNative": 4,
+  "commit": "12fb4c416a969e6aeb8e63890b284db52b3d7003",
+  "dirty": false,
+  "size": 531230,
+  "publishedAt": "2026-11-04T11:20:16.909Z"
+}

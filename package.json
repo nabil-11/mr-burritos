@@ -13,6 +13,7 @@
     "backfill-order-source": "tsx scripts/backfill-order-source.ts",
     "check:alerts": "tsx scripts/check-alerts.ts",
     "check:team": "tsx scripts/check-team.ts",
+    "check:attendance": "tsx scripts/check-attendance.ts",
     "check:write": "tsx scripts/check-manager-write.ts",
     "promo-card": "tsx scripts/generate-promo-card.ts",
     "flyers": "tsx scripts/generate-flyers.ts"

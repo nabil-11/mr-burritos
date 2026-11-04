@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server'
 import { failJson } from './managerAuth'
+import { AttendanceError } from './attendance'
 import { PlanningError } from './planning'
 import { RecetteError } from './recette'
 
@@ -29,6 +30,8 @@ export const badRequest = (message: string) => failJson(400, 'bad_request', mess
 
 /** Une erreur métier connue en réponse ; toute autre, un 500 sans détail. */
 export function failFromError(e: unknown, extra: Record<string, unknown> = {}) {
+  // Le pointage porte son code (window_closed...) et parfois des données (employeeIds).
+  if (e instanceof AttendanceError) return failJson(e.status, e.code, e.message, { ...extra, ...e.extra })
   if (e instanceof RecetteError || e instanceof PlanningError) {
     const code = e.code ?? BY_STATUS[e.status] ?? (e.status >= 500 ? 'server_error' : 'conflict')
     return failJson(e.status, code, e.message, extra)

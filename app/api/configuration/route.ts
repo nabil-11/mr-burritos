@@ -3,6 +3,7 @@ import { connectDB } from '@/lib/mongodb'
 import { Configuration } from '@/lib/models/Configuration'
 import { failJson as fail, requireManager } from '@/lib/managerAuth'
 import { DEADLINE_KEY, strictDeadline } from '@/lib/planningDeadline'
+import { ATTENDANCE_DEADLINE_KEY, strictAttendanceDeadline } from '@/lib/attendanceDeadline'
 
 const TYPES = ['string', 'number', 'boolean', 'json']
 
@@ -20,7 +21,8 @@ export async function GET() {
  * description? }. Seuls value, type et description sont écrits, jamais le
  * corps tel quel : `{ key: { $ne: null } }` ne vise aucune autre clé.
  * `planning.validationDeadline` doit être `{ weekday: 0-6, time: 'HH:mm' }`
- * (objet ou JSON en texte), sinon 400 bad_request.
+ * (objet ou JSON en texte), sinon 400 bad_request. De même
+ * `attendance.validationDeadline` : { afterDays: 0-2, time: 'HH:mm' }.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -37,6 +39,10 @@ export async function POST(req: NextRequest) {
     if (description !== undefined && typeof description !== 'string') return fail(400, 'bad_request', 'description invalide')
     if (key === DEADLINE_KEY && !strictDeadline(value)) {
       return fail(400, 'bad_request', "Échéance invalide : { weekday: 0-6 (0 = lundi), time: 'HH:mm' }")
+    }
+
+    if (key === ATTENDANCE_DEADLINE_KEY && !strictAttendanceDeadline(value)) {
+      return fail(400, 'bad_request', "Échéance invalide : { afterDays: 0-2 (jours après le jour de service), time: 'HH:mm' }")
     }
 
     const set: Record<string, unknown> = { value }

@@ -5,6 +5,8 @@ import { PlanningValidation } from '@/lib/models/PlanningValidation'
 import { failJson as fail, requireManager } from '@/lib/managerAuth'
 import { addDays, dayOf, startOfDay } from '@/lib/reportTime'
 import { deadlineAt, nextMondays, readDeadlineSetting } from '@/lib/planningDeadline'
+import { alertDates } from '@/lib/attendance'
+import { loadAlertDays } from '@/lib/attendanceData'
 import { cashDifference, recetteTotals } from '@/lib/recette'
 import {
   buildReport,
@@ -32,6 +34,11 @@ export const dynamic = 'force-dynamic'
  * is not validated and its deadline (Configuration `planning.validationDeadline`,
  * Thursday 18:00 by default) has gone by. The route reads the marker and the
  * setting; lib/managerAlerts decides.
+ *
+ * The attendance alert (attendance.not_validated) is a state too: a service day
+ * of D-2..D-1 has employees planned, no AttendanceDay marker, and its deadline
+ * (Configuration `attendance.validationDeadline`, the next day 12:00 by default)
+ * has gone by. Its text names no employee.
  *
  * Errors are `{ error, code }`: 401 unauthorized, 403 forbidden,
  * 400 bad_request, 500 server_error.
@@ -122,7 +129,10 @@ export async function GET(req: NextRequest) {
       deadlineTime: deadline.time,
     }
 
-    const report = buildReport(computeAlerts({ orders, recettes, planning, now, todayStart }), { since })
+    // The two service days before today: planned, not validated, deadline gone by.
+    const attendance = await loadAlertDays(alertDates(today))
+
+    const report = buildReport(computeAlerts({ orders, recettes, planning, attendance, now, todayStart }), { since })
 
     return NextResponse.json(
       {

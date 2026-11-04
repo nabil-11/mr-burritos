@@ -2,6 +2,8 @@ import { ORDER_SOURCE_LABELS, isOrderSource } from './orderSource'
 import { formatDT } from './format'
 import { readyDeadline } from './prepDeadline'
 import { WEEKDAYS } from './planning'
+import { alertDates } from './attendance'
+import { attendanceDeadlineLabel } from './attendanceDeadline'
 import { DEFAULT_TIME_ZONE, dayOf } from './reportTime'
 
 /**
@@ -46,6 +48,7 @@ export type AlertKind =
   | 'recette.not_counted'
   | 'recette.correction'
   | 'planning.not_validated'
+  | 'attendance.not_validated'
 
 export type AlertSeverity = 'critical' | 'warning' | 'info'
 
@@ -125,11 +128,31 @@ export interface AlertPlanningWeek {
   deadlineTime: string
 }
 
+/**
+ * A service day of the attendance (« pointage »), as the route read it: how
+ * many employees were planned to work, whether the manager validated it, and
+ * when its deadline falls. The rule below decides whether that is worth an alert.
+ */
+export interface AlertAttendanceDay {
+  /** YYYY-MM-DD, the service day. */
+  date: string
+  /** Employees planned « travail » that day. */
+  plannedCount: number
+  validated: boolean
+  deadlineAt: DateLike
+  /** Days after the service day, as in lib/attendanceDeadline. Only used to word the message. */
+  deadlineAfterDays: number
+  /** « 12:00 », Tunis time. Only used to word the message. */
+  deadlineTime: string
+}
+
 export interface AlertInput {
   orders: AlertOrder[]
   recettes: AlertRecette[]
   /** The coming week's validation, when the route read it. Unset: no planning alert. */
   planning?: AlertPlanningWeek | null
+  /** The last service days' attendance, when the route read it. Unset: no attendance alert. */
+  attendance?: AlertAttendanceDay[] | null
   now: Date
   /**
    * When set, the « today » kinds (everything except pending_stale and late,
@@ -392,6 +415,30 @@ function planningAlert(week: AlertPlanningWeek, now: Date): Alert[] {
   ]
 }
 
+/**
+ * A recent service day has people planned, no validation, and its deadline has
+ * gone by (strictly). Only the two days before today are watched: today's
+ * attendance is still being taken, older days are the owner's to chase. A state,
+ * so it ignores the « today » window. The message names no employee.
+ */
+function attendanceAlert(day: AlertAttendanceDay, now: Date): Alert[] {
+  const due = ms(day.deadlineAt)
+  if (day.validated || day.plannedCount < 1 || due === null || now.getTime() <= due) return []
+  if (!alertDates(dayOf(now, DEFAULT_TIME_ZONE)).includes(day.date)) return []
+  const label = attendanceDeadlineLabel({ afterDays: day.deadlineAfterDays, time: day.deadlineTime })
+  return [
+    {
+      id: `attendance.not_validated:${day.date}`,
+      kind: 'attendance.not_validated',
+      severity: 'warning',
+      title: 'Pointage non validé',
+      message: `Pointage du ${shortDate(day.date)} non validé (échéance ${label})`,
+      at: iso(due),
+      meta: { date: day.date, deadlineAt: iso(due) },
+    },
+  ]
+}
+
 /** Severity (critical first), then newest first; the id settles ties so the order is stable. */
 export function compareAlerts(a: Alert, b: Alert): number {
   return (
@@ -402,13 +449,14 @@ export function compareAlerts(a: Alert, b: Alert): number {
 }
 
 /** Every alert the given documents raise, sorted. Same input, same output — ids included. */
-export function computeAlerts({ orders, recettes, planning = null, now, todayStart = null }: AlertInput): Alert[] {
+export function computeAlerts({ orders, recettes, planning = null, attendance = null, now, todayStart = null }: AlertInput): Alert[] {
   const nowMs = now.getTime()
   const windowStart = todayStart ? todayStart.getTime() : null
   const alerts: Alert[] = []
   for (const o of orders) alerts.push(...orderAlerts(o, nowMs, windowStart))
   for (const r of recettes) alerts.push(...recetteAlerts(r, windowStart))
   if (planning) alerts.push(...planningAlert(planning, now))
+  for (const d of attendance ?? []) alerts.push(...attendanceAlert(d, now))
   return alerts.sort(compareAlerts)
 }
 
