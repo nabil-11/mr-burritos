@@ -40,8 +40,9 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# L installateur Windows de la caisse : une centaine de megaoctets, au-dela
-# de ce que GitHub accepte (100 Mo par fichier). Il est depose dans
-# public/downloads sur la machine qui sert le site — ou heberge ailleurs, et
-# NEXT_PUBLIC_CAISSE_URL pointe dessus. Voir lib/downloads.ts.
+# Les .exe ne sont pas suivis, sauf l installateur de la caisse : `npm run dist`
+# de la caisse le copie ici (moins de 100 Mo, la limite de GitHub et de Vercel)
+# avec latest.yml, et ce depot le publie comme l APK de l app gerant. Un seul a
+# la fois : le script retire l ancien. Voir lib/downloads.ts.
 /public/downloads/*.exe
+!/public/downloads/Mr. Burritos Caisse Setup *.exe

@@ -27,6 +27,12 @@ const nextConfig: NextConfig = {
         source: '/updates/caisse/manifest.json',
         headers: [{ key: 'Cache-Control', value: 'no-store' }],
       },
+      // The installed tills' pointer to the newest installer (electron-updater),
+      // written by the till's `npm run dist` next to the installer itself.
+      {
+        source: '/downloads/latest.yml',
+        headers: [{ key: 'Cache-Control', value: 'no-store' }],
+      },
     ]
   },
 };

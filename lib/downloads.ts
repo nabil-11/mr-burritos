@@ -6,11 +6,11 @@ import path from 'node:path'
  *
  * Trois problèmes que cette page ne devrait pas avoir à connaître :
  *
- * — Un lien mort est pire que pas de lien. L'installateur Windows pèse une
- *   centaine de mégaoctets : il ne peut pas vivre dans le dépôt (au-delà de
- *   100 Mo, GitHub refuse le push) et n'arrive donc pas tout seul sur le
- *   serveur. On regarde si le fichier est là avant d'en parler ; sinon la
- *   ligne disparaît, plutôt que d'envoyer quelqu'un sur un 404.
+ * — Un lien mort est pire que pas de lien. L'installateur Windows arrive ici
+ *   par le `npm run dist` de la caisse, qui ne le copie que sous 100 Mo (au-delà,
+ *   GitHub refuse le push) : il peut manquer. On regarde si le fichier est là
+ *   avant d'en parler ; sinon la ligne disparaît, plutôt que d'envoyer quelqu'un
+ *   sur un 404.
  *
  * — Le nom du fichier change à chaque version — « Mr. Burritos Caisse Setup
  *   1.3.0.exe ». L'écrire en dur voudrait dire modifier le code à chaque
