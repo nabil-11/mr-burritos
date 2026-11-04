@@ -1,12 +1,8 @@
-import mongoose from 'mongoose'
 import { NextRequest, NextResponse } from 'next/server'
-import { connectDB } from '@/lib/mongodb'
 import { getTokenFromRequest } from '@/lib/auth'
 import { Employee } from '@/lib/models/Employee'
-import { PlanningDay } from '@/lib/models/PlanningDay'
-import { PlanningError, cleanSchedule, cleanShifts, isDayKind } from '@/lib/planning'
-import { canEditPlanning, cleanCopy, copyPlanning, loadPlanning } from '@/lib/planningData'
-import { isDay } from '@/lib/reportTime'
+import { PlanningError, cleanSchedule } from '@/lib/planning'
+import { canEditPlanning, cleanCopy, copyPlanning, employeeIdOf, loadPlanning, setPlanningDay } from '@/lib/planningData'
 
 export const dynamic = 'force-dynamic'
 
@@ -46,22 +42,7 @@ export async function PUT(req: NextRequest) {
   try {
     const editor = editorOf(req)
     const body = (await req.json().catch(() => ({}))) as Record<string, unknown>
-    const employeeId = await employeeIdOf(body.employeeId)
-    if (!isDay(body.date as string)) throw new PlanningError('Jour invalide')
-    const date = body.date as string
-
-    if (body.kind === 'semaine') {
-      await PlanningDay.deleteOne({ employee: employeeId, date })
-      return NextResponse.json({ ok: true })
-    }
-    if (!isDayKind(body.kind)) throw new PlanningError('Type de jour invalide')
-    const shifts = body.kind === 'travail' ? cleanShifts(body.shifts) : []
-    const note = typeof body.note === 'string' ? body.note.trim().slice(0, 200) : ''
-    await PlanningDay.findOneAndUpdate(
-      { employee: employeeId, date },
-      { $set: { kind: body.kind, shifts, note, updatedBy: { name: editor } } },
-      { upsert: true, runValidators: true }
-    )
+    await setPlanningDay(body, editor)
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
     return fail(e)
@@ -115,14 +96,6 @@ function editorOf(req: NextRequest): string {
   if (!caller) throw new PlanningError('Unauthorized', 401)
   if (!canEditPlanning(caller.role)) throw new PlanningError('Seul un gérant peut modifier le planning', 403)
   return caller.email
-}
-
-async function employeeIdOf(raw: unknown): Promise<string> {
-  const id = String(raw ?? '')
-  if (!mongoose.isValidObjectId(id)) throw new PlanningError('Employé introuvable', 404)
-  await connectDB()
-  if (!(await Employee.exists({ _id: id }))) throw new PlanningError('Employé introuvable', 404)
-  return id
 }
 
 function fail(e: unknown) {

@@ -1,0 +1,493 @@
+{
+  "lists": {
+    "S5": {
+      "id": "1500790000001132",
+      "name": "Sprint 5 — Write actions in the manager app (1.2.0)"
+    },
+    "S2": {
+      "id": "1500790000001133",
+      "name": "Sprint 2 — Manager app, first usable version"
+    },
+    "S4": {
+      "id": "1500790000001134",
+      "name": "Sprint 4 — Équipe in the manager app (1.1.0)"
+    },
+    "S3": {
+      "id": "1500790000001135",
+      "name": "Sprint 3 — Manager app APK downloadable from the back-office"
+    },
+    "S1": {
+      "id": "1500790000001136",
+      "name": "Sprint 1 — One-screen item composer for the till"
+    },
+    "BL": {
+      "id": "1500790000001137",
+      "name": "Backlog"
+    }
+  },
+  "tasks": {
+    "S5:B1–B6": {
+      "id": "1amyqkdb0jz",
+      "url": "https://app.clickup.com/t/1amyqkdb0jz",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"B1–B6 Foundation (bearer-only guard + email, error codes, clientKey, lib/reportData.ts, setPlanningDay, PlanningValidation, deadline sett…\",\"description\":\"B1–B6 Foundation (bearer-only guard + email, error `code`s, `clientKey`, `lib/reportData.ts`, `setPlanningDay`, `PlanningValidation`, deadline setting), then R, P1–P5, E1–E3, C1, A1, `npm run check:write`\\n\\nOwner: backend\\nEvidence: 9 routes under `app/api/manager/`, `lib/recette.ts:792` `addMovementOnce`, `lib/managerAlerts.ts:377`; `/api/reports` byte-identical; check:write/alerts/team, tsc, lint, build\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:B1–B6). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:D0–D5": {
+      "id": "1amyqkdb0k0",
+      "url": "https://app.clickup.com/t/1amyqkdb0k0",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"D0–D5 Types and mocks, Rapports, planning editor + copy + validate, Dépenses, close sheet, src/notify/planning.ts reminder\",\"description\":\"D0–D5 Types and mocks, Rapports, planning editor + copy + validate, Dépenses, close sheet, `src/notify/planning.ts` reminder\\n\\nOwner: designer\\nEvidence: `src/components/ReportsTab.vue`, `src/views/RecetteCaissePage.vue`, `MovementSheet.vue`, `CloseSheet.vue`, `PlanningDaySheet.vue`, `src/notify/planning.ts` (id 910001); `npm run build`\\nBlocked by: nothing (mocks from the contracts)\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:D0–D5). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:Q1": {
+      "id": "1amyqkdb0k1",
+      "url": "https://app.clickup.com/t/1amyqkdb0k1",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"Q1 Live server pass on 27099/3099, then app pass at 360/390 light/dark against it\",\"description\":\"Q1 Live server pass on 27099/3099, then app pass at 360/390 light/dark against it\\n\\nOwner: qa\\nEvidence: first pass READY (~150 assertions, 3 low findings, fixed in F1/F2); re-check READY: key_conflict, validate/copy-week bounds, date cap, configuration roles, back-office ConfigForm, mock build guard; no device or emulator, reminder delivery untested\\nBlocked by: F1, F2\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:S1": {
+      "id": "1amyqkdb0k2",
+      "url": "https://app.clickup.com/t/1amyqkdb0k2",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"S1 Guard, bearer-only writes, body whitelist, idempotency key scope, mapper leaks\",\"description\":\"S1 Guard, bearer-only writes, body whitelist, idempotency key scope, mapper leaks\\n\\nOwner: security\\nEvidence: first pass no blockers, 3 medium; re-check: all closed, cookie CSRF moved to the backlog cookie item\\nBlocked by: F1, F2\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:S1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:F1": {
+      "id": "1amyqkdb0k3",
+      "url": "https://app.clickup.com/t/1amyqkdb0k3",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"F1 Fixes: POST /api/configuration admin|manager from DB + key whitelist + deadline validation, validate only this week or next 2, 409 key…\",\"description\":\"F1 Fixes: POST /api/configuration admin|manager from DB + key whitelist + deadline validation, validate only this week or next 2, 409 `key_conflict` on a changed replay, planning dates capped at +1 year, copy-week only to coming weeks, inactive employee refused\\n\\nOwner: backend\\nEvidence: `app/api/configuration/route.ts:25`, `lib/planningDeadline.ts:33,99,108,120`, `lib/managerRecette.ts:41`, `lib/planningData.ts:180-181`; only caller of configuration POST is `ConfigForm.tsx:23`\\nBlocked by: Q1, S1 first pass\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:F1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:F2": {
+      "id": "1amyqkdb0k4",
+      "url": "https://app.clickup.com/t/1amyqkdb0k4",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"F2 Fixes: release build refuses VITE_USE_MOCKS=1, build-apk.mjs drops it, key_conflict message and refresh, clearer copy-week and validat…\",\"description\":\"F2 Fixes: release build refuses `VITE_USE_MOCKS=1`, `build-apk.mjs` drops it, `key_conflict` message and refresh, clearer copy-week and validate messages\\n\\nOwner: designer\\nEvidence: `vite.config.ts:7-9`, `scripts/build-apk.mjs:54`, `MovementSheet.vue:137-144`, `RecetteCaissePage.vue:83`, `PlanningTab.vue:147-172`\\nBlocked by: Q1, S1 first pass\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:F2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S5:R1": {
+      "id": "1amyqkdb0k5",
+      "url": "https://app.clickup.com/t/1amyqkdb0k5",
+      "list": "S5",
+      "fingerprint": "{\"name\":\"R1 1.2.0 / versionCode 3, npm run apk, copy to public/downloads/\",\"description\":\"R1 1.2.0 / versionCode 3, `npm run apk`, copy to `public/downloads/`\\n\\nOwner: release\\nEvidence: —\\nBlocked by: Q1, S1, owner's go to ship\\n\\nSource: .bdh-stack/tasks.md, Sprint 5 (key S5:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"in progress\"}"
+    },
+    "S2:B1": {
+      "id": "1amyqkdb0k6",
+      "url": "https://app.clickup.com/t/1amyqkdb0k6",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"B1 Order timestamps readyAt/deliveredAt/cancelledAt + autoSettled flag in the settle sweep\",\"description\":\"B1 Order timestamps `readyAt`/`deliveredAt`/`cancelledAt` + `autoSettled` flag in the settle sweep\\n\\nOwner: backend\\nEvidence: `lib/models/Order.ts:124-135`, `app/api/orders/[id]/route.ts:42-48`, `app/api/orders/[id]/cancel/route.ts:39`, `lib/recetteCorrection.ts:295,305`, `lib/orderTimers.ts`; `readyDeadline` moved to `lib/prepDeadline.ts` (re-exported)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:B1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:B2": {
+      "id": "1amyqkdb0k7",
+      "url": "https://app.clickup.com/t/1amyqkdb0k7",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"B2 Pure alert rules lib/managerAlerts.ts + scripts/check-alerts.ts (npm run check:alerts)\",\"description\":\"B2 Pure alert rules `lib/managerAlerts.ts` + `scripts/check-alerts.ts` (`npm run check:alerts`)\\n\\nOwner: backend\\nEvidence: `package.json:13`, all 8 kinds and boundaries pass\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:B2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:B3": {
+      "id": "1amyqkdb0k8",
+      "url": "https://app.clickup.com/t/1amyqkdb0k8",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"B3 Route app/api/manager/alerts/route.ts, token + DB re-read + admin|manager, no writes\",\"description\":\"B3 Route `app/api/manager/alerts/route.ts`, token + DB re-read + admin|manager, no writes\\n\\nOwner: backend\\nEvidence: live run on 3099: 200/403/401/400 correct, DB snapshot unchanged; `recetteTotals({persist:false})` at `lib/recette.ts:419-461`\\nBlocked by: B1, B2\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:B3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:D1": {
+      "id": "1amyqkdb0k9",
+      "url": "https://app.clickup.com/t/1amyqkdb0k9",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"D1 Scaffold app, git init without commits, md mode, brand tokens from app/globals.css:56-114, Capacitor + android platform, no APK\",\"description\":\"D1 Scaffold app, git init without commits, md mode, brand tokens from `app/globals.css:56-114`, Capacitor + android platform, no APK\\n\\nOwner: designer\\nEvidence: `mr-burritos-manager/src/theme/variables.css`, `capacitor.config.ts`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:D1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:D2": {
+      "id": "1amyqkdb0ka",
+      "url": "https://app.clickup.com/t/1amyqkdb0ka",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"D2 API client, token in Preferences, Login, tabs, router guard, Réglages\",\"description\":\"D2 API client, token in Preferences, Login, tabs, router guard, Réglages\\n\\nOwner: designer\\nEvidence: `src/stores/auth.ts`, `src/api/client.ts`, `src/stores/settings.ts:44`\\nBlocked by: D1\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:D2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:D3": {
+      "id": "1amyqkdb0kb",
+      "url": "https://app.clickup.com/t/1amyqkdb0kb",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"D3 Alertes tab, badge, poll every 60 s + on resume, local notifications de-duplicated by id\",\"description\":\"D3 Alertes tab, badge, poll every 60 s + on resume, local notifications de-duplicated by id\\n\\nOwner: designer\\nEvidence: `src/notify/alerts.ts`, `src/notify/notifier.ts`; money 2 decimals to match server `lib/format.ts:12`\\nBlocked by: D2\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:D3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:D4": {
+      "id": "1amyqkdb0kc",
+      "url": "https://app.clickup.com/t/1amyqkdb0kc",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"D4 Commandes (filters, detail) and Recettes (live, closed list, detail)\",\"description\":\"D4 Commandes (filters, detail) and Recettes (live, closed list, detail)\\n\\nOwner: designer\\nEvidence: `src/views/*Page.vue`; built on mocks, 16 shots at 390×844 light/dark\\nBlocked by: D2\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:D4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:Q1": {
+      "id": "1amyqkdb0kd",
+      "url": "https://app.clickup.com/t/1amyqkdb0kd",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"Q1 Rules and error codes on seeded local data, old-till compatibility, app on 3099 in light/dark at phone size\",\"description\":\"Q1 Rules and error codes on seeded local data, old-till compatibility, app on 3099 in light/dark at phone size\\n\\nOwner: qa\\nEvidence: first pass found 1 high (`since` hid alerts older than 24 h), 1 medium (recette count without cancelled), 3 low; all fixed and re-checked on 27099/3099\\nBlocked by: B3, D3, D4\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:Q1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:S1": {
+      "id": "1amyqkdb0ke",
+      "url": "https://app.clickup.com/t/1amyqkdb0ke",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"S1 Role guard, PII in alerts, token storage, server-URL setting, CORS\",\"description\":\"S1 Role guard, PII in alerts, token storage, server-URL setting, CORS\\n\\nOwner: security\\nEvidence: route clean; app fixes `allowBackup=false` + `data_extraction_rules.xml`, private notification channel, tray cleared on logout, `vite.config.ts:7` build guard, fake mock phones\\nBlocked by: B3, D2\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:S1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:D5": {
+      "id": "1amyqkdb0kf",
+      "url": "https://app.clickup.com/t/1amyqkdb0kf",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"D5 Polish: Tunis day bounds, \\\"Serveur injoignable\\\" on 502/504, platform-filter hint, \\\"Espèces plateformes\\\" line at RecetteDetailPage.vue:127\",\"description\":\"D5 Polish: Tunis day bounds, \\\"Serveur injoignable\\\" on 502/504, platform-filter hint, \\\"Espèces plateformes\\\" line at `RecetteDetailPage.vue:127`\\n\\nOwner: designer\\nEvidence: `npm run build` passes\\nBlocked by: Q1\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:D5). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S2:B4": {
+      "id": "1amyqkdb0kg",
+      "url": "https://app.clickup.com/t/1amyqkdb0kg",
+      "list": "S2",
+      "fingerprint": "{\"name\":\"B4 Alert text: amounts via formatDT, no auto_settled on cancelled orders, durations as \\\"1 j 5 h\\\"\",\"description\":\"B4 Alert text: amounts via `formatDT`, no `auto_settled` on cancelled orders, durations as \\\"1 j 5 h\\\"\\n\\nOwner: backend\\nEvidence: `lib/managerAlerts.ts:133,177,221,291`, `npm run check:alerts`\\nBlocked by: Q1\\n\\nSource: .bdh-stack/tasks.md, Sprint 2 (key S2:B4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T1+T2": {
+      "id": "1amyqkdb0kh",
+      "url": "https://app.clickup.com/t/1amyqkdb0kh",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T1+T2 lib/managerAuth.ts guard (alerts route switched to it), lib/managerTeam.ts whitelist mapper, GET /api/manager/team?month=, GET /api…\",\"description\":\"T1+T2 `lib/managerAuth.ts` guard (alerts route switched to it), `lib/managerTeam.ts` whitelist mapper, `GET /api/manager/team?month=`, `GET /api/manager/team/[id]?month=`, `npm run check:team`\\n\\nOwner: backend\\nEvidence: `lib/managerAuth.ts:28-41`, `lib/managerTeam.ts:20,80,151`, `app/api/manager/team/route.ts:19`, `app/api/manager/team/[id]/route.ts:20`; live run: figures equal `overview`/`accountOf`, no PII, no writes\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T1+T2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T3": {
+      "id": "1amyqkdb0kj",
+      "url": "https://app.clickup.com/t/1amyqkdb0kj",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T3 Équipe tab, Planning and Comptes segments, employee detail, mocks; 1.0.1 hardening (ReglagesPage.vue:3, SCHEDULE_EXACT_ALARM removed, …\",\"description\":\"T3 Équipe tab, Planning and Comptes segments, employee detail, mocks; 1.0.1 hardening (`ReglagesPage.vue:3`, `SCHEDULE_EXACT_ALARM` removed, `.env*` in `.gitignore`); version 1.1.0 / versionCode 2\\n\\nOwner: designer\\nEvidence: `src/views/EquipePage.vue`, `EquipeDetailPage.vue`, `src/components/PlanningTab.vue`, `ComptesTab.vue`, `src/lib/team.ts:121` (cross-midnight)\\nBlocked by: nothing (contracts fixed)\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T3b": {
+      "id": "1amyqkdb0kk",
+      "url": "https://app.clickup.com/t/1amyqkdb0kk",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T3b Owner add-on: \\\"heures prévues\\\" per person in Comptes rows and detail header; advance history pages EquipeAvancesPage.vue (team, perio…\",\"description\":\"T3b Owner add-on: \\\"heures prévues\\\" per person in Comptes rows and detail header; advance history pages `EquipeAvancesPage.vue` (team, period chips) and `EquipeAvancesEmployePage.vue` (per employee, by month)\\n\\nOwner: designer\\nEvidence: `ComptesTab.vue:21-30,117,130,150`, `src/router/index.ts:21-22`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T3b). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T2b": {
+      "id": "1amyqkdb0km",
+      "url": "https://app.clickup.com/t/1amyqkdb0km",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T2b Owner add-on: GET /api/manager/team/:id/advances, GET /api/manager/advances?from&to\",\"description\":\"T2b Owner add-on: `GET /api/manager/team/:id/advances`, `GET /api/manager/advances?from&to`\\n\\nOwner: backend\\nEvidence: `lib/managerAdvances.ts:34,84,128`, `lib/employeeAccount.ts:~225` `linesOfAll`; also fixed `loadLines()` dropping recettes that held any non-employee movement (back-office Employés undercounted)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T2b). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T3c": {
+      "id": "1amyqkdb0kn",
+      "url": "https://app.clickup.com/t/1amyqkdb0kn",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T3c Mr Burritos launcher icon, adaptive icon, splash, favicon\",\"description\":\"T3c Mr Burritos launcher icon, adaptive icon, splash, favicon\\n\\nOwner: designer\\nEvidence: `scripts/make-brand-assets.mjs`, `assets/`, `mipmap-*`, background `#1A1A1A`; source `public/logo.jpg` is low-res, a PNG/vector would be sharper\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T3c). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T5": {
+      "id": "1amyqkdb0kp",
+      "url": "https://app.clickup.com/t/1amyqkdb0kp",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T5 Real-server pass: roles, cross-midnight shift, cancelled advance, negative balance, empty month, states, both themes, 360/390\",\"description\":\"T5 Real-server pass: roles, cross-midnight shift, cancelled advance, negative balance, empty month, states, both themes, 360/390\\n\\nOwner: qa\\nEvidence: figures equal back-office `/employees`, `loadLines` fix confirmed, 18:00–01:00 = 7 h; 4 cosmetic notes sent to designer\\nBlocked by: T1+T2, T3\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T5). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T6": {
+      "id": "1amyqkdb0kq",
+      "url": "https://app.clickup.com/t/1amyqkdb0kq",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T6 PII in responses, guards, manifest\",\"description\":\"T6 PII in responses, guards, manifest\\n\\nOwner: security\\nEvidence: no blockers; `managerAuth.ts:33` userId validation sent to backend\\nBlocked by: T1+T2, T3\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T6). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T5b": {
+      "id": "1amyqkdb0kr",
+      "url": "https://app.clickup.com/t/1amyqkdb0kr",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T5b QA cosmetics: hours as \\\"97 h 59\\\" from whole minutes (src/lib/team.ts:90), chips fit at 360 (EquipeAvancesPage.vue:96), \\\"Pas de compte…\",\"description\":\"T5b QA cosmetics: hours as \\\"97 h 59\\\" from whole minutes (`src/lib/team.ts:90`), chips fit at 360 (`EquipeAvancesPage.vue:96`), \\\"Pas de compte ce mois\\\" (`ComptesTab.vue:67`), no month arrows on 403 (`ComptesTab.vue:85`); guard rejects a token without a valid userId (`lib/managerAuth.ts:34`)\\n\\nOwner: designer, backend\\nEvidence: `npm run build`, `check:team`, `check:alerts`, tsc\\nBlocked by: T5, T6\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T5b). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S4:T7": {
+      "id": "1amyqkdb0kt",
+      "url": "https://app.clickup.com/t/1amyqkdb0kt",
+      "list": "S4",
+      "fingerprint": "{\"name\":\"T7 npm run apk → mr-burritos-manager-1.1.0.apk, verify, commit and push the server (owner asked), first local commit of the app repo (no …\",\"description\":\"T7 `npm run apk` → `mr-burritos-manager-1.1.0.apk`, verify, commit and push the server (owner asked), first local commit of the app repo (no remote)\\n\\nOwner: release\\nEvidence: APK 9.13 MB, versionCode 2, same cert as 1.0.0; server `9b06ff6` pushed; app `078c2e2` local\\nBlocked by: T5, T6\\n\\nSource: .bdh-stack/tasks.md, Sprint 4 (key S4:T7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S3:R1": {
+      "id": "1amyqkdb0ku",
+      "url": "https://app.clickup.com/t/1amyqkdb0ku",
+      "list": "S3",
+      "fingerprint": "{\"name\":\"R1 Signed release APK 1.0.0, keystore outside the repos, npm run apk script, copy to server public/downloads/\",\"description\":\"R1 Signed release APK 1.0.0, keystore outside the repos, `npm run apk` script, copy to server `public/downloads/`\\n\\nOwner: release\\nEvidence: 3.37 MB, v2 signature, not debuggable; `android/app/build.gradle:5-45`, `scripts/build-apk.mjs`; key in `C:/Users/bdhna/.mr-burritos-keys/`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 3 (key S3:R1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S3:D6": {
+      "id": "1amyqkdb0kv",
+      "url": "https://app.clickup.com/t/1amyqkdb0kv",
+      "list": "S3",
+      "fingerprint": "{\"name\":\"D6 Manager APK entry in staffApps() on /login (version and size from the file)\",\"description\":\"D6 Manager APK entry in `staffApps()` on `/login` (version and size from the file)\\n\\nOwner: designer\\nEvidence: `lib/downloads.ts:90-95,129,159-174`, `app/login/page.tsx:22,55,70` (`force-static`, valid without Cache Components)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 3 (key S3:D6). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S3:Q2": {
+      "id": "1amyqkdb0kw",
+      "url": "https://app.clickup.com/t/1amyqkdb0kw",
+      "list": "S3",
+      "fingerprint": "{\"name\":\"Q2 Download served with the right type and size, /login link at phone and desktop width, APK metadata, install on an emulator if one is a…\",\"description\":\"Q2 Download served with the right type and size, `/login` link at phone and desktop width, APK metadata, install on an emulator if one is available\\n\\nOwner: qa\\nEvidence: `/login` static, 200 `application/vnd.android.package-archive`, length and sha256 match; no emulator image on this machine, install not tested\\nBlocked by: R1, D6\\n\\nSource: .bdh-stack/tasks.md, Sprint 3 (key S3:Q2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S3:S2": {
+      "id": "1amyqkdb0kx",
+      "url": "https://app.clickup.com/t/1amyqkdb0kx",
+      "list": "S3",
+      "fingerprint": "{\"name\":\"S2 Keystore and passwords outside every repo and public/, APK not debuggable, no secrets inside\",\"description\":\"S2 Keystore and passwords outside every repo and `public/`, APK not debuggable, no secrets inside\\n\\nOwner: security\\nEvidence: no blockers; 4096-bit key, no cleartext, no secrets or mocks in assets\\nBlocked by: R1\\n\\nSource: .bdh-stack/tasks.md, Sprint 3 (key S3:S2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T1": {
+      "id": "1amyqkdb0ky",
+      "url": "https://app.clickup.com/t/1amyqkdb0ky",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T1 Pure logic and check script\",\"description\":\"T1 Pure logic and check script\\n\\nOwner: designer\\nEvidence: `src/lib/composer.ts`, `src/lib/cartLines.ts`, `scripts/check-logic.mjs`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T1). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T2": {
+      "id": "1amyqkdb0kz",
+      "url": "https://app.clickup.com/t/1amyqkdb0kz",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T2 Composer UI\",\"description\":\"T2 Composer UI\\n\\nOwner: designer\\nEvidence: `src/components/ProductBuilder.tsx`\\nBlocked by: T1\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T2). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T3": {
+      "id": "1amyqkdb0m0",
+      "url": "https://app.clickup.com/t/1amyqkdb0m0",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T3 Modifier, Mettre a jour, Reprendre la derniere, orphaned CSS removal\",\"description\":\"T3 Modifier, Mettre a jour, Reprendre la derniere, orphaned CSS removal\\n\\nOwner: designer\\nEvidence: `src/components/Cart.tsx`, `src/App.tsx`\\nBlocked by: T2\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T3). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T4": {
+      "id": "1amyqkdb0m1",
+      "url": "https://app.clickup.com/t/1amyqkdb0m1",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T4 Cart stepper, cash chips, Plateforme keypad keys, releve wording\",\"description\":\"T4 Cart stepper, cash chips, Plateforme keypad keys, releve wording\\n\\nOwner: designer\\nEvidence: `src/components/Cart.tsx`, `src/components/Keypad.tsx`\\nBlocked by: T3\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T4). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T5": {
+      "id": "1amyqkdb0m2",
+      "url": "https://app.clickup.com/t/1amyqkdb0m2",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T5 Light contrast, top bar, Versements rename, reduced motion\",\"description\":\"T5 Light contrast, top bar, Versements rename, reduced motion\\n\\nOwner: designer\\nEvidence: `src/index.css`, `src/App.css`\\nBlocked by: T4\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T5). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T6": {
+      "id": "1amyqkdb0m3",
+      "url": "https://app.clickup.com/t/1amyqkdb0m3",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T6 QA pass at 1360x880, 1024x768, 1024x680, both themes, local data only\",\"description\":\"T6 QA pass at 1360x880, 1024x768, 1024x680, both themes, local data only\\n\\nOwner: qa\\nEvidence: 4 bugs found and fixed, order matched the old build field by field\\nBlocked by: T5\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T6). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T7": {
+      "id": "1amyqkdb0m4",
+      "url": "https://app.clickup.com/t/1amyqkdb0m4",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T7 Extras counted like meats, \\\"2× Oeuf\\\" in cart and order lists, \\\"Sans fromage\\\" note preset\",\"description\":\"T7 Extras counted like meats, \\\"2× Oeuf\\\" in cart and order lists, \\\"Sans fromage\\\" note preset\\n\\nOwner: designer\\nEvidence: `src/lib/composer.ts`, `src/lib/supplements.ts`\\nBlocked by: T6\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T8": {
+      "id": "1amyqkdb0m5",
+      "url": "https://app.clickup.com/t/1amyqkdb0m5",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T8 Kitchen ticket groups repeated supplements as \\\"+ 2x Oeuf (2.00)\\\"\",\"description\":\"T8 Kitchen ticket groups repeated supplements as \\\"+ 2x Oeuf (2.00)\\\"\\n\\nOwner: backend\\nEvidence: `lib/supplements.ts:58-101`, `app/api/orders/[id]/receipt/route.ts:254-257`\\nBlocked by: T6\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T8). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "S1:T9": {
+      "id": "1amyqkdb0m6",
+      "url": "https://app.clickup.com/t/1amyqkdb0m6",
+      "list": "S1",
+      "fingerprint": "{\"name\":\"T9 QA re-check of T7, T8 and T6 fixes\",\"description\":\"T9 QA re-check of T7, T8 and T6 fixes\\n\\nOwner: qa\\nEvidence: 4 real orders, totals and receipts correct\\nBlocked by: T7, T8\\n\\nSource: .bdh-stack/tasks.md, Sprint 1 (key S1:T9). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"closed\"}"
+    },
+    "BL:till-auto-update-release-script-build-upload-installer": {
+      "id": "1amyqkdb0m7",
+      "url": "https://app.clickup.com/t/1amyqkdb0m7",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Till auto-update release script: build, upload installer, write public/downloads/latest.yml with its full URL\",\"description\":\"Till auto-update release script: build, upload installer, write `public/downloads/latest.yml` with its full URL\\n\\nOwner: release\\nEvidence: memory note `till-auto-update`, till `electron/updater.cjs`\\nBlocked by: owner's choice of installer host (no public repo without explicit approval)\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:till-auto-update-release-script-build-upload-installer). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:old-debuggable-apks-still-public-by-direct-link": {
+      "id": "1amyqkdb0m8",
+      "url": "https://app.clickup.com/t/1amyqkdb0m8",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Old debuggable APKs still public by direct link: public/downloads/mr-burritos-manager.apk (com.mr_burritos.manager) and mr-burritos-livre…\",\"description\":\"Old debuggable APKs still public by direct link: `public/downloads/mr-burritos-manager.apk` (`com.mr_burritos.manager`) and `mr-burritos-livreur.apk` (`io.ionic.starter`), both debuggable with backup on\\n\\nOwner: release\\nEvidence: security review S2\\nBlocked by: owner decision (are drivers still installing the livreur APK?)\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:old-debuggable-apks-still-public-by-direct-link). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:real-worked-hours-pointage-staff-clock-in-out": {
+      "id": "1amyqkdb0m9",
+      "url": "https://app.clickup.com/t/1amyqkdb0m9",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\",\"description\":\"Real worked hours (pointage): staff clock in/out, e.g. on the till; today only planned hours exist\\n\\nOwner: backend\\nEvidence: no attendance model in `lib/models/`\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:real-worked-hours-pointage-staff-clock-in-out). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:signing-key-c-users-bdhna-mr-burritos-keys": {
+      "id": "1amyqkdb0ma",
+      "url": "https://app.clickup.com/t/1amyqkdb0ma",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Signing key C:/Users/bdhna/.mr-burritos-keys/ has no backup; app repo mr-burritos-manager has no remote\",\"description\":\"Signing key `C:/Users/bdhna/.mr-burritos-keys/` has no backup; app repo `mr-burritos-manager` has no remote\\n\\nOwner: release\\nEvidence: `git remote -v` empty\\nBlocked by: owner\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:signing-key-c-users-bdhna-mr-burritos-keys). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:login-has-no-rate-limit-or-lockout-a": {
+      "id": "1amyqkdb0mb",
+      "url": "https://app.clickup.com/t/1amyqkdb0mb",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Login has no rate limit or lockout; a manager login now opens salary data\",\"description\":\"Login has no rate limit or lockout; a manager login now opens salary data\\n\\nOwner: backend\\nEvidence: `app/api/auth/login/route.ts`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:login-has-no-rate-limit-or-lockout-a). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:first-month-s-statement-opening-reveals-the-stored": {
+      "id": "1amyqkdb0mc",
+      "url": "https://app.clickup.com/t/1amyqkdb0mc",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"First month's statement.opening reveals the stored opening balance to managers\",\"description\":\"First month's `statement.opening` reveals the stored opening balance to managers\\n\\nOwner: backend\\nEvidence: `lib/payroll.ts:162-166`\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:first-month-s-statement-opening-reveals-the-stored). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:machine-java-home-points-to-a-missing-jdk": {
+      "id": "1amyqkdb0md",
+      "url": "https://app.clickup.com/t/1amyqkdb0md",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Machine JAVA_HOME points to a missing jdk-21; builds need jdk-21.0.12.1\",\"description\":\"Machine `JAVA_HOME` points to a missing `jdk-21`; builds need `jdk-21.0.12.1`\\n\\nOwner: release\\nEvidence: release run 1.1.0\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:machine-java-home-points-to-a-missing-jdk). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:manager-app-sprint-3-background-fcm-push-for": {
+      "id": "1amyqkdb0me",
+      "url": "https://app.clickup.com/t/1amyqkdb0me",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Manager app sprint 3: background FCM push for alerts, scheduled check (Vercel Cron or external), manager-only token registration from the…\",\"description\":\"Manager app sprint 3: background FCM push for alerts, scheduled check (Vercel Cron or external), manager-only token registration from the verified JWT, Android channel `orders`\\n\\nOwner: backend\\nEvidence: `app/api/notifications/register-token/route.ts` has no auth; no `vercel.json`\\nBlocked by: owner's `google-services.json`, Firebase key rotation, Vercel plan cron limits\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:manager-app-sprint-3-background-fcm-push-for). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:manager-app-android-debug-apk-android-home-set": {
+      "id": "1amyqkdb0mf",
+      "url": "https://app.clickup.com/t/1amyqkdb0mf",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Manager app: Android debug APK, ANDROID_HOME set, cleartext for LAN testing\",\"description\":\"Manager app: Android debug APK, `ANDROID_HOME` set, cleartext for LAN testing\\n\\nOwner: release\\nEvidence: SDK at `%LOCALAPPDATA%/Android/Sdk`, no cmdline-tools\\nBlocked by: D1\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:manager-app-android-debug-apk-android-home-set). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:open-get-routes-expose-orders-customer-name-phone": {
+      "id": "1amyqkdb0mg",
+      "url": "https://app.clickup.com/t/1amyqkdb0mg",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Open GET routes expose orders (customer name, phone, address) and recettes without a token\",\"description\":\"Open GET routes expose orders (customer name, phone, address) and recettes without a token\\n\\nOwner: security\\nEvidence: `app/api/orders/route.ts:20`, `app/api/orders/[id]/route.ts:11-17`, `app/api/recettes/route.ts:18-37`\\nBlocked by: owner decision (kiosk tracker and tills read them)\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:open-get-routes-expose-orders-customer-name-phone). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:register-token-lets-any-caller-register-as-manager": {
+      "id": "1amyqkdb0mh",
+      "url": "https://app.clickup.com/t/1amyqkdb0mh",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"register-token lets any caller register as manager and receive manager pushes\",\"description\":\"`register-token` lets any caller register as manager and receive manager pushes\\n\\nOwner: security\\nEvidence: `app/api/notifications/register-token/route.ts`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:register-token-lets-any-caller-register-as-manager). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:new-order-push-goes-to-every-token-customers": {
+      "id": "1amyqkdb0mj",
+      "url": "https://app.clickup.com/t/1amyqkdb0mj",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"New-order push goes to every token, customers and drivers included\",\"description\":\"New-order push goes to every token, customers and drivers included\\n\\nOwner: backend\\nEvidence: `app/api/orders/route.ts:135-139`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:new-order-push-goes-to-every-token-customers). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:login-cookie-has-no-secure-or-explicit-samesite": {
+      "id": "1amyqkdb0mk",
+      "url": "https://app.clickup.com/t/1amyqkdb0mk",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Login cookie has no secure or explicit sameSite\",\"description\":\"Login cookie has no `secure` or explicit `sameSite`\\n\\nOwner: backend\\nEvidence: `app/api/auth/login/route.ts:34`; cookie-path POSTs such as `app/api/configuration/route.ts:27` are open to cross-site form posts (security re-check, sprint 5)\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:login-cookie-has-no-secure-or-explicit-samesite). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:cancel-route-needs-no-sign-in-status-put": {
+      "id": "1amyqkdb0mm",
+      "url": "https://app.clickup.com/t/1amyqkdb0mm",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Cancel route needs no sign-in; status PUT accepts any role and an unbounded preparationDuration, which can mute order.late\",\"description\":\"Cancel route needs no sign-in; status PUT accepts any role and an unbounded `preparationDuration`, which can mute `order.late`\\n\\nOwner: backend\\nEvidence: `app/api/orders/[id]/cancel/route.ts:25`, `app/api/orders/[id]/route.ts:21,51`\\nBlocked by: owner decision (till and kiosk callers)\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:cancel-route-needs-no-sign-in-status-put). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:orders-do-not-record-who-created-or-cancelled": {
+      "id": "1amyqkdb0mn",
+      "url": "https://app.clickup.com/t/1amyqkdb0mn",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Orders do not record who created or cancelled them, or why\",\"description\":\"Orders do not record who created or cancelled them, or why\\n\\nOwner: backend\\nEvidence: `lib/models/Order.ts`, `app/api/orders/[id]/cancel/route.ts`\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:orders-do-not-record-who-created-or-cancelled). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:saving-a-plateforme-releve-empties-a-pickup-cart": {
+      "id": "1amyqkdb0mp",
+      "url": "https://app.clickup.com/t/1amyqkdb0mp",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Saving a Plateforme releve empties a pickup cart in progress\",\"description\":\"Saving a Plateforme releve empties a pickup cart in progress\\n\\nOwner: designer\\nEvidence: `clearOrder()` called on delivery save in `src/App.tsx`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:saving-a-plateforme-releve-empties-a-pickup-cart). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:toasts-on-the-tabs-overlap-modal-header-titles": {
+      "id": "1amyqkdb0mq",
+      "url": "https://app.clickup.com/t/1amyqkdb0mq",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Toasts on the tabs overlap modal header titles\",\"description\":\"Toasts on the tabs overlap modal header titles\\n\\nOwner: designer\\nEvidence: QA run, \\\"Point de caisse\\\" screen\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:toasts-on-the-tabs-overlap-modal-header-titles). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:kiosk-customer-ticket-groups-repeated-supplements": {
+      "id": "1amyqkdb0mr",
+      "url": "https://app.clickup.com/t/1amyqkdb0mr",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Kiosk customer ticket groups repeated supplements\",\"description\":\"Kiosk customer ticket groups repeated supplements\\n\\nOwner: backend\\nEvidence: `app/(kiosk)/commander/[id]/print/page.tsx:92`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:kiosk-customer-ticket-groups-repeated-supplements). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:back-office-order-row-shows-one-chip-per": {
+      "id": "1amyqkdb0mt",
+      "url": "https://app.clickup.com/t/1amyqkdb0mt",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Back-office order row shows one chip per portion\",\"description\":\"Back-office order row shows one chip per portion\\n\\nOwner: designer\\nEvidence: `app/(backoffice)/orders/OrderRow.tsx:397-401`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:back-office-order-row-shows-one-chip-per). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:frequent-combos-from-order-history-once-repeat-frequency": {
+      "id": "1amyqkdb0mu",
+      "url": "https://app.clickup.com/t/1amyqkdb0mu",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Frequent combos from order history, once repeat frequency is measured\",\"description\":\"Frequent combos from order history, once repeat frequency is measured\\n\\nOwner: designer\\nEvidence: frequency unmeasured\\nBlocked by: a read of real order data\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:frequent-combos-from-order-history-once-repeat-frequency). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:keyboard-shortcuts-for-picking-items": {
+      "id": "1amyqkdb0mv",
+      "url": "https://app.clickup.com/t/1amyqkdb0mv",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Keyboard shortcuts for picking items\",\"description\":\"Keyboard shortcuts for picking items\\n\\nOwner: designer\\nEvidence: 24-25 Tab stops before the first size chip in the audit\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:keyboard-shortcuts-for-picking-items). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:new-order-alert-via-sse-instead-of-30s": {
+      "id": "1amyqkdb0mw",
+      "url": "https://app.clickup.com/t/1amyqkdb0mw",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"New-order alert via SSE instead of 30s polling\",\"description\":\"New-order alert via SSE instead of 30s polling\\n\\nOwner: backend\\nEvidence: `src/App.tsx:716`, server `/api/orders/stream`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:new-order-alert-via-sse-instead-of-30s). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:new-order-alert-shows-sizes-meats-sauces-and": {
+      "id": "1amyqkdb0mx",
+      "url": "https://app.clickup.com/t/1amyqkdb0mx",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"New-order alert shows sizes, meats, sauces and notes\",\"description\":\"New-order alert shows sizes, meats, sauces and notes\\n\\nOwner: designer\\nEvidence: `src/components/NewOrderAlert.tsx:59-70`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:new-order-alert-shows-sizes-meats-sauces-and). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:plateforme-warning-on-a-second-day-total-for": {
+      "id": "1amyqkdb0my",
+      "url": "https://app.clickup.com/t/1amyqkdb0my",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Plateforme warning on a second day total for the same company\",\"description\":\"Plateforme warning on a second day total for the same company\\n\\nOwner: designer\\nEvidence: 5 same-day Glovo entries accepted in the audit\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:plateforme-warning-on-a-second-day-total-for). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:caisse-modal-restructure-cash-out-form-out-of": {
+      "id": "1amyqkdb0mz",
+      "url": "https://app.clickup.com/t/1amyqkdb0mz",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Caisse modal restructure, cash-out form out of the scroll\",\"description\":\"Caisse modal restructure, cash-out form out of the scroll\\n\\nOwner: designer\\nEvidence: audit screenshot dark-47\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:caisse-modal-restructure-cash-out-form-out-of). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:modal-focus-management-role-dialog-on-all-7": {
+      "id": "1amyqkdb0n0",
+      "url": "https://app.clickup.com/t/1amyqkdb0n0",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Modal focus management, role=dialog on all 7, focus trap\",\"description\":\"Modal focus management, role=dialog on all 7, focus trap\\n\\nOwner: designer\\nEvidence: only 3 of 7 modals have role=dialog\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:modal-focus-management-role-dialog-on-all-7). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:payouts-screen-native-checkboxes-in-dark-theme": {
+      "id": "1amyqkdb0n1",
+      "url": "https://app.clickup.com/t/1amyqkdb0n1",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Payouts screen native checkboxes in dark theme\",\"description\":\"Payouts screen native checkboxes in dark theme\\n\\nOwner: designer\\nEvidence: audit screenshot dark-42\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:payouts-screen-native-checkboxes-in-dark-theme). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:keypad-two-decimal-cap-against-the-3-decimal": {
+      "id": "1amyqkdb0n2",
+      "url": "https://app.clickup.com/t/1amyqkdb0n2",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Keypad two-decimal cap against the 3-decimal setting\",\"description\":\"Keypad two-decimal cap against the 3-decimal setting\\n\\nOwner: designer\\nEvidence: `src/components/Keypad.tsx:30`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:keypad-two-decimal-cap-against-the-3-decimal). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:touch-sizes-of-order-tool-pills-and-top": {
+      "id": "1amyqkdb0n3",
+      "url": "https://app.clickup.com/t/1amyqkdb0n3",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Touch sizes of order tool pills and top-bar buttons at 36px\",\"description\":\"Touch sizes of order tool pills and top-bar buttons at 36px\\n\\nOwner: designer\\nEvidence: QA layout notes\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:touch-sizes-of-order-tool-pills-and-top). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:lock-down-the-till-recette-routes-open-close": {
+      "id": "1amyqkdb0n4",
+      "url": "https://app.clickup.com/t/1amyqkdb0n4",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Lock down the till recette routes: open, close (PATCH), add and cancel movement need no sign-in\",\"description\":\"Lock down the till recette routes: open, close (PATCH), add and cancel movement need no sign-in\\n\\nOwner: security\\nEvidence: `app/api/recettes/**`, `lib/caisseCaller.ts:4-30`\\nBlocked by: the till sending a token\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:lock-down-the-till-recette-routes-open-close). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:api-reports-checks-a-token-but-not-the": {
+      "id": "1amyqkdb0n5",
+      "url": "https://app.clickup.com/t/1amyqkdb0n5",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"/api/reports checks a token but not the role: staff and delivery accounts can read the accounts\",\"description\":\"`/api/reports` checks a token but not the role: staff and delivery accounts can read the accounts\\n\\nOwner: backend\\nEvidence: `app/api/reports/route.ts:39`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:api-reports-checks-a-token-but-not-the). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:planning-edits-are-last-write-wins-with-no": {
+      "id": "1amyqkdb0n6",
+      "url": "https://app.clickup.com/t/1amyqkdb0n6",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Planning edits are last-write-wins with no version check\",\"description\":\"Planning edits are last-write-wins with no version check\\n\\nOwner: backend\\nEvidence: `app/api/planning/route.ts` PUT/PATCH\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:planning-edits-are-last-write-wins-with-no). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:manager-close-an-order-created-between-the-blockers": {
+      "id": "1amyqkdb0n7",
+      "url": "https://app.clickup.com/t/1amyqkdb0n7",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Manager close: an order created between the blockers check and the close escapes orders_in_progress; re-count after the close and flag th…\",\"description\":\"Manager close: an order created between the blockers check and the close escapes `orders_in_progress`; re-count after the close and flag the recette\\n\\nOwner: backend\\nEvidence: `app/api/manager/recette/close/route.ts:53-61`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:manager-close-an-order-created-between-the-blockers). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:old-api-planning-takes-the-role-from-the": {
+      "id": "1amyqkdb0n8",
+      "url": "https://app.clickup.com/t/1amyqkdb0n8",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Old /api/planning takes the role from the token and accepts the cookie; switch to requireManager\",\"description\":\"Old `/api/planning` takes the role from the token and accepts the cookie; switch to `requireManager`\\n\\nOwner: backend\\nEvidence: `app/api/planning/route.ts:93-98`\\nBlocked by: nothing\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:old-api-planning-takes-the-role-from-the). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"open\"}"
+    },
+    "BL:planning-modifie-depuis-la-validation-flag": {
+      "id": "1amyqkdb0n9",
+      "url": "https://app.clickup.com/t/1amyqkdb0n9",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Planning \\\"modifié depuis la validation\\\" flag\",\"description\":\"Planning \\\"modifié depuis la validation\\\" flag\\n\\nOwner: backend\\nEvidence: sprint 5 plan, open question 3\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:planning-modifie-depuis-la-validation-flag). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    },
+    "BL:accent-policy-for-on-screen-strings": {
+      "id": "1amyqkdb0na",
+      "url": "https://app.clickup.com/t/1amyqkdb0na",
+      "list": "BL",
+      "fingerprint": "{\"name\":\"Accent policy for on-screen strings\",\"description\":\"Accent policy for on-screen strings\\n\\nOwner: designer\\nEvidence: `src/lib/reportDoc.ts:19`; server data has accents, UI strings do not\\nBlocked by: owner decision\\n\\nSource: .bdh-stack/tasks.md, Backlog (key BL:accent-policy-for-on-screen-strings). Synced by .bdh-stack/clickup-sync.mjs.\",\"status\":\"blocked\"}"
+    }
+  },
+  "status": {
+    "S5:Q1": "in progress",
+    "S5:S1": "in progress",
+    "S5:R1": "in progress"
+  },
+  "teamId": "9009008152",
+  "spaceId": "1500790000000564"
+}

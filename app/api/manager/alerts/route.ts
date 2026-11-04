@@ -1,14 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { Order } from '@/lib/models/Order'
 import { Recette } from '@/lib/models/Recette'
+import { PlanningValidation } from '@/lib/models/PlanningValidation'
 import { failJson as fail, requireManager } from '@/lib/managerAuth'
 import { addDays, dayOf, startOfDay } from '@/lib/reportTime'
+import { deadlineAt, nextMondays, readDeadlineSetting } from '@/lib/planningDeadline'
 import { cashDifference, recetteTotals } from '@/lib/recette'
 import {
   buildReport,
   computeAlerts,
   THRESHOLDS,
   type AlertOrder,
+  type AlertPlanningWeek,
   type AlertRecette,
 } from '@/lib/managerAlerts'
 
@@ -24,6 +27,11 @@ export const dynamic = 'force-dynamic'
  * « Today » is the shop's day in Africa/Tunis. Two kinds describe a state that
  * is true now rather than an event of the day — an order still pending, an
  * order past its deadline — so those also look back 7 days.
+ *
+ * The planning alert (planning.not_validated) is a state too: the coming week
+ * is not validated and its deadline (Configuration `planning.validationDeadline`,
+ * Thursday 18:00 by default) has gone by. The route reads the marker and the
+ * setting; lib/managerAlerts decides.
  *
  * Errors are `{ error, code }`: 401 unauthorized, 403 forbidden,
  * 400 bad_request, 500 server_error.
@@ -100,7 +108,21 @@ export async function GET(req: NextRequest) {
       })
     }
 
-    const report = buildReport(computeAlerts({ orders, recettes, now, todayStart }), { since })
+    // The coming week: validated or not, and when its deadline falls.
+    const [coming] = nextMondays(today, 1)
+    const [deadline, marker] = await Promise.all([
+      readDeadlineSetting(),
+      PlanningValidation.exists({ weekStart: coming }),
+    ])
+    const planning: AlertPlanningWeek = {
+      monday: coming,
+      validated: Boolean(marker),
+      deadlineAt: deadlineAt(coming, deadline),
+      deadlineWeekday: deadline.weekday,
+      deadlineTime: deadline.time,
+    }
+
+    const report = buildReport(computeAlerts({ orders, recettes, planning, now, todayStart }), { since })
 
     return NextResponse.json(
       {

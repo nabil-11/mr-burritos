@@ -102,9 +102,15 @@ const MovementSchema = new Schema({
     default: null,
   },
   createdAt: { type: Date, default: Date.now },
-  createdBy: { name: { type: String, default: '' } },
+  // `user` is the account behind a manager-app write; the till is a device, so
+  // its entries carry a name only. Absent on every movement written before.
+  createdBy: { user: { type: Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } },
   cancelledAt: { type: Date, default: null },
-  cancelledBy: { name: { type: String, default: '' } },
+  cancelledBy: { user: { type: Schema.Types.ObjectId, ref: 'User' }, name: { type: String, default: '' } },
+  // A key the manager app generates when its form opens and keeps for retries:
+  // a retry of the same key never records a second line. Scoped to the recette
+  // (see addMovementOnce); absent on till movements and on every older one.
+  clientKey: { type: String },
   // Saisi après la clôture, par une correction : `createdAt` dit quand l'argent
   // a bougé, celui-ci quand on l'a écrit.
   addedLater: { type: Date, default: null },

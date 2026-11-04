@@ -7,6 +7,8 @@ import {
   PlanningError,
   buildPlanning,
   copyOp,
+  cleanShifts,
+  isDayKind,
   isPlanningMonth,
   mondayOf,
   monthPairs,
@@ -69,10 +71,10 @@ export type CopyRequest =
 /** Lit ce qu'on demande de dupliquer, et refuse ce qui n'a pas de sens. */
 export function cleanCopy(body: Record<string, unknown>): CopyRequest {
   const employeeId = body.employeeId ? String(body.employeeId) : undefined
-  if (employeeId && !mongoose.isValidObjectId(employeeId)) throw new PlanningError('Employé introuvable', 404)
+  if (employeeId && !mongoose.isValidObjectId(employeeId)) throw new PlanningError('Employé introuvable', 404, 'not_found')
 
   if (body.mode === 'day') {
-    if (!employeeId) throw new PlanningError('Employé introuvable', 404)
+    if (!employeeId) throw new PlanningError('Employé introuvable', 404, 'not_found')
     if (!isDay(body.from as string)) throw new PlanningError('Jour invalide')
     const to = Array.isArray(body.to) ? [...new Set(body.to.map(String))] : []
     if (to.length === 0 || to.length > MAX_DAYS || !to.every((d) => isDay(d))) throw new PlanningError('Jours de destination invalides')
@@ -111,7 +113,7 @@ export async function copyPlanning(request: CopyRequest, editor: string): Promis
   const employees = (await Employee.find(request.employeeId ? { _id: request.employeeId } : { isActive: true })
     .select('schedule')
     .lean()) as { _id: unknown; schedule?: WeekSlot[] }[]
-  if (employees.length === 0) throw new PlanningError('Employé introuvable', 404)
+  if (employees.length === 0) throw new PlanningError('Employé introuvable', 404, 'not_found')
 
   const sources = [...new Set(pairs.map((p) => p.source))]
   const found = (await PlanningDay.find({
@@ -139,4 +141,57 @@ export async function copyPlanning(request: CopyRequest, editor: string): Promis
   )
   await PlanningDay.bulkWrite(writes, { ordered: false })
   return { days: pairs.length, employees: employees.length }
+}
+
+/** L'id d'un employé existant (actif ou non), ou le refus 404. */
+export async function employeeIdOf(raw: unknown): Promise<string> {
+  const id = String(raw ?? '')
+  if (!mongoose.isValidObjectId(id)) throw new PlanningError('Employé introuvable', 404, 'not_found')
+  await connectDB()
+  if (!(await Employee.exists({ _id: id }))) throw new PlanningError('Employé introuvable', 404, 'not_found')
+  return id
+}
+
+/**
+ * Ce qu'un employé fait un jour précis — le corps de PUT /api/planning et de
+ * PUT /api/manager/planning/day.
+ *
+ * Body : { employeeId, date, kind, shifts?, note? }. `kind` 'semaine' retire
+ * l'exception : le jour revient à la semaine type. 'travail' sans `shifts`
+ * reprend les horaires de la semaine type.
+ *
+ * `minDate` : le premier jour qu'on a le droit de toucher. Le back-office n'en
+ * donne pas ; l'app du gérant donne le lundi de cette semaine (refus
+ * `past_week`) — on ne réécrit pas le passé depuis un téléphone.
+ */
+export async function setPlanningDay(
+  body: Record<string, unknown>,
+  editor: string,
+  // `maxDate` : le dernier jour permis (plus loin : bad_request). `activeOnly` :
+  // un employé parti n'a plus de planning à écrire (bad_request).
+  opts: { minDate?: string; maxDate?: string; activeOnly?: boolean } = {}
+) {
+  const employeeId = await employeeIdOf(body.employeeId)
+  if (!isDay(body.date as string)) throw new PlanningError('Jour invalide')
+  const date = body.date as string
+  if (opts.minDate && date < opts.minDate) {
+    throw new PlanningError('Ce jour est dans une semaine passée', 400, 'past_week')
+  }
+  if (opts.maxDate && date > opts.maxDate) throw new PlanningError('Ce jour est trop loin : un an au plus', 400, 'bad_request')
+  if (opts.activeOnly && !(await Employee.exists({ _id: employeeId, isActive: true }))) {
+    throw new PlanningError("Cet employé n'est plus actif", 400, 'bad_request')
+  }
+
+  if (body.kind === 'semaine') {
+    await PlanningDay.deleteOne({ employee: employeeId, date })
+    return
+  }
+  if (!isDayKind(body.kind)) throw new PlanningError('Type de jour invalide')
+  const shifts = body.kind === 'travail' ? cleanShifts(body.shifts) : []
+  const note = typeof body.note === 'string' ? body.note.trim().slice(0, 200) : ''
+  await PlanningDay.findOneAndUpdate(
+    { employee: employeeId, date },
+    { $set: { kind: body.kind, shifts, note, updatedBy: { name: editor } } },
+    { upsert: true, runValidators: true }
+  )
 }

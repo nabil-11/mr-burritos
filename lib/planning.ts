@@ -23,9 +23,12 @@ import { addDays } from './reportTime'
 
 export class PlanningError extends Error {
   status: number
-  constructor(message: string, status = 400) {
+  /** Machine-readable reason for the manager routes ('past_week', 'not_found'...); the message is for people. */
+  code?: string
+  constructor(message: string, status = 400, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 

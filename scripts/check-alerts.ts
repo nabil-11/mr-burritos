@@ -17,6 +17,7 @@ import {
   formatDuration,
   type Alert,
   type AlertOrder,
+  type AlertPlanningWeek,
   type AlertRecette,
 } from '../lib/managerAlerts'
 
@@ -365,5 +366,53 @@ section('buildReport : since inclusif, comptes avant plafond, plafond 200')
   assert.equal(run([old], [], TODAY).length, 0)
 }
 section('todayStart facultatif')
+
+// ── Planning non validé ─────────────────────────────────────────────────────
+{
+  // Semaine du lundi 9 nov. : échéance le jeudi 5 nov. à 18:00 Tunis = 17:00 UTC.
+  const week = (over: Partial<AlertPlanningWeek> = {}): AlertPlanningWeek => ({
+    monday: '2026-11-09',
+    validated: false,
+    deadlineAt: '2026-11-05T17:00:00.000Z',
+    deadlineWeekday: 3,
+    deadlineTime: '18:00',
+    ...over,
+  })
+  const at = (iso: string, planning: AlertPlanningWeek | null, todayStart: Date | null = TODAY, orders: AlertOrder[] = []) =>
+    computeAlerts({ orders, recettes: [], planning, now: new Date(iso), todayStart })
+
+  // Avant l'échéance : rien. À 18:00 pile : encore rien. Une milliseconde après : l'alerte.
+  assert.deepEqual(at('2026-11-05T16:59:59.999Z', week()), [], 'avant l’échéance')
+  assert.deepEqual(at('2026-11-05T17:00:00.000Z', week()), [], 'à 18:00 pile, il est encore temps')
+  const fired = at('2026-11-05T17:00:00.001Z', week())
+  assert.equal(fired.length, 1)
+  assert.equal(fired[0].kind, 'planning.not_validated')
+  assert.equal(fired[0].severity, 'warning')
+  assert.equal(fired[0].id, 'planning.not_validated:2026-11-09')
+  assert.equal(fired[0].at, '2026-11-05T17:00:00.000Z', 'l’alerte date de l’échéance')
+  assert.equal(fired[0].message, 'Planning de la semaine du 9 nov. non validé (échéance jeudi 18:00)')
+  assert.deepEqual(fired[0].meta, { week: '2026-11-09', deadlineAt: '2026-11-05T17:00:00.000Z' })
+
+  // Un état, pas un événement du jour : encore là le samedi, hors fenêtre « aujourd'hui ».
+  assert.equal(at('2026-11-07T10:00:00.000Z', week(), new Date('2026-11-06T23:00:00.000Z')).length, 1, 'samedi : toujours là')
+  // Validée : plus d'alerte, avant comme après l'échéance.
+  assert.deepEqual(at('2026-11-06T10:00:00.000Z', week({ validated: true })), [], 'validée')
+  // La semaine commence (lundi 00:00 à Tunis) : plus d'alerte. Une milliseconde avant, encore.
+  assert.equal(at('2026-11-08T22:59:59.999Z', week()).length, 1, 'dimanche 23:59 à Tunis : la semaine n’a pas commencé')
+  assert.deepEqual(at('2026-11-08T23:00:00.000Z', week()), [], 'lundi 00:00 à Tunis : la semaine a commencé')
+  assert.deepEqual(at('2026-11-10T09:00:00.000Z', week()), [], 'en pleine semaine')
+  // Pas de données de planning : pas d'alerte, rien d'autre ne change.
+  assert.deepEqual(at('2026-11-06T10:00:00.000Z', null), [])
+  assert.deepEqual(at('2026-11-06T10:00:00.000Z', week({ deadlineAt: null })), [], 'échéance illisible : on ne devine pas')
+  // Un autre réglage dit son échéance dans le message.
+  const monday = at('2026-11-03T10:00:00.000Z', week({ deadlineAt: '2026-11-02T08:30:00.000Z', deadlineWeekday: 0, deadlineTime: '09:30' }))
+  assert.equal(monday[0].message, 'Planning de la semaine du 9 nov. non validé (échéance lundi 09:30)')
+  // Ids stables, et mélangés aux autres : la sévérité range, l'id ne dépend pas de l'heure.
+  const mixed = at('2026-11-06T10:00:00.000Z', week(), TODAY, [order({ status: 'pending', createdAt: new Date('2026-11-06T09:00:00.000Z') })])
+  assert.deepEqual(mixed.map((a) => a.kind).sort(), ['order.pending_stale', 'planning.not_validated'])
+  assert.equal(at('2026-11-06T11:00:00.000Z', week())[0].id, at('2026-11-07T11:00:00.000Z', week())[0].id, 'même id le lendemain')
+  assert.ok(!/\d{2}:\d{2}/.test(fired[0].id), 'pas d’horodatage dans l’id')
+}
+section('planning.not_validated : après l’échéance, pas avant, pas une fois validée, pas une fois la semaine commencée')
 
 console.log('\nTout est bon.')

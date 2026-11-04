@@ -1,6 +1,8 @@
 import { ORDER_SOURCE_LABELS, isOrderSource } from './orderSource'
 import { formatDT } from './format'
 import { readyDeadline } from './prepDeadline'
+import { WEEKDAYS } from './planning'
+import { DEFAULT_TIME_ZONE, dayOf } from './reportTime'
 
 /**
  * Manager alerts — what deserves the owner's attention right now.
@@ -43,6 +45,7 @@ export type AlertKind =
   | 'recette.cash_gap'
   | 'recette.not_counted'
   | 'recette.correction'
+  | 'planning.not_validated'
 
 export type AlertSeverity = 'critical' | 'warning' | 'info'
 
@@ -106,9 +109,27 @@ export interface AlertRecette {
   corrections?: AlertCorrection[] | null
 }
 
+/**
+ * The coming week of the planning, as the route read it: its Monday, whether
+ * the manager validated it, and when its deadline falls. The rule below
+ * decides whether that is worth an alert.
+ */
+export interface AlertPlanningWeek {
+  /** YYYY-MM-DD, a Monday. */
+  monday: string
+  validated: boolean
+  deadlineAt: DateLike
+  /** 0 = Monday, as in lib/planning. Only used to word the message. */
+  deadlineWeekday: number
+  /** « 18:00 », Tunis time. Only used to word the message. */
+  deadlineTime: string
+}
+
 export interface AlertInput {
   orders: AlertOrder[]
   recettes: AlertRecette[]
+  /** The coming week's validation, when the route read it. Unset: no planning alert. */
+  planning?: AlertPlanningWeek | null
   now: Date
   /**
    * When set, the « today » kinds (everything except pending_stale and late,
@@ -343,6 +364,34 @@ function recetteAlerts(recette: AlertRecette, windowStart: number | null): Alert
   return out
 }
 
+const MONTHS_SHORT = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+
+/** « 2026-11-09 » -> « 9 nov. ». */
+const shortDate = (day: string) => `${Number(day.slice(8, 10))} ${MONTHS_SHORT[Number(day.slice(5, 7)) - 1] ?? ''}`.trim()
+
+/**
+ * The coming week is still not validated and its deadline has gone by. A state
+ * rather than an event of the day, so it ignores the « today » window. It stops
+ * the moment the week is validated, or starts (the shop's day reaches its Monday).
+ */
+function planningAlert(week: AlertPlanningWeek, now: Date): Alert[] {
+  const due = ms(week.deadlineAt)
+  if (week.validated || due === null || now.getTime() <= due) return []
+  if (dayOf(now, DEFAULT_TIME_ZONE) >= week.monday) return []
+  const day = (WEEKDAYS[week.deadlineWeekday] ?? '').toLowerCase()
+  return [
+    {
+      id: `planning.not_validated:${week.monday}`,
+      kind: 'planning.not_validated',
+      severity: 'warning',
+      title: 'Planning non validé',
+      message: `Planning de la semaine du ${shortDate(week.monday)} non validé (échéance ${day} ${week.deadlineTime})`,
+      at: iso(due),
+      meta: { week: week.monday, deadlineAt: iso(due) },
+    },
+  ]
+}
+
 /** Severity (critical first), then newest first; the id settles ties so the order is stable. */
 export function compareAlerts(a: Alert, b: Alert): number {
   return (
@@ -353,12 +402,13 @@ export function compareAlerts(a: Alert, b: Alert): number {
 }
 
 /** Every alert the given documents raise, sorted. Same input, same output — ids included. */
-export function computeAlerts({ orders, recettes, now, todayStart = null }: AlertInput): Alert[] {
+export function computeAlerts({ orders, recettes, planning = null, now, todayStart = null }: AlertInput): Alert[] {
   const nowMs = now.getTime()
   const windowStart = todayStart ? todayStart.getTime() : null
   const alerts: Alert[] = []
   for (const o of orders) alerts.push(...orderAlerts(o, nowMs, windowStart))
   for (const r of recettes) alerts.push(...recetteAlerts(r, windowStart))
+  if (planning) alerts.push(...planningAlert(planning, now))
   return alerts.sort(compareAlerts)
 }
 

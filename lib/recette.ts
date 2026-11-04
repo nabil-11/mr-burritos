@@ -4,6 +4,7 @@ import { Order } from './models/Order'
 import { Recette } from './models/Recette'
 import { Employee } from './models/Employee'
 import { ORDER_SOURCES, type OrderSource } from './orderSource'
+import { sameMovement } from './managerRecette'
 import { MOVEMENT_KINDS, type MovementKind, isMovementKind } from './movementKinds'
 import { companyOf, isPaid, moneyPocket, paidAtCounter } from './platformSettlement'
 
@@ -35,9 +36,12 @@ import { companyOf, isPaid, moneyPocket, paidAtCounter } from './platformSettlem
 /** An error carrying the HTTP status the API should answer with. */
 export class RecetteError extends Error {
   status: number
-  constructor(message: string, status = 400) {
+  /** Machine-readable reason for the manager routes ('recette_closed'...); the message is for people. */
+  code?: string
+  constructor(message: string, status = 400, code?: string) {
     super(message)
     this.status = status
+    this.code = code
   }
 }
 
@@ -589,7 +593,7 @@ export interface CloseInput {
  * totals, and the drawer no longer adds up.
  */
 export async function closeRecette(id: string, input: CloseInput) {
-  if (!mongoose.isValidObjectId(id)) throw new RecetteError('Recette introuvable', 404)
+  if (!mongoose.isValidObjectId(id)) throw new RecetteError('Recette introuvable', 404, 'not_found')
   await connectDB()
 
   const set: Record<string, unknown> = {
@@ -608,8 +612,8 @@ export async function closeRecette(id: string, input: CloseInput) {
     { returnDocument: 'after' }
   )
   if (!recette) {
-    if (await Recette.exists({ _id: id })) throw new RecetteError('Recette déjà clôturée', 409)
-    throw new RecetteError('Recette introuvable', 404)
+    if (await Recette.exists({ _id: id })) throw new RecetteError('Recette déjà clôturée', 409, 'recette_closed')
+    throw new RecetteError('Recette introuvable', 404, 'not_found')
   }
 
   recette.totals = computeTotals(
@@ -640,20 +644,20 @@ export interface MovementInput {
 export function cleanMovement(input: MovementInput) {
   const kind = input.kind
   if (!isMovementKind(kind)) {
-    throw new RecetteError('Type de mouvement invalide : achat, dépense, apport ou retrait', 400)
+    throw new RecetteError('Type de mouvement invalide : achat, dépense, apport ou retrait', 400, 'bad_request')
   }
   const employeeId = input.employeeId ? String(input.employeeId) : null
   if (employeeId && kind !== 'depense') {
-    throw new RecetteError('Une avance à un employé est une dépense', 400)
+    throw new RecetteError('Une avance à un employé est une dépense', 400, 'bad_request')
   }
   const reason = input.employeeReason === 'salaire' ? 'salaire' : 'avance'
   const label = typeof input.label === 'string' ? input.label.trim().slice(0, 80) : ''
   // A line paid to an employee gets its label from them — see attachEmployees.
-  if (!label && !employeeId) throw new RecetteError('Indiquez un libellé', 400)
+  if (!label && !employeeId) throw new RecetteError('Indiquez un libellé', 400, 'bad_request')
   // A till types "12,5" as readily as 12.5.
   const amount = round2(Number(String(input.amount ?? '').replace(',', '.')))
-  if (!Number.isFinite(amount) || amount <= 0) throw new RecetteError('Montant invalide', 400)
-  if (amount > MAX_MOVEMENT) throw new RecetteError('Montant trop élevé', 400)
+  if (!Number.isFinite(amount) || amount <= 0) throw new RecetteError('Montant invalide', 400, 'bad_request')
+  if (amount > MAX_MOVEMENT) throw new RecetteError('Montant trop élevé', 400, 'bad_request')
   const note = typeof input.note === 'string' ? input.note.trim().slice(0, 200) : ''
   return { kind, label, amount, note, employeeId, reason }
 }
@@ -668,7 +672,7 @@ export function cleanMovement(input: MovementInput) {
  */
 export async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[]) {
   const ids = [...new Set(cleaned.map((m) => m.employeeId).filter((id): id is string => Boolean(id)))]
-  if (!ids.every((id) => mongoose.isValidObjectId(id))) throw new RecetteError('Employé introuvable', 400)
+  if (!ids.every((id) => mongoose.isValidObjectId(id))) throw new RecetteError('Employé introuvable', 400, 'bad_request')
   const found = ids.length
     ? ((await Employee.find({ _id: { $in: ids } }).select('name isActive').lean()) as {
         _id: unknown
@@ -681,9 +685,9 @@ export async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[
   return cleaned.map(({ employeeId, reason, ...movement }) => {
     if (!employeeId) return movement
     const employee = byId.get(employeeId)
-    if (!employee) throw new RecetteError('Employé introuvable', 400)
+    if (!employee) throw new RecetteError('Employé introuvable', 400, 'bad_request')
     if (!employee.isActive && reason === 'avance') {
-      throw new RecetteError(`${employee.name} n'est plus actif : plus d'avance possible`, 400)
+      throw new RecetteError(`${employee.name} n'est plus actif : plus d'avance possible`, 400, 'bad_request')
     }
     return {
       ...movement,
@@ -696,8 +700,8 @@ export async function attachEmployees(cleaned: ReturnType<typeof cleanMovement>[
 /** Why an update guarded on an open session matched nothing. */
 async function sessionMiss(id: string): Promise<never> {
   const found = await Recette.exists({ _id: id })
-  if (!found) throw new RecetteError('Recette introuvable', 404)
-  throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409)
+  if (!found) throw new RecetteError('Recette introuvable', 404, 'not_found')
+  throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409, 'recette_closed')
 }
 
 /** Beyond this, it is no longer one decision being recorded. */
@@ -722,29 +726,95 @@ export async function addMovements(recetteId: string, inputs: MovementInput[], u
   }
   if (inputs.length > MAX_AT_ONCE) throw new RecetteError('Trop de mouvements en une fois', 400)
   const parsed = inputs.map(cleanMovement)
-  if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404)
+  if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404, 'not_found')
   await connectDB()
   const cleaned = await attachEmployees(parsed)
+  const updated = await pushMovements(recetteId, cleaned, { name: userName })
+  return updated ?? sessionMiss(recetteId)
+}
 
+/** Who writes a movement: a name always, an account when a person (not the till) did it. */
+export interface MovementAuthor {
+  userId?: unknown
+  name: string
+}
+
+/**
+ * The single atomic push behind every way of adding movements. `clientKey`,
+ * when given, joins the filter: the push lands only if no line of this
+ * session already carries the key, so two requests with the same key cannot
+ * both write. Null: the filter matched nothing.
+ */
+async function pushMovements(
+  recetteId: string,
+  cleaned: Awaited<ReturnType<typeof attachEmployees>>,
+  author: MovementAuthor,
+  clientKey?: string
+) {
   // One instant, one millisecond apart, so the list keeps the order they were
   // decided in: the top-up above the achat it paid for.
   const now = Date.now()
-  const updated = await Recette.findOneAndUpdate(
-    { _id: recetteId, status: 'open' },
+  const createdBy = author.userId ? { user: author.userId, name: author.name } : { name: author.name }
+  return Recette.findOneAndUpdate(
+    { _id: recetteId, status: 'open', ...(clientKey ? { 'mouvements.clientKey': { $ne: clientKey } } : {}) },
     {
       $push: {
         mouvements: {
           $each: cleaned.map((movement, i) => ({
             ...movement,
+            ...(clientKey ? { clientKey } : {}),
             createdAt: new Date(now + i),
-            createdBy: { name: userName },
+            createdBy,
           })),
         },
       },
     },
     { returnDocument: 'after', runValidators: true }
   )
-  return updated ?? sessionMiss(recetteId)
+}
+
+/** The open session's line carrying this key, if any — the replay of a retried request. */
+async function keyedMovement(recetteId: string, clientKey: string) {
+  const recette = await Recette.findOne({ _id: recetteId, status: 'open', 'mouvements.clientKey': clientKey })
+  if (!recette) return null
+  const movement = (recette.mouvements as (Parameters<typeof sameMovement>[0] & { clientKey?: string })[]).find((m) => m.clientKey === clientKey)
+  return movement ? { recette, movement } : null
+}
+
+/**
+ * One movement, recorded at most once per `clientKey` — for a client that
+ * retries over a bad network (the manager app). Same key, same session: the
+ * line already written is returned with `replayed: true` and nothing is added.
+ * If that replay carries another kind, amount, label or employee than the line
+ * (same key, different request), `conflict: true`: the route answers 409
+ * `key_conflict` instead of silently handing back a line that is not what was asked.
+ *
+ * Checked twice on purpose: a read first (a replay must not depend on the
+ * employee still being active, say), and again when the atomic push misses,
+ * which is how two simultaneous requests with one key resolve to one line.
+ */
+export async function addMovementOnce(
+  recetteId: string,
+  input: MovementInput,
+  author: MovementAuthor,
+  clientKey: string
+) {
+  const parsed = cleanMovement(input)
+  if (!mongoose.isValidObjectId(recetteId)) throw new RecetteError('Recette introuvable', 404, 'not_found')
+  await connectDB()
+
+  const replay = await keyedMovement(recetteId, clientKey)
+  if (replay) return { ...replay, replayed: true, conflict: !sameMovement(replay.movement, parsed) }
+
+  const cleaned = await attachEmployees([parsed])
+  const updated = await pushMovements(recetteId, cleaned, author, clientKey)
+  if (updated) {
+    const movement = (updated.mouvements as { clientKey?: string }[]).find((m) => m.clientKey === clientKey)!
+    return { recette: updated, movement, replayed: false, conflict: false }
+  }
+  const raced = await keyedMovement(recetteId, clientKey)
+  if (raced) return { ...raced, replayed: true, conflict: !sameMovement(raced.movement, parsed) }
+  return sessionMiss(recetteId)
 }
 
 /** Un seul mouvement — voir addMovements. */
@@ -756,15 +826,16 @@ export async function addMovement(recetteId: string, input: MovementInput) {
  * Cancels an entry. It stays on the session, struck through and out of the
  * totals — same guard as above, and an entry is only ever cancelled once.
  */
-export async function cancelMovement(recetteId: string, movementId: string, userName = '') {
+export async function cancelMovement(recetteId: string, movementId: string, userName = '', userId?: unknown) {
   if (!mongoose.isValidObjectId(recetteId) || !mongoose.isValidObjectId(movementId)) {
-    throw new RecetteError('Sortie introuvable', 404)
+    throw new RecetteError('Sortie introuvable', 404, 'not_found')
   }
   await connectDB()
 
+  const cancelledBy = userId ? { user: userId, name: userName } : { name: userName }
   const updated = await Recette.findOneAndUpdate(
     { _id: recetteId, status: 'open', mouvements: { $elemMatch: { _id: movementId, cancelledAt: null } } },
-    { $set: { 'mouvements.$.cancelledAt': new Date(), 'mouvements.$.cancelledBy': { name: userName } } },
+    { $set: { 'mouvements.$.cancelledAt': new Date(), 'mouvements.$.cancelledBy': cancelledBy } },
     { returnDocument: 'after' }
   )
   if (updated) return updated
@@ -774,10 +845,10 @@ export async function cancelMovement(recetteId: string, movementId: string, user
     status?: string
     mouvements?: { _id: unknown; cancelledAt?: Date | null }[]
   } | null
-  if (!recette) throw new RecetteError('Recette introuvable', 404)
-  if (recette.status !== 'open') throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409)
+  if (!recette) throw new RecetteError('Recette introuvable', 404, 'not_found')
+  if (recette.status !== 'open') throw new RecetteError('Recette clôturée : ses chiffres sont figés', 409, 'recette_closed')
   if (!recette.mouvements?.some((m) => String(m._id) === movementId)) {
-    throw new RecetteError('Sortie introuvable', 404)
+    throw new RecetteError('Sortie introuvable', 404, 'not_found')
   }
-  throw new RecetteError('Sortie déjà annulée', 409)
+  throw new RecetteError('Sortie déjà annulée', 409, 'already_cancelled')
 }
